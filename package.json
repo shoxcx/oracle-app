@@ -1,0 +1,67 @@
+{
+  "name": "lol-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "electron_app/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron": ".\\node_modules\\electron\\dist\\electron.exe .",
+    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:5173 && npm run electron\"",
+    "build:win": "npm run build && electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.oracle.app",
+    "productName": "Oracle",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "shoxcx",
+        "repo": "oracle-app"
+      }
+    ],
+    "files": [
+      "dist/**/*",
+      "electron_app/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "electron-updater": "^6.7.3",
+    "framer-motion": "^12.23.26",
+    "league-connect": "^6.0.0-rc13",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.4.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.23",
+    "concurrently": "^9.2.1",
+    "electron": "31.0.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.1",
+    "vite": "^7.2.4",
+    "wait-on": "^9.0.3"
+  }
+}

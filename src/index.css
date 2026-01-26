@@ -1,0 +1,148 @@
+/* CSS LINTING FIX FOR TAILWIND */
+/* @tailwind base; @tailwind components; @tailwind utilities; */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-transparent text-gray-900 dark:text-gray-100 font-sans antialiased transition-colors duration-300;
+  }
+}
+
+@layer components {
+
+  /* Apple Vision Pro "Liquid Glass" Style */
+  .glass-panel {
+    @apply bg-white/5 dark:bg-white/[0.03] backdrop-blur-3xl;
+    @apply border border-white/20 dark:border-white/10 shadow-2xl rounded-[32px];
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 10px 40px -10px rgba(0, 0, 0, 0.2);
+  }
+
+  .dark .glass-panel {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset, 0 8px 32px -10px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-side-panel {
+    @apply bg-white/10 dark:bg-white/[0.02] backdrop-blur-3xl border-r border-white/10;
+  }
+
+  .glass-button {
+    @apply px-4 py-2.5 rounded-xl font-medium transition-all duration-300 active:scale-95 flex items-center justify-center gap-2;
+    @apply bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10;
+    @apply text-gray-900 dark:text-white/90 hover:text-black dark:hover:text-white;
+    @apply border border-gray-200/50 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20;
+    @apply backdrop-blur-md shadow-sm hover:shadow-md;
+  }
+
+  .glass-button-primary {
+    @apply glass-button bg-accent-primary/80 hover:bg-accent-primary text-white border-accent-primary/50;
+  }
+
+  /* Opaque Override for Body if needed */
+  .opaque-mode .absolute {
+    @apply hidden;
+  }
+
+  .glass-input {
+    @apply w-full bg-white/50 dark:bg-white/5 border border-transparent focus:border-accent-primary/50 rounded-xl px-4 py-3 outline-none transition-all;
+  }
+
+  .opaque-panel {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    @apply rounded-[32px];
+    /* Add rounded property for consistency */
+  }
+
+  .dark .opaque-panel {
+    background: #121216;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .app-drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+}
+
+/* Custom Scrollbar for "Premium" feel */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-800 rounded-full;
+}
+
+/* New Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+
+  100% {
+    transform: translateX(200%) skewX(-12deg);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite;
+}
+
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.animate-page-enter {
+  animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
