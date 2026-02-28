@@ -1,0 +1,74 @@
+[
+  {
+    "deviceId": "default",
+    "kind": "audioinput",
+    "label": "Default - Microphone (5- Razer Barracuda X) (1532:0536)",
+    "groupId": "432f26bacdf042c04010e52bcf3919ba9b279d05ac7edfd44c8d4edce7d73aaa"
+  },
+  {
+    "deviceId": "communications",
+    "kind": "audioinput",
+    "label": "Communications - Microphone (5- Razer Barracuda X) (1532:0536)",
+    "groupId": "432f26bacdf042c04010e52bcf3919ba9b279d05ac7edfd44c8d4edce7d73aaa"
+  },
+  {
+    "deviceId": "c4d7be3d2fa0bf296c8b6cf5b0d4e934a48c483101a6615eaf0ed348300e4965",
+    "kind": "audioinput",
+    "label": "Microphone (5- Razer Barracuda X) (1532:0536)",
+    "groupId": "432f26bacdf042c04010e52bcf3919ba9b279d05ac7edfd44c8d4edce7d73aaa"
+  },
+  {
+    "deviceId": "350264579963030b8063a345f1f220a3e742f346441606004e74456fafd1fb77",
+    "kind": "audioinput",
+    "label": "Microphone (Yeti X) (046d:0aaf)",
+    "groupId": "9c7382254ff109e113ab104c589c44fd87851766ed861be06a72a8f52f3cec5b"
+  },
+  {
+    "deviceId": "825bd2f04b36320b651407f9fbc045f78b9212aa755cfe38819b45cb5954f1ca",
+    "kind": "audioinput",
+    "label": "Microphone (HD Pro Webcam C920) (046d:0892)",
+    "groupId": "8e9b40a2655e654d65bdebe0abef4ed2f3d87a466e59c01d44c9cd274630e60d"
+  },
+  {
+    "deviceId": "6d28bd212a5c3dcffbc80ad1e6a68fcd21815077e29a4090e65220c0c017da90",
+    "kind": "videoinput",
+    "label": "HD Pro Webcam C920 (046d:0892)",
+    "groupId": "8e9b40a2655e654d65bdebe0abef4ed2f3d87a466e59c01d44c9cd274630e60d"
+  },
+  {
+    "deviceId": "default",
+    "kind": "audiooutput",
+    "label": "Default - Haut-parleurs (5- Razer Barracuda X) (1532:0536)",
+    "groupId": "432f26bacdf042c04010e52bcf3919ba9b279d05ac7edfd44c8d4edce7d73aaa"
+  },
+  {
+    "deviceId": "communications",
+    "kind": "audiooutput",
+    "label": "Communications - Haut-parleurs (5- Razer Barracuda X) (1532:0536)",
+    "groupId": "432f26bacdf042c04010e52bcf3919ba9b279d05ac7edfd44c8d4edce7d73aaa"
+  },
+  {
+    "deviceId": "19ad1990cc5baa85a9c452376adbe50a2847e76bec73e3a01626fd70a39f9afa",
+    "kind": "audiooutput",
+    "label": "Haut-parleurs (5- Razer Barracuda X) (1532:0536)",
+    "groupId": "432f26bacdf042c04010e52bcf3919ba9b279d05ac7edfd44c8d4edce7d73aaa"
+  },
+  {
+    "deviceId": "28e3152c2a7efb2fdb6e691009bf8f099ce631cb9cfb2daf0d3e5040f325dff2",
+    "kind": "audiooutput",
+    "label": "LC27G5xT (NVIDIA High Definition Audio)",
+    "groupId": "cee0acb820debe56f20d63e5275f1601da9256111d5e66f999165a25b69477f9"
+  },
+  {
+    "deviceId": "dbdc5915b219a5c3b899c5afb88195e0f318667da6d84ec639248b2051dd1e5d",
+    "kind": "audiooutput",
+    "label": "Haut-parleurs (Yeti X) (046d:0aaf)",
+    "groupId": "9c7382254ff109e113ab104c589c44fd87851766ed861be06a72a8f52f3cec5b"
+  },
+  {
+    "deviceId": "593243bb26cb01e1d60146d1e3f4f093b5f5a2271297c166d0a781e77ac2a9c9",
+    "kind": "audiooutput",
+    "label": "LC27G5xT (NVIDIA High Definition Audio)",
+    "groupId": "c0630c35ad350be37b2a1dcd70c9d2d916f064774f2bae0c8c55310ea2f6c995"
+  }
+]

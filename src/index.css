@@ -1,13 +1,32 @@
-/* CSS LINTING FIX FOR TAILWIND */
-/* @tailwind base; @tailwind components; @tailwind utilities; */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --bg-main: 10 15 30;
+    /* Deep blue tint for Classic */
+    --accent-primary: 59 130 246;
+  }
+
+  .theme-pourpre {
+    --bg-main: 18 10 26;
+    --accent-primary: 168 85 247;
+  }
+
+  .theme-tempete {
+    --bg-main: 22 24 28;
+    --accent-primary: 100 116 139;
+  }
+
+  .theme-radiant {
+    --bg-main: 28 22 10;
+    --accent-primary: 234 179 8;
+  }
+
   body {
-    @apply bg-transparent text-gray-900 dark:text-gray-100 font-sans antialiased transition-colors duration-300;
+    background-color: rgb(var(--bg-main));
+    @apply text-gray-900 dark:text-gray-100 font-sans antialiased transition-all duration-500;
   }
 }
 
@@ -15,8 +34,8 @@
 
   /* Apple Vision Pro "Liquid Glass" Style */
   .glass-panel {
-    @apply bg-white/5 dark:bg-white/[0.03] backdrop-blur-3xl;
-    @apply border border-white/20 dark:border-white/10 shadow-2xl rounded-[32px];
+    @apply bg-white dark:bg-white/[0.03] backdrop-blur-3xl;
+    @apply border border-gray-200 dark:border-white/10 shadow-2xl rounded-[32px];
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 10px 40px -10px rgba(0, 0, 0, 0.2);
   }
 
@@ -25,7 +44,7 @@
   }
 
   .glass-side-panel {
-    @apply bg-white/10 dark:bg-white/[0.02] backdrop-blur-3xl border-r border-white/10;
+    @apply bg-slate-100 dark:bg-white/[0.02] backdrop-blur-3xl border-r border-gray-200 dark:border-white/10;
   }
 
   .glass-button {
@@ -53,7 +72,6 @@
     background: #ffffff;
     border: 1px solid rgba(0, 0, 0, 0.1);
     @apply rounded-[32px];
-    /* Add rounded property for consistency */
   }
 
   .dark .opaque-panel {
@@ -86,6 +104,7 @@
 /* New Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
+  height: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -145,4 +164,65 @@
 
 .animate-page-enter {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: translateY(-100vh) translateX(20px);
+    opacity: 0;
+  }
+}
+
+.particle {
+  position: absolute;
+  /* Glow matches theme accent */
+  background: radial-gradient(circle, rgba(var(--accent-primary), 0.4) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  animation: float linear infinite;
+}
+
+.neo-glow {
+  box-shadow: 0 0 20px rgb(var(--accent-primary) / 0.2),
+    inset 0 0 10px rgb(var(--accent-primary) / 0.1);
+}
+
+.neo-glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2),
+    inset 0 0 10px rgba(239, 68, 68, 0.1);
+}
+
+.glass-card {
+  @apply bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes particle-out {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
 }

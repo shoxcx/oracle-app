@@ -32,7 +32,7 @@ const SPELL_MAP = {
     32: "SummonerSnowball", 39: "SummonerSnowURFSnowball_Mark", 54: "Summoner_UltBookPlaceholder"
 };
 
-export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank, selfPuuid: propPuuid, onSearch }) {
+export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank, selfPuuid: propPuuid, onSearch, t }) {
     const [activeTab, setActiveTab] = useState('General');
     const [runeMap, setRuneMap] = useState({});
     const [ddragonVersion, setDdragonVersion] = useState("15.1.1");
@@ -210,7 +210,7 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
                                 {tab === 'General' && <LayoutGrid size={16} />}
                                 {tab === 'Details' && <Activity size={16} />}
                                 {tab === 'Runes' && <List size={16} />}
-                                {tab}
+                                {t(`tab_${tab.toLowerCase()}`)}
                                 {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400" />}
                             </button>
                         ))}
@@ -225,17 +225,17 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
                             <div className="flex flex-col gap-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 {isExternal && (
                                     <div className="bg-blue-500/10 border border-blue-400/20 p-4 rounded-3xl text-center">
-                                        <div className="text-xs font-black text-blue-300 uppercase italic tracking-widest">Données Partielles</div>
-                                        <div className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-[0.2em]">Les statistiques détaillées des 10 joueurs et la timeline ne sont pas disponibles pour ce match externe.</div>
+                                        <div className="text-xs font-black text-blue-300 uppercase italic tracking-widest">{t('partial_data')}</div>
+                                        <div className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-[0.2em]">{t('partial_data_desc')}</div>
                                     </div>
                                 )}
                                 <ScoreboardTeamSection
-                                    title="Victoire" side="Côté bleu" players={team100} isWin={team100Win} objectives={displayData?.teams?.find(t => t.teamId === 100)}
+                                    title={t('victory')} side={t('blue_side')} players={team100} isWin={team100Win} objectives={displayData?.teams?.find(t => t.teamId === 100)}
                                     mvpId={mvpId} aceId={aceId} rankMap={rankMap} runeMap={runeMap} ver={ddragonVersion} maxDmg={maxDamage} dur={durationMin}
                                     getScore={getPlayerScore} selfPuuid={selfPuuid} selfRank={userRank} onSearch={onSearch} playerRanks={playerRanks}
                                 />
                                 <ScoreboardTeamSection
-                                    title="Défaite" side="Côté rouge" players={team200} isWin={team200Win} objectives={displayData?.teams?.find(t => t.teamId === 200)}
+                                    title={t('defeat')} side={t('red_side')} players={team200} isWin={team200Win} objectives={displayData?.teams?.find(t => t.teamId === 200)}
                                     mvpId={mvpId} aceId={aceId} rankMap={rankMap} runeMap={runeMap} ver={ddragonVersion} maxDmg={maxDamage} dur={durationMin}
                                     getScore={getPlayerScore} selfPuuid={selfPuuid} selfRank={userRank} onSearch={onSearch} playerRanks={playerRanks}
                                 />
@@ -295,10 +295,10 @@ function DetailsTabController({ loadingFull, fullGame, timeline, selfPuuid, ver,
 
     if (!fullGame && loadingFull) return <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4 animate-pulse">
         <Activity className="w-12 h-12 text-blue-500 opacity-50" />
-        <div className="font-bold italic">Récupération des données détaillées...</div>
+        <div className="font-bold italic">{t('fetching_details')}</div>
     </div>;
 
-    if (!currentP) return <div className="text-center py-20 text-gray-500 italic">Impossible de charger les détails de cette partie.</div>;
+    if (!currentP) return <div className="text-center py-20 text-gray-500 italic">{t('no_details_found')}</div>;
 
     return (
         <DetailsTabView
@@ -325,7 +325,7 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
                 <Sword className="w-8 h-8 text-blue-400" />
             </div>
         </div>
-        <div className="font-black italic text-xl tracking-tighter text-blue-500/50">ANALYSE DU MATCH EN COURS...</div>
+        <div className="font-black italic text-xl tracking-tighter text-blue-500/50">{t('analyzing_match')}</div>
     </div>;
 
     const frames = useMemo(() => {
@@ -497,30 +497,30 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
 
             {/* Main Stats Grid */}
             <div className="grid grid-cols-3 gap-6">
-                <DetailCard title="Phase de Laning (15m)" icon={<TrendingUp size={14} />}>
+                <DetailCard title={t('laning_phase')} icon={<TrendingUp size={14} />}>
                     <div className="grid grid-cols-3 gap-4 pt-4">
-                        <StatItem label="CS DIFF" val={Math.abs(laning.csDiff)} color={laning.csDiff >= 0 ? "text-green-400" : "text-red-400"} prefix={laning.csDiff >= 0 ? "+" : "-"} />
-                        <StatItem label="GOLD DIFF" val={`${Math.abs(laning.goldDiff / 1000).toFixed(1)}k`} color={laning.goldDiff >= 0 ? "text-yellow-400" : "text-red-400"} prefix={laning.goldDiff >= 0 ? "+" : "-"} />
-                        <StatItem label="XP DIFF" val={Math.abs(laning.xpDiff)} color={laning.xpDiff >= 0 ? "text-blue-400" : "text-red-400"} prefix={laning.xpDiff >= 0 ? "+" : "-"} />
+                        <StatItem label={t('cs_diff')} val={Math.abs(laning.csDiff)} color={laning.csDiff >= 0 ? "text-green-400" : "text-red-400"} prefix={laning.csDiff >= 0 ? "+" : "-"} />
+                        <StatItem label={t('gold_diff_title')} val={`${Math.abs(laning.goldDiff / 1000).toFixed(1)}k`} color={laning.goldDiff >= 0 ? "text-yellow-400" : "text-red-400"} prefix={laning.goldDiff >= 0 ? "+" : "-"} />
+                        <StatItem label={t('xp_diff')} val={Math.abs(laning.xpDiff)} color={laning.xpDiff >= 0 ? "text-blue-400" : "text-red-400"} prefix={laning.xpDiff >= 0 ? "+" : "-"} />
                     </div>
                 </DetailCard>
-                <DetailCard title="Vision Control" icon={<Eye size={14} />}>
+                <DetailCard title={t('vision_control_title')} icon={<Eye size={14} />}>
                     <div className="grid grid-cols-3 gap-4 pt-4">
-                        <StatItem label="POSÉES" val={p.stats.wardsPlaced || 0} />
-                        <StatItem label="DÉTRUITES" val={p.stats.wardsKilled || 0} />
-                        <StatItem label="CONTROLE" val={p.stats.visionWardsBoughtInGame || 0} color="text-purple-400" />
+                        <StatItem label={t('wards_placed_title')} val={p.stats.wardsPlaced || 0} />
+                        <StatItem label={t('wards_destroyed')} val={p.stats.wardsKilled || 0} />
+                        <StatItem label={t('control_wards')} val={p.stats.visionWardsBoughtInGame || 0} color="text-purple-400" />
                     </div>
                 </DetailCard>
-                <DetailCard title="Performance / Min" icon={<Zap size={14} />}>
+                <DetailCard title={t('perf_min')} icon={<Zap size={14} />}>
                     <div className="grid grid-cols-3 gap-4 pt-4">
-                        <StatItem label="CS/M" val={((p.stats.totalMinionsKilled + p.stats.neutralMinionsKilled) / Math.max(1, dur)).toFixed(1)} />
-                        <StatItem label="DMG/M" val={Math.round(p.stats.totalDamageDealtToChampions / Math.max(1, dur))} color="text-orange-400" />
-                        <StatItem label="GOLD/M" val={Math.round(p.stats.goldEarned / Math.max(1, dur))} color="text-yellow-500" />
+                        <StatItem label={t('cs_min_short')} val={((p.stats.totalMinionsKilled + p.stats.neutralMinionsKilled) / Math.max(1, dur)).toFixed(1)} />
+                        <StatItem label={t('dmg_min_short')} val={Math.round(p.stats.totalDamageDealtToChampions / Math.max(1, dur))} color="text-orange-400" />
+                        <StatItem label={t('gold_min_short')} val={Math.round(p.stats.goldEarned / Math.max(1, dur))} color="text-yellow-500" />
                     </div>
                 </DetailCard>
             </div>
 
-            <DetailCard title="BUILD ORDER" icon={<Package size={14} />}>
+            <DetailCard title={t('build_order_title')} icon={<Package size={14} />}>
                 <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-6 px-4">
                     {groupedBuild.length === 0 ? (
                         <div className="flex flex-col items-center justify-center w-full py-12 opacity-40">
@@ -529,9 +529,9 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
                                 <Clock size={16} className="absolute -bottom-1 -right-1 text-blue-500/50" />
                             </div>
                             <div className="text-gray-500 italic text-sm text-center max-w-xs">
-                                Aucun événement de boutique détecté.<br />
+                                {t('no_shop_events')}<br />
                                 <span className="text-[10px] opacity-60 not-italic uppercase tracking-widest mt-2 block">
-                                    {hasTimeline ? "Données filtrées (PID: " + myPid + ")" : "Chronologie indisponible"}
+                                    {hasTimeline ? t('filtered_data') + " (PID: " + myPid + ")" : t('timeline_unavailable')}
                                 </span>
                             </div>
                         </div>
@@ -566,7 +566,7 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
                                         ))}
                                     </div>
                                     <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em] px-2 py-0.5 rounded-full bg-white/[0.02] border border-white/[0.03]">
-                                        {Number(time) === 0 ? "Starter" : `${time} min`}
+                                        {Number(time) === 0 ? "Starter" : `${time} ${t('m')}`}
                                     </div>
                                 </div>
                             </div>
@@ -576,7 +576,7 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
             </DetailCard>
 
             {/* Skill Order - Matrix Match Screenshot Colors */}
-            <DetailCard title="SKILL ORDER" icon={<MousePointer2 size={14} />}>
+            <DetailCard title={t('skill_order_title')} icon={<MousePointer2 size={14} />}>
                 <div className="flex flex-col gap-4 pt-4">
                     {[1, 2, 3, 4].map(slot => {
                         const key = ['q', 'w', 'e', 'r'][slot - 1];
@@ -619,7 +619,7 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
 
             {/* Spells & Pings - Split Layout */}
             <div className="grid grid-cols-[1.5fr_1fr] gap-6">
-                <DetailCard title="SPELL CASTED" icon={<Zap size={14} />}>
+                <DetailCard title={t('spell_casted')} icon={<Zap size={14} />}>
                     <div className="flex items-center gap-10 py-4">
                         <div className="flex gap-5">
                             {['q', 'w', 'e', 'r'].map((s, idx) => {
@@ -644,7 +644,7 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
                                         </div>
                                         <div className="flex flex-col items-center">
                                             <span className="text-[14px] font-bold text-white leading-none">{cast}</span>
-                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-1">fois</span>
+                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-1">{t('times')}</span>
                                         </div>
                                     </div>
                                 );
@@ -680,7 +680,7 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
                     </div>
                 </DetailCard>
 
-                <DetailCard title="PINGS" icon={<MousePointer2 size={14} />}>
+                <DetailCard title={t('pings_title')} icon={<MousePointer2 size={14} />}>
                     <div className="flex justify-around items-center py-4">
                         <PingMinimal icon="omw" val={p?.stats?.onMyWayPings ?? p?.stats?.challenges?.onMyWayPings ?? p?.challenges?.onMyWayPings ?? 0} />
                         <PingMinimal icon="danger" val={p?.stats?.dangerPings ?? p?.stats?.challenges?.dangerPings ?? p?.challenges?.dangerPings ?? 0} />

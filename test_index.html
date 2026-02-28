@@ -1,0 +1,7 @@
+<html><body><script>
+        const fs = require('fs');
+        navigator.mediaDevices.enumerateDevices().then(devices => {
+            fs.writeFileSync('test_output3.txt', JSON.stringify(devices));
+            window.close();
+        });
+    </script></body></html>

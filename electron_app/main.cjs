@@ -1,19 +1,20 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, screen } = require('electron');
-const { autoUpdater } = require("electron-updater");
 const path = require('path');
 const fs = require('fs');
 
 // Allow self-signed certs for LCU
 app.commandLine.appendSwitch('ignore-certificate-errors');
-
 // Add local relative imports
 const lcu = require('./lcu.cjs');
 const liveApi = require('./live_api.cjs');
 const scraper = require('./scraper.cjs');
+const riotApi = require('./riot_api.cjs');
 
 let mainWindow;
 let liveWindow;
 let draftWindow;
+let toastWindow;
+let voiceWindow; // New Voice Assistant Window
 
 function createMainWindow() {
     mainWindow = new BrowserWindow({
@@ -42,6 +43,59 @@ function createMainWindow() {
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
     });
+}
+
+function createToastWindow() {
+    if (toastWindow) return;
+
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+
+    toastWindow = new BrowserWindow({
+        width: 350,
+        height: 600, // Slightly taller for more toasts
+        x: width - 360,
+        y: height - 610,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false
+        },
+        title: 'Oracle Social',
+        backgroundColor: '#00000000',
+        show: false,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        resizable: false,
+        focusable: false,
+        hasShadow: false,
+        type: 'toolbar' // Helps desktop placement
+    });
+
+    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    const url = isDev
+        ? 'http://localhost:5173?mode=toast'
+        : `file://${path.join(__dirname, '../dist/index.html')}?mode=toast`;
+
+    toastWindow.loadURL(url);
+    toastWindow.setIgnoreMouseEvents(true, { forward: true });
+
+    // Debug logging
+    console.log(`[Main] Toast window loading: ${url}`);
+    toastWindow.webContents.on('did-fail-load', (e, errorCode, errorDescription) => {
+        console.error(`[Main] Toast window failed to load: ${errorDescription} (${errorCode})`);
+    });
+
+    toastWindow.on('closed', () => {
+        console.log("[Main] Toast window closed");
+        toastWindow = null;
+        toastWindowReady = false;
+    });
+
+    // Uncomment to debug the toast window directly
+    // toastWindow.webContents.openDevTools({ mode: 'detach' });
 }
 
 function createLiveWindow() {
@@ -101,6 +155,76 @@ function createDraftWindow() {
     draftWindow.loadURL(url);
 }
 
+function createVoiceWindow() {
+    if (voiceWindow) return;
+
+    voiceWindow = new BrowserWindow({
+        width: 400,
+        height: 250,
+        x: 20,
+        y: 20,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false
+        },
+        title: 'Oracle Voice',
+        backgroundColor: '#00000000',
+        show: true, // Should be visible but small/transparent initially
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        resizable: false,
+        focusable: false,
+        type: 'toolbar'
+    });
+
+    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    const url = isDev
+        ? 'http://localhost:5173?mode=voice'
+        : `file://${path.join(__dirname, '../dist/index.html')}?mode=voice`;
+
+    voiceWindow.loadURL(url);
+    voiceWindow.setIgnoreMouseEvents(true, { forward: true });
+}
+
+let toastWindowReady = false;
+let pendingToasts = [];
+
+ipcMain.on('social:toast-ready', () => {
+    console.log("[Main] Toast window marked as READY");
+    toastWindowReady = true;
+    if (toastWindow && !toastWindow.isDestroyed()) {
+        pendingToasts.forEach(data => {
+            toastWindow.showInactive();
+            toastWindow.setFocusable(false);
+            toastWindow.setAlwaysOnTop(true, 'screen-saver');
+            toastWindow.webContents.send('social:new-toast', data);
+        });
+        pendingToasts = [];
+    }
+});
+
+ipcMain.handle('social:trigger-toast', (event, data) => {
+    console.log("[Main] social:trigger-toast called with:", data);
+
+    if (!toastWindow || toastWindow.isDestroyed()) {
+        console.log("[Main] Creating toast window...");
+        createToastWindow();
+    }
+
+    if (!toastWindowReady) {
+        console.log("[Main] Queuing toast...");
+        pendingToasts.push(data);
+    } else {
+        toastWindow.showInactive();
+        toastWindow.setFocusable(false);
+        toastWindow.setAlwaysOnTop(true, 'screen-saver');
+        toastWindow.webContents.send('social:new-toast', data);
+    }
+});
+
 ipcMain.handle('window:minimize', () => {
     const win = BrowserWindow.getFocusedWindow();
     if (win) win.minimize();
@@ -127,26 +251,83 @@ ipcMain.handle('window:set-ignore-mouse-events', (event, ignore, options) => {
     if (win) win.setIgnoreMouseEvents(ignore, options || { forward: true });
 });
 
-ipcMain.handle('lcu:connect', async () => lcu.connect());
-ipcMain.handle('lcu:get-current-summoner', async () => lcu.getCurrentSummoner());
+
 ipcMain.handle('lcu:get-summoner-by-puuid', async (_, puuid) => lcu.getSummonerByPuuid(puuid));
 
 ipcMain.handle('lcu:search-summoner', async (_, name, region, skipLcu, puuid) => {
+    console.log(`[IPC] search-summoner: name=${name}, region=${region}, skip=${skipLcu}, puuid=${puuid}`);
     if (!skipLcu) {
         if (puuid) {
             let user = await lcu.getSummonerByPuuid(puuid);
             if (user && user.puuid) return user;
         }
         let user = await lcu.getSummonerByName(name);
-        if (user && user.puuid) return user;
+        if (user && user.puuid) {
+            console.log(`[IPC] Found via LCU: ${user.displayName}`);
+            return user;
+        }
     }
+
+    // RIOT API PRIORITY if key exists
+    if (riotApi.apiKey && name.includes('#')) {
+        const [gameName, tagLine] = name.split('#');
+        const account = await riotApi.getAccountByRiotId(gameName, tagLine, region);
+        if (account && account.puuid) {
+            const summoner = await riotApi.getSummonerByPuuid(account.puuid, region);
+            if (summoner) {
+                return {
+                    ...summoner,
+                    summonerId: summoner.id,
+                    gameName: account.gameName,
+                    tagLine: account.tagLine,
+                    displayName: `${account.gameName}#${account.tagLine}`,
+                    region: region
+                };
+            }
+        }
+    }
+
+    console.log(`[IPC] Falling back to Scraper for ${name} [${region}]`);
     return scraper.searchSummoner(name, region);
 });
 
+let manualUser = null;
+
+ipcMain.handle('manual-login', async (_, { name, tag, region }) => {
+    console.log(`[IPC] manual-login: ${name}#${tag} [${region}]`);
+    try {
+        const query = `${name}#${tag}`;
+        const user = await scraper.searchSummoner(query, region);
+        if (user) {
+            manualUser = { ...user, isManual: true, region };
+            console.log("[IPC] Manual login successful:", manualUser.displayName);
+            return manualUser;
+        }
+    } catch (e) {
+        console.error("Manual login failed", e);
+    }
+    return null;
+});
+
+ipcMain.handle('lcu:connect', async () => {
+    if (manualUser) return true;
+    return lcu.connect();
+});
+
+ipcMain.handle('lcu:get-current-summoner', async () => {
+    if (manualUser) return manualUser;
+    return lcu.getCurrentSummoner();
+});
+
 ipcMain.handle('scraper:get-meta', async (_, role) => scraper.getChampionMeta(role));
-ipcMain.handle('scraper:get-global-ladder', async () => scraper.getGlobalLadder());
-ipcMain.handle('scraper:get-patch-notes', async () => scraper.getPatchNotes());
+ipcMain.handle('scraper:get-global-ladder', async (_, region) => scraper.getGlobalLadder(region));
 ipcMain.handle('scraper:get-champion-build', async (_, name, role) => scraper.getChampionBuild(name, role));
+ipcMain.handle('scraper:get-patch-notes', async () => scraper.getPatchNotes());
+ipcMain.handle('scraper:get-esports-schedule', async () => scraper.getEsportsSchedule());
+ipcMain.handle('scraper:get-esports-news', async () => scraper.getEsportsNews());
+ipcMain.handle('scraper:get-top-live-streams', async () => scraper.getTopLiveStreams());
+ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getChampionBuild(champ1, champ2, role));
+ipcMain.handle('scraper:get-rank-history', async (_, puuid, region) => scraper.getRankHistory(puuid, region));
 
 ipcMain.handle('lcu:get-ranked-stats', async (_, puuid) => {
     if (puuid && puuid.startsWith('ext~')) return scraper.getRankedStats(puuid);
@@ -172,6 +353,10 @@ ipcMain.handle('lcu:get-gameflow-phase', async () => lcu.getGameFlowPhase());
 ipcMain.handle('lcu:get-champ-select-session', async () => lcu.getChampSelectSession());
 ipcMain.handle('lcu:get-gameflow-session', async () => lcu.getGameFlowSession());
 ipcMain.handle('lcu:get-friends', async () => lcu.getFriends());
+ipcMain.handle('lcu:get-conversations', async () => lcu.getConversations());
+ipcMain.handle('lcu:get-conversation-messages', async (_, id) => lcu.getConversationMessages(id));
+ipcMain.handle('lcu:send-message', async (_, { id, body }) => lcu.sendMessage(id, body));
+ipcMain.handle('lcu:mark-messages-as-read', async (_, id) => lcu.markMessagesAsRead(id));
 ipcMain.handle('lcu:spectate', async (_, puuid) => lcu.spectate(puuid));
 ipcMain.handle('lcu:get-replay-metadata', async (_, gameId) => lcu.getReplayMetadata(gameId));
 ipcMain.handle('lcu:watch-replay', async (_, gameId) => lcu.watchReplay(gameId));
@@ -184,6 +369,10 @@ ipcMain.handle('lcu:get-owned-icons', async (_, summonerId) => lcu.getOwnedIcons
 ipcMain.handle('live:get-all-data', async () => liveApi.getAllGameData());
 ipcMain.handle('live:get-active-player', async () => liveApi.getActivePlayer());
 ipcMain.handle('live:get-player-list', async () => liveApi.getPlayerList());
+
+ipcMain.handle('riot:get-match-history', async (_, { puuid, region, count }) => riotApi.getMatchHistory(puuid, region, count));
+ipcMain.handle('riot:get-match-details', async (_, { matchId, region }) => riotApi.getMatchDetails(matchId, region));
+ipcMain.handle('riot:get-league-entries', async (_, { summonerId, region }) => riotApi.getLeagueEntries(summonerId, region));
 
 // lazy handler moved to the bottom of the file
 
@@ -211,7 +400,7 @@ ipcMain.handle('app:register-shortcut', () => {
     }
 });
 
-const SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
+const SETTINGS_PATH = path.join(path.join(app.getPath('userData'), 'settings.json'));
 
 const getSettings = () => {
     try {
@@ -225,6 +414,7 @@ ipcMain.handle('app:get-settings', () => getSettings());
 ipcMain.handle('app:set-settings', (_, settings) => {
     try {
         fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+        if (settings.riotApiKey) riotApi.setKey(settings.riotApiKey);
         return true;
     } catch (e) { console.error(e); return false; }
 });
@@ -265,6 +455,9 @@ async function monitorGameLoop() {
         if (phase !== lastPhase) {
             console.log(`[Monitor] Phase changed: ${lastPhase} -> ${phase}`);
             lastPhase = phase;
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('lcu:phase-changed', phase);
+            }
             if (phase === 'ChampSelect') await updateChampMap();
             else lastLockedChampId = 0; // Reset
         }
@@ -363,19 +556,21 @@ async function monitorGameLoop() {
 setInterval(monitorGameLoop, 3000);
 
 app.whenReady().then(() => {
+    const { session } = require('electron');
+
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        callback(true); // Auto-approve all permissions, especially 'media' for microphone
+    });
+    session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+        return true;
+    });
+
+    const settings = getSettings();
+    if (settings.riotApiKey) riotApi.setKey(settings.riotApiKey);
+
     createMainWindow();
-
-    // --- AUTO UPDATER ---
-    autoUpdater.checkForUpdatesAndNotify();
-
-    autoUpdater.on('update-available', () => {
-        console.log('[Updater] Update available.');
-    });
-
-    autoUpdater.on('update-downloaded', () => {
-        console.log('[Updater] Update downloaded; will install now.');
-        autoUpdater.quitAndInstall();
-    });
+    createToastWindow();
+    createVoiceWindow(); // Auto-start the voice listener window
 
     globalShortcut.register('CommandOrControl+X', () => {
         if (!liveWindow) createLiveWindow();
@@ -404,6 +599,36 @@ ipcMain.handle('app:open-draft', () => {
     if (!draftWindow) createDraftWindow();
     else draftWindow.show();
 });
+
+// --- Discord Rich Presence ---
+const DiscordRPC = require('discord-rpc');
+// Vous devez remplacer ce clientId par celui de votre application créée sur le Discord Developer Portal 
+// (nommée "Oracle : LOL TRACKER") pour que ça affiche le bon titre complet en haut.
+const clientId = '1477019062658924756';
+DiscordRPC.register(clientId);
+const rpc = new DiscordRPC.Client({ transport: 'ipc' });
+const startTimestamp = new Date();
+
+rpc.on('ready', () => {
+    console.log('[Discord RPC] Connected and ready');
+    try {
+        rpc.setActivity({
+            details: 'V1.0.0',
+            startTimestamp,
+            largeImageKey: 'oracle_logo', // L'asset devra s'appeler 'oracle_logo' sur Discord
+            largeImageText: 'Oracle',
+            instance: false,
+            buttons: [
+                { label: 'Voir le site Web', url: 'https://oracle.tekao.fr' }
+            ]
+        });
+    } catch (err) {
+        console.error('[Discord RPC] Error setting activity:', err);
+    }
+});
+
+// Tentative de connexion (Silencieux si Discord n'est pas ouvert ou ID invalide)
+rpc.login({ clientId }).catch(err => console.log('[Discord RPC] Could not connect:', err.message));
 
 app.on('will-quit', () => { globalShortcut.unregisterAll(); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

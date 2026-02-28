@@ -35,7 +35,14 @@ class LCUConnector {
         }
         try {
             const res = await request({ method, url, body }, this.credentials);
-            return await res.json();
+            if (res.status === 204) return null;
+
+            const text = await res.text();
+            try {
+                return text ? JSON.parse(text) : null;
+            } catch (ignore) {
+                return null;
+            }
         } catch (e) {
             if (e.response && e.response.status === 404) return null;
             console.error(`[LCU] Request failed: ${method} ${url}`, e);
@@ -134,6 +141,10 @@ class LCUConnector {
     async getChampSelectSession() { return this._request('GET', '/lol-champ-select/v1/session'); }
     async getGameFlowSession() { return this._request('GET', '/lol-gameflow/v1/session'); }
     async getFriends() { return this._request('GET', '/lol-chat/v1/friends'); }
+    async getConversations() { return this._request('GET', '/lol-chat/v1/conversations'); }
+    async getConversationMessages(id) { return this._request('GET', `/lol-chat/v1/conversations/${id}/messages`); }
+    async sendMessage(id, body) { return this._request('POST', `/lol-chat/v1/conversations/${id}/messages`, { body: body, type: 'chat' }); }
+    async markMessagesAsRead(id) { return this._request('POST', `/lol-chat/v1/conversations/${id}/messages/mark-as-read`); }
     async spectate(puuid) { return this._request('POST', `/lol-spectator/v1/spectate/launch-spectator-by-puuid/${puuid}`); }
     async getReplayMetadata(gameId) { return this._request('GET', `/lol-replays/v1/metadata/${gameId}`); }
     async watchReplay(gameId) { return this._request('POST', `/lol-replays/v1/rofls/${gameId}/watch`); }

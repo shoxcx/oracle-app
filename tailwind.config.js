@@ -16,7 +16,7 @@ export default {
                 'glass-dark': 'rgba(20, 20, 25, 0.7)',
                 'glass-dark-border': 'rgba(255, 255, 255, 0.1)',
 
-                'accent-primary': '#007AFF', // iOS Blue-ish
+                'accent-primary': 'rgb(var(--accent-primary) / <alpha-value>)',
                 'accent-success': '#34C759',
                 'accent-danger': '#FF3B30',
             },
