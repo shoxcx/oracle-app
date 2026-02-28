@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, screen, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -55,7 +55,7 @@ function createToastWindow() {
         width: 350,
         height: 600, // Slightly taller for more toasts
         x: width - 360,
-        y: height - 610,
+        y: 40,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -203,6 +203,12 @@ ipcMain.on('social:toast-ready', () => {
             toastWindow.webContents.send('social:new-toast', data);
         });
         pendingToasts = [];
+    }
+});
+
+ipcMain.on('social:toast-empty', () => {
+    if (toastWindow && !toastWindow.isDestroyed()) {
+        toastWindow.hide();
     }
 });
 
@@ -382,6 +388,12 @@ ipcMain.handle('app:set-auto-launch', (_, open) => {
     return app.getLoginItemSettings().openAtLogin;
 });
 
+ipcMain.handle('app:open-url', (_, url) => {
+    if (url) {
+        shell.openExternal(url);
+    }
+});
+
 ipcMain.handle('app:register-shortcut', () => {
     try {
         globalShortcut.unregisterAll();
@@ -555,6 +567,118 @@ async function monitorGameLoop() {
 // Start loop
 setInterval(monitorGameLoop, 3000);
 
+let prevFriendsMap = {};
+async function monitorSocialLoop() {
+    try {
+        const settings = getSettings();
+        if (settings.socialOverlayEnabled === false) return;
+
+        const friends = await lcu.getFriends();
+        if (!friends || !Array.isArray(friends)) return;
+
+        let anyChanges = false;
+
+        friends.forEach(f => {
+            const pid = f.puuid || f.id;
+            const prev = prevFriendsMap[pid];
+            if (!prev) {
+                prevFriendsMap[pid] = {
+                    availability: f.availability,
+                    gameStatus: f.lol?.gameStatus || ''
+                };
+            } else {
+                let changed = false;
+                let toastType = 'general';
+                let toastTitle = 'AMI EN LIGNE';
+                let toastStatus = '';
+
+                // Connect/Disconnect detection
+                if (prev.availability !== f.availability) {
+                    if (prev.availability === 'offline' && f.availability !== 'offline') {
+                        toastTitle = 'AMI CONNECTÉ';
+                        toastType = 'connect';
+                        toastStatus = 'Vient de se connecter';
+                        changed = true;
+                    } else if (prev.availability !== 'offline' && f.availability === 'offline') {
+                        toastTitle = 'AMI DÉCONNECTÉ';
+                        toastType = 'disconnect';
+                        toastStatus = 'Vient de se déconnecter';
+                        changed = true;
+                    }
+                    // For 'away' or 'dnd', we only trigger if not actively jumping into a game state
+                    // Because launching a game also forces 'dnd', which we handle in gameStatus checks instead.
+                    else if (f.availability === 'away') {
+                        toastTitle = 'MODIFICATION STATUT';
+                        toastType = 'away';
+                        toastStatus = 'Est maintenant absent';
+                        changed = true;
+                    }
+                }
+
+                // In-Game state detection has higher priority
+                const currGameStatus = f.lol?.gameStatus || '';
+                if (prev.gameStatus !== currGameStatus && currGameStatus !== '') {
+                    if (currGameStatus === 'inGame') {
+                        toastTitle = 'EN PARTIE';
+                        toastType = 'game';
+                        toastStatus = 'Vient de lancer une partie';
+                        changed = true;
+                    } else if (currGameStatus === 'hosting') {
+                        toastTitle = 'DANS UN SALON';
+                        toastType = 'game';
+                        toastStatus = 'Vient de créer un salon';
+                        changed = true;
+                    } else if (currGameStatus === 'championSelect') {
+                        toastTitle = 'SÉLECTION CHAMPIONS';
+                        toastType = 'game';
+                        toastStatus = 'Dans la sélection des champions';
+                        changed = true;
+                    } else if (currGameStatus === 'inQueue' || currGameStatus === 'matchmaking') {
+                        toastTitle = 'EN RECHERCHE';
+                        toastType = 'game';
+                        toastStatus = 'En file d\'attente';
+                        changed = true;
+                    }
+                }
+
+                if (changed && toastStatus) {
+                    const iconId = f.icon || 1;
+                    const iconUrl = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${iconId}.jpg`;
+                    const data = {
+                        name: f.gameName || f.name,
+                        title: toastTitle,
+                        status: toastStatus,
+                        icon: iconUrl,
+                        type: toastType
+                    };
+
+                    if (!toastWindow || toastWindow.isDestroyed()) {
+                        createToastWindow();
+                    }
+                    if (!toastWindowReady) {
+                        pendingToasts.push(data);
+                    } else {
+                        toastWindow.showInactive();
+                        toastWindow.setFocusable(false);
+                        toastWindow.setAlwaysOnTop(true, 'screen-saver');
+                        toastWindow.webContents.send('social:new-toast', data);
+                    }
+                }
+
+                prevFriendsMap[pid] = {
+                    availability: f.availability,
+                    gameStatus: currGameStatus
+                };
+            }
+        });
+
+    } catch (e) {
+        if (e.message && !e.message.includes('404')) console.error("[Monitor] Social Loop Error", e.message);
+    }
+}
+
+setInterval(monitorSocialLoop, 3000);
+
 app.whenReady().then(() => {
     const { session } = require('electron');
 
@@ -570,7 +694,7 @@ app.whenReady().then(() => {
 
     createMainWindow();
     createToastWindow();
-    createVoiceWindow(); // Auto-start the voice listener window
+    // createVoiceWindow(); // Auto-start the voice listener window
 
     globalShortcut.register('CommandOrControl+X', () => {
         if (!liveWindow) createLiveWindow();

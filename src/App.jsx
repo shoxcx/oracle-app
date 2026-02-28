@@ -1134,15 +1134,19 @@ const getQueryParams = () => {
 
 function App() {
   const [appMode, setAppMode] = useState(() => {
-    const params = getQueryParams();
-    const mode = params.mode === 'live' ? 'live' :
-      params.mode === 'loading' ? 'loading' :
-        params.mode === 'toast' ? 'toast' :
-          params.view === 'profile' ? 'window' : 'main';
-    console.log(`[App] Current appMode determined: ${mode}`, params);
-    return mode;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('mode') || 'window';
+    }
+    return 'window';
   });
-  const [windowParams, setWindowParams] = useState(() => getQueryParams());
+  const [windowParams, setWindowParams] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return { view: p.get('view'), summoner: p.get('summoner') };
+    }
+    return {};
+  });
 
   // Global Settings State (Managed here for consistency)
   const [theme, setTheme] = useState(localStorage.getItem('oracle_theme') || 'classic');
@@ -1212,7 +1216,9 @@ function App() {
   });
 
   const triggerSocialToast = useCallback((data) => {
-    ipcRenderer.invoke('social:trigger-toast', data);
+    if (window.ipcRenderer) {
+      window.ipcRenderer.invoke('social:trigger-toast', data);
+    }
   }, []);
 
   useEffect(() => {
@@ -1320,6 +1326,12 @@ function SocialToastOverlay({ ddragonVersion }) {
     };
   }, []);
 
+  useEffect(() => {
+    if ((!toasts || toasts.length === 0) && window.ipcRenderer) {
+      window.ipcRenderer.send('social:toast-empty');
+    }
+  }, [toasts]);
+
   if (!toasts || toasts.length === 0) return null;
 
   return (
@@ -1328,7 +1340,7 @@ function SocialToastOverlay({ ddragonVersion }) {
       inset: 0,
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
       padding: '24px',
       gap: '12px',
       pointerEvents: 'none'
@@ -1419,6 +1431,10 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   const [flashPosition, setFlashPosition] = useState(() => {
     return localStorage.getItem('oracle_flash_position') || 'F';
   });
+  const [socialOverlayEnabled, setSocialOverlayEnabled] = useState(() => {
+    const val = localStorage.getItem('oracle_social_overlay');
+    return val !== 'false'; // Defaults to true
+  });
 
 
   const regions = ['EUW', 'NA', 'KR', 'EUNE', 'BR', 'TR', 'LAS', 'LAN', 'OCE', 'RU', 'JP', 'PH', 'SG', 'TH', 'TW', 'VN'];
@@ -1494,6 +1510,15 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   useEffect(() => {
     localStorage.setItem('oracle_auto_import_runes', autoImportRunes);
   }, [autoImportRunes]);
+
+  useEffect(() => {
+    localStorage.setItem('oracle_social_overlay', socialOverlayEnabled);
+    if (window.ipcRenderer) {
+      window.ipcRenderer.invoke('app:get-settings').then(s => {
+        window.ipcRenderer.invoke('app:set-settings', { ...s, socialOverlayEnabled });
+      });
+    }
+  }, [socialOverlayEnabled]);
 
   useEffect(() => {
     localStorage.setItem('oracle_flash_position', flashPosition);
@@ -1823,7 +1848,6 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 block">
                 ORACLE
               </span>
-              <span className="text-[10px] text-gray-500 font-mono tracking-widest">APP V.0.1.0</span>
             </div>
           </div>
 
@@ -1832,25 +1856,26 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
 
             {/* CORE */}
             <div className="space-y-1">
-              <div className="px-4 text-[10px] font-medium text-gray-900 dark:text-gray-100/20 uppercase tracking-[0.2em] mb-3">{t('cat_core')}</div>
-              <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={18} />} label={t('dashboard')} />
-              <NavItem active={activeTab === 'tierlist'} onClick={() => setActiveTab('tierlist')} icon={<Trophy size={18} />} label={t('tierlist')} />
-              <NavItem active={activeTab === 'leaderboards'} onClick={() => setActiveTab('leaderboards')} icon={<Trophy size={18} />} label={t('leaderboards')} />
+              <div className="px-4 text-[10px] font-medium text-white/20 uppercase tracking-[0.2em] mb-3">ORACLE CORE</div>
+              <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={18} />} label="Dashboard" />
+              <NavItem active={activeTab === 'tierlist'} onClick={() => { }} icon={<Trophy size={18} />} label="Tierlist & Builds" disabled={true} />
+              <NavItem active={activeTab === 'leaderboards'} onClick={() => { }} icon={<Trophy size={18} />} label="Leaderboards" disabled={true} />
+              <NavItem active={activeTab === 'matchups'} onClick={() => setActiveTab('matchups')} icon={<Gamepad2 size={18} />} label="Matchups" />
             </div>
 
             {/* APP */}
             <div className="space-y-1">
-              <div className="px-4 text-[10px] font-medium text-gray-900 dark:text-gray-100/20 uppercase tracking-[0.2em] mb-3">{t('cat_app')}</div>
+              <div className="px-4 text-[10px] font-medium text-white/20 uppercase tracking-[0.2em] mb-3">ORACLE APP</div>
               <NavItem active={activeTab === 'replays'} onClick={() => setActiveTab('replays')} icon={<MonitorPlay size={18} />} label="Analyse" />
-              <NavItem active={activeTab === 'collections'} onClick={() => setActiveTab('collections')} icon={<Brain size={18} />} label={t('collections')} />
+              <NavItem active={activeTab === 'collections'} onClick={() => setActiveTab('collections')} icon={<Brain size={18} />} label="Collections" />
+              <NavItem active={activeTab === 'training'} onClick={() => { }} icon={<Target size={18} />} label="Training" disabled={true} />
             </div>
 
             {/* INSIGHTS */}
             <div className="space-y-1">
-              <div className="px-4 text-[10px] font-medium text-gray-900 dark:text-gray-100/20 uppercase tracking-[0.2em] mb-3">{t('cat_insights')}</div>
-              <NavItem active={activeTab === 'esports'} onClick={() => setActiveTab('esports')} icon={<Globe size={18} />} label={t('esports')} />
-              <NavItem active={activeTab === 'datastudio'} onClick={() => setActiveTab('datastudio')} icon={<Activity size={18} />} label={t('datastudio')} />
-              <NavItem active={activeTab === 'matchups'} onClick={() => setActiveTab('matchups')} icon={<Gamepad2 size={18} />} label={t('matchups')} />
+              <div className="px-4 text-[10px] font-medium text-white/20 uppercase tracking-[0.2em] mb-3">ORACLE INSIGHTS</div>
+              <NavItem active={activeTab === 'esports'} onClick={() => setActiveTab('esports')} icon={<Globe size={18} />} label="Esports" />
+              <NavItem active={activeTab === 'tutorial'} onClick={() => { }} icon={<HelpCircle size={18} />} label="Tutoriel" disabled={true} />
             </div>
 
           </nav>
@@ -1910,13 +1935,13 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               <div className="relative">
                 <div className="flex items-center gap-4 text-gray-900 dark:text-gray-100/50 bg-white dark:bg-white/5 px-4 py-2 rounded-xl border border-gray-200 dark:border-white/10 focus-within:border-accent-primary/50 transition-all no-drag backdrop-blur-md">
                   <Search size={16} />
-                  <select
+                  <CustomSelect
                     value={searchRegion}
-                    onChange={(e) => setSearchRegion(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-gray-500 uppercase outline-none border-none cursor-pointer hover:text-gray-900 dark:text-gray-100 transition-colors"
-                  >
-                    {regions.map(r => <option key={r} value={r} className="bg-[#1C1C21] text-gray-300">{r}</option>)}
-                  </select>
+                    onChange={setSearchRegion}
+                    options={regions.map(r => ({ value: r, label: r }))}
+                    className="w-20"
+                    buttonClassName="bg-transparent text-[10px] font-black tracking-widest text-gray-400 uppercase border-none hover:text-gray-900 dark:hover:text-gray-100 transition-colors p-0 justify-start gap-1"
+                  />
                   <div className="w-px h-4 bg-white/10 mx-2"></div>
                   <input
                     type="text"
@@ -2130,10 +2155,10 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {activeTab === 'live' && <LiveGameLoadingView panelClass={panelClass} t={t} />}
 
                 {/* Fallback */}
-                {['datastudio'].includes(activeTab) && (
+                {['tutorial', 'training'].includes(activeTab) && (
                   <div className="flex flex-col items-center justify-center h-full text-gray-500">
                     <Brain size={48} className="mb-4 opacity-20" />
-                    <h2 className="text-xl font-bold">{t(activeTab)}</h2>
+                    <h2 className="text-xl font-bold">{t(activeTab) || (activeTab === 'tutorial' ? "Tutoriel" : "Training")}</h2>
                     <p className="text-sm opacity-60">{t('coming_soon')}</p>
                   </div>
                 )}
@@ -2149,6 +2174,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   setAutoImportRunes={setAutoImportRunes}
                   flashPosition={flashPosition}
                   setFlashPosition={setFlashPosition}
+                  socialOverlayEnabled={socialOverlayEnabled}
+                  setSocialOverlayEnabled={setSocialOverlayEnabled}
                   overlaySettings={overlaySettings}
                   setOverlaySettings={setOverlaySettings}
                   panelClass={panelClass}
@@ -2392,30 +2419,48 @@ function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMod
   )
 }
 
-function NavItem({ icon, label, active, onClick }) {
+function NavItem({ icon, label, active, onClick, disabled }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       className={cn(
         "w-full flex items-center gap-4 px-4 py-2.5 rounded-2xl transition-all duration-500 group relative overflow-hidden",
+        disabled ? "opacity-50 cursor-not-allowed" : "",
         active
           ? "text-gray-900 dark:text-gray-100"
           : "text-gray-900 dark:text-gray-100/40 hover:bg-white dark:hover:bg-white/5 hover:text-gray-900 dark:text-gray-100"
       )}
     >
-      {active && (
+      {active && !disabled && (
         <>
           <div className="absolute inset-0 bg-blue-500/20 border border-blue-400/30 rounded-2xl -z-10 backdrop-blur-md"></div>
           <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-blue-500 rounded-full blur-[2px]"></div>
         </>
       )}
-      <span className={cn("relative z-10 transition-all duration-500", active ? "scale-110 text-blue-400" : "group-hover:scale-110 group-hover:text-gray-900 dark:text-gray-100/80")}>
+      <span className={cn("relative z-10 transition-all duration-500", (active && !disabled) ? "scale-110 text-blue-400" : (disabled ? "text-gray-500" : "group-hover:scale-110 group-hover:text-gray-900 dark:text-gray-100/80"))}>
         {icon}
       </span>
-      <span className={cn(
-        "hidden lg:block relative z-10 tracking-tight whitespace-nowrap transition-all duration-500",
-        active ? "translate-x-1 font-black text-gray-900 dark:text-gray-100" : "group-hover:translate-x-0.5 font-medium text-gray-900 dark:text-gray-100/50"
-      )}>{label}</span>
+      {disabled ? (
+        <>
+          <span className={cn(
+            "hidden lg:block relative z-10 tracking-tight whitespace-nowrap transition-all duration-500 group-hover:-translate-y-4 group-hover:opacity-0"
+          )}>
+            {label}
+          </span>
+          <span className={cn(
+            "hidden lg:block absolute left-12 right-0 z-10 tracking-tight whitespace-nowrap transition-all duration-500 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 text-red-500 dark:text-red-400 font-bold"
+          )}>
+            Coming soon...
+          </span>
+        </>
+      ) : (
+        <span className={cn(
+          "hidden lg:block relative z-10 tracking-tight whitespace-nowrap transition-all duration-500",
+          active ? "translate-x-1 font-black text-gray-900 dark:text-gray-100" : "group-hover:translate-x-0.5 font-medium text-gray-900 dark:text-gray-100/50"
+        )}>
+          {label}
+        </span>
+      )}
       {/* Liquid Glint Effect */}
       {active && (
         <div className="absolute top-0 left-[-100%] w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 animate-[shimmer_2s_infinite]"></div>
@@ -2943,6 +2988,12 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
                   {t ? t('metaTierList') : t('meta_current')} • <span className="text-blue-400 capitalize">{ROLES[currentRoleIdx] || "Top"}</span>
                 </h3>
               </div>
+              <button
+                onClick={() => setCurrentRoleIdx(prev => (prev + 1) % ROLES.length)}
+                className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-white"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
 
             <div className={cn("grid grid-cols-5 gap-4 transition-all duration-500 min-h-[140px]", animating ? "opacity-0 translate-y-2 scale-95" : "opacity-100 translate-y-0 scale-100")}>
@@ -5595,7 +5646,6 @@ function HistoryRowV2({ game, puuid, onClick, t }) {
         )}
       </div>
 
-      {/* Main Stats */}
       <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 ml-2">
         <div className="flex items-center gap-2 mb-0.5">
           <span className={cn("font-bold italic text-sm", isWin ? "text-blue-300" : "text-red-300")}>{isWin ? t('victory') : t('defeat')}</span>
@@ -5610,10 +5660,12 @@ function HistoryRowV2({ game, puuid, onClick, t }) {
             <span className="font-bold">{part.stats.assists}</span>
             <span className="text-[10px] text-gray-600 dark:text-gray-400 ml-1 opacity-70 font-mono">{kdaRatio} KDA</span>
           </div>
-          {/* LP info - typically 20-25 per win/loss if not available in real data */}
-          <div className={cn("text-[10px] font-black px-1.5 py-0.5 rounded bg-black/20", isWin ? "text-blue-400" : "text-red-400")}>
-            {isWin ? '+' : '-'}{game.lpDelta || (isWin ? 21 : 19)} LP
-          </div>
+          {/* LP info - Only show if we actually have the real lpDelta value */}
+          {(game.queueId === 420 || game.queueId === 440 || game.queueId === 410) && game.lpDelta != null && (
+            <div className={cn("text-[10px] font-black px-1.5 py-0.5 rounded bg-black/20", isWin ? "text-blue-400" : "text-red-400")}>
+              {isWin ? '+' : '-'}{Math.abs(game.lpDelta)} LP
+            </div>
+          )}
         </div>
       </div>
 
@@ -5695,26 +5747,28 @@ function SettingCard({ icon: Icon, title, desc, action, color = "blue" }) {
 
   return (
     <div className={cn(
-      "group relative p-6 rounded-[32px] bg-gradient-to-br transition-all duration-500 overflow-hidden border shadow-xl",
+      "group relative p-6 rounded-[32px] bg-gradient-to-br transition-all duration-500 border shadow-xl flex flex-col",
       theme.from, theme.to, theme.border, "hover:scale-[1.02] hover:shadow-2xl", theme.glow
     )}>
-      {/* Decorative background element */}
-      <div className="absolute -right-6 -bottom-6 p-4 opacity-[0.03] group-hover:opacity-[0.08] group-hover:rotate-12 transition-all duration-700 pointer-events-none transform scale-150">
-        <Icon size={120} />
+      {/* Decorative background element now isolated with overflow-hidden */}
+      <div className="absolute inset-0 rounded-[32px] overflow-hidden pointer-events-none">
+        <div className="absolute -right-6 -bottom-6 p-4 opacity-[0.03] group-hover:opacity-[0.08] group-hover:rotate-12 transition-all duration-700 transform scale-150">
+          <Icon size={120} />
+        </div>
       </div>
 
-      <div className="flex items-start gap-5 relative z-10">
+      <div className="flex items-start gap-5 relative z-10 mb-4">
         <div className={cn("p-4 rounded-2xl bg-black/40 border transition-transform duration-500 group-hover:-translate-y-1", theme.border)}>
           <Icon size={24} className={theme.text} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-black text-white text-base uppercase tracking-[0.1em] mb-1.5">{title}</div>
-          <p className="text-xs text-gray-400 font-medium leading-relaxed mb-4">{desc}</p>
+          <p className="text-xs text-gray-400 font-medium leading-relaxed">{desc}</p>
         </div>
       </div>
 
-      <div className="flex items-center justify-end relative z-10 mt-auto">
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/5 to-transparent absolute -top-4 left-0" />
+      <div className="flex items-center justify-end relative z-50 mt-auto pt-4">
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/5 to-transparent absolute top-0 left-0 pointer-events-none" />
         {action}
       </div>
     </div>
@@ -5738,18 +5792,58 @@ function SettingsToggle({ active, onToggle }) {
   );
 }
 
-function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast }) {
+function CustomSelect({ value, onChange, options, className = "", buttonClassName = "" }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value) || options[0] || { label: '' };
+
+  return (
+    <div className={`relative ${className}`} ref={ref}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn("w-full flex items-center justify-between text-[10px] font-black tracking-widest uppercase outline-none transition-all cursor-pointer", buttonClassName || "bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-accent-primary/50 text-gray-900 dark:text-gray-100 rounded-xl px-3 py-2")}
+      >
+        <span className="truncate">{selectedOption.label}</span>
+        <ChevronDown size={14} className={`shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-accent-primary' : 'text-gray-500'}`} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full mt-2 left-0 w-full min-w-max bg-gray-100 dark:bg-[#1c1c1f] backdrop-blur-xl border border-gray-300 dark:border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] z-[9999] overflow-hidden py-1">
+          <div className="max-h-60 overflow-y-auto custom-scrollbar">
+            {options.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                className={cn(
+                  "w-full text-left px-4 py-2.5 text-[10px] font-black tracking-widest uppercase transition-colors",
+                  value === opt.value ? "text-accent-primary bg-black/10 dark:bg-white/10" : "text-gray-800 dark:text-gray-300 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast }) {
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const languages = [
     { code: 'en', label: 'English (US)' },
-    { code: 'fr', label: 'Français' },
-    { code: 'es', label: 'Espaà±ol' },
-    { code: 'pt', label: 'Português' },
-    { code: 'de', label: 'Deutsch' },
-    { code: 'ru', label: 'ÃÂ Ã‘Æ’Ã‘ÂÃ‘ÂÃÂºÃÂ¸ÃÂ¹' },
-    { code: 'ja', label: 'Ã¦â€”Â¥Ã¦Å“Â¬èÂªÅ¾' },
-    { code: 'ko', label: 'Ã­â€¢Å“ÃªÂµÂ­Ã¬â€“Â´' },
-    { code: 'zh', label: 'Ã¤Â¸Â­Ã¦â€“â€¡' }
+    { code: 'fr', label: 'Français' }
   ];
 
   const [launchOnStartup, setLaunchOnStartup] = useState(false);
@@ -5771,10 +5865,8 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             </div>
             <div>
               <h1 className="text-5xl font-black text-white tracking-tighter italic uppercase leading-none">Settings</h1>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-[10px] text-gray-500 font-bold tracking-[0.3em] uppercase">Oracle Configuration System</span>
-                <div className="h-4 w-[1px] bg-white/10 mx-1" />
-                <span className="text-[10px] text-accent-primary font-black uppercase tracking-widest px-2 py-0.5 bg-accent-primary/10 rounded">v2.5.0</span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">Configuration Oracle</span>
               </div>
             </div>
           </div>
@@ -5828,15 +5920,12 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             icon={Globe} color="green"
             title={t('language')} desc={t('langSelectDesc')}
             action={
-              <select
+              <CustomSelect
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="bg-slate-50 dark:bg-[#0a0a0c] border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-[10px] font-black uppercase outline-none focus:border-accent-primary text-gray-900 dark:text-gray-100 cursor-pointer"
-              >
-                {languages.map(lang => (
-                  <option key={lang.code} value={lang.code} className="bg-slate-50 dark:bg-[#0a0a0c]">{lang.label}</option>
-                ))}
-              </select>
+                onChange={setLanguage}
+                options={languages.map(l => ({ value: l.code, label: l.label }))}
+                className="w-40"
+              />
             }
           />
           <SettingCard
@@ -5864,54 +5953,14 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             title={t('auto_accept')} desc={t('auto_accept_desc')}
             action={<SettingsToggle active={autoAccept} onToggle={() => setAutoAccept(!autoAccept)} />}
           />
-          <SettingCard
-            icon={Sparkles} color="blue"
-            title={t('auto_import')} desc={t('auto_import_desc')}
-            action={<SettingsToggle active={autoImportRunes} onToggle={() => setAutoImportRunes(!autoImportRunes)} />}
-          />
-          <SettingCard
-            icon={Zap} color="yellow"
-            title={t('flash_position')} desc={t('flash_position')}
-            action={
-              <div className="flex gap-1 p-1 bg-black/5 dark:bg-black/40 rounded-xl border border-gray-200 dark:border-white/5">
-                {[
-                  { key: 'D', label: t('flash_left') },
-                  { key: 'F', label: t('flash_right') }
-                ].map(opt => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setFlashPosition(opt.key)}
-                    className={cn(
-                      "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all",
-                      flashPosition === opt.key ? "bg-accent-primary text-black" : "text-gray-500 hover:text-gray-900 dark:text-gray-100"
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            }
-          />
         </SettingsSection>
 
         {/* Section: Notifications & Social */}
         <SettingsSection title="Notifications & Social" icon={Bell}>
           <SettingCard
             icon={Users} color="indigo"
-            title="Overlay Social (Style Steam)" desc="Affiche une notification visuelle en bas à droite de l'écran quand vos amis se connectent."
-            action={
-              <button
-                onClick={() => triggerSocialToast({
-                  name: "Irelia God",
-                  title: "AMI CONNECTÉ",
-                  status: "Vient de lancer une partie",
-                  icon: `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/profileicon/1.png`
-                })}
-                className="px-6 py-2 bg-accent-primary/20 text-accent-primary text-[10px] font-black uppercase rounded-lg border border-accent-primary/30 hover:bg-accent-primary hover:text-black transition-all active:scale-95"
-              >
-                Tester Notification
-              </button>
-            }
+            title="Overlay Social" desc="Affiche une notification visuelle en bas à droite de l'écran quand vos amis se connectent ou lancent une partie."
+            action={<SettingsToggle active={socialOverlayEnabled} onToggle={() => setSocialOverlayEnabled(!socialOverlayEnabled)} />}
           />
         </SettingsSection>
 
@@ -9245,20 +9294,18 @@ function CollectionsView({ t, panelClass, ddragonVersion, currentUser, championL
               className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl pl-10 pr-4 py-2.5 text-xs font-bold text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all w-64 placeholder:text-gray-900 dark:text-gray-100/10"
             />
           </div>
-          <div className="relative group bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center px-4 py-2.5 gap-2 hover:bg-white/10 transition-all cursor-pointer min-w-[140px]">
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-900 dark:text-gray-100/40 group-hover:text-gray-900 dark:text-gray-100/60 transition-colors">{t('sort_by')}</span>
-            <select
+          <div className="relative group bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl flex items-center px-4 py-2.5 hover:bg-white/10 transition-all min-w-[200px]">
+            <span className="text-[10px] pr-2 font-black uppercase tracking-widest text-gray-900 dark:text-gray-100/40">{t('sort_by')}</span>
+            <CustomSelect
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="appearance-none bg-transparent text-[10px] font-black uppercase tracking-widest text-gray-900 dark:text-gray-100 outline-none cursor-pointer w-full absolute inset-0 opacity-0 z-10"
-            >
-              <option value="alpha_az" className="bg-[#1a1c22] text-gray-900 dark:text-gray-100">{t('name_az')}</option>
-              <option value="alpha_za" className="bg-[#1a1c22] text-gray-900 dark:text-gray-100">{t('name_za')}</option>
-            </select>
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-900 dark:text-gray-100 pointer-events-none flex-1 text-right">
-              {sortBy === 'alpha_az' ? 'A-Z' : 'Z-A'}
-            </span>
-            <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-white/40 pointer-events-none" />
+              onChange={setSortBy}
+              options={[
+                { value: 'alpha_az', label: 'A-Z' },
+                { value: 'alpha_za', label: 'Z-A' }
+              ]}
+              className="flex-1 right-0 text-right justify-end"
+              buttonClassName="w-full text-right justify-end gap-1 border-none hover:text-gray-900 p-0 !text-gray-900 dark:!text-gray-100"
+            />
           </div>
         </div>
       </div>

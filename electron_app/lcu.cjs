@@ -45,7 +45,12 @@ class LCUConnector {
             }
         } catch (e) {
             if (e.response && e.response.status === 404) return null;
-            console.error(`[LCU] Request failed: ${method} ${url}`, e);
+            if (e.code === 'ECONNREFUSED') {
+                console.error(`[LCU] Connection refused on ${method} ${url}. Client may be closed. Resetting credentials.`);
+                this.credentials = null;
+                return null;
+            }
+            console.error(`[LCU] Request failed: ${method} ${url}`, e.message || e);
             return null;
         }
     }
