@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "axios": "^1.13.4",
+    "axios": "^1.13.6",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "discord-rpc": "^4.0.1",
@@ -39,6 +39,7 @@
     "framer-motion": "^12.23.26",
     "league-connect": "^6.0.0-rc13",
     "lucide-react": "^0.562.0",
+    "python-shell": "^5.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwind-merge": "^3.4.0",

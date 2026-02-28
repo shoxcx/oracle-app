@@ -15,6 +15,9 @@ let liveWindow;
 let draftWindow;
 let toastWindow;
 let voiceWindow; // New Voice Assistant Window
+let musicWindow; // Music Overlay
+
+const media = require('./media.cjs');
 
 function createMainWindow() {
     mainWindow = new BrowserWindow({
@@ -250,6 +253,61 @@ ipcMain.handle('window:hide', (event) => {
     if (win) win.hide();
 });
 
+function createMusicWindow() {
+    if (musicWindow) return;
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width } = primaryDisplay.workAreaSize;
+    musicWindow = new BrowserWindow({
+        width: 360,
+        height: 170,
+        x: 20,
+        y: 20,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false
+        },
+        title: 'Oracle Music',
+        backgroundColor: '#00000000',
+        show: false,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        resizable: false,
+        focusable: false,
+        hasShadow: false,
+        type: 'toolbar'
+    });
+
+    musicWindow.setIgnoreMouseEvents(false); // Music overlay needs clicks
+
+    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    const url = isDev
+        ? 'http://localhost:5173?mode=music'
+        : `file://${path.join(__dirname, '../dist/index.html')}?mode=music`;
+
+    musicWindow.loadURL(url);
+    musicWindow.setAlwaysOnTop(true, 'screen-saver');
+
+    musicWindow.on('closed', () => {
+        musicWindow = null;
+    });
+}
+
+ipcMain.handle('window:toggle-music', (e, enable) => {
+    if (enable) {
+        if (!musicWindow) createMusicWindow();
+        musicWindow.showInactive();
+    } else {
+        if (musicWindow) {
+            musicWindow.close();
+        }
+    }
+});
+
+
+
 // lazy handlers moved to the bottom of the file
 
 ipcMain.handle('window:set-ignore-mouse-events', (event, ignore, options) => {
@@ -334,6 +392,7 @@ ipcMain.handle('scraper:get-esports-news', async () => scraper.getEsportsNews())
 ipcMain.handle('scraper:get-top-live-streams', async () => scraper.getTopLiveStreams());
 ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getChampionBuild(champ1, champ2, role));
 ipcMain.handle('scraper:get-rank-history', async (_, puuid, region) => scraper.getRankHistory(puuid, region));
+ipcMain.handle('scraper:get-lp-history', async (_, name, region) => scraper.getRankedLPHistory(name, region));
 
 ipcMain.handle('lcu:get-ranked-stats', async (_, puuid) => {
     if (puuid && puuid.startsWith('ext~')) return scraper.getRankedStats(puuid);
@@ -722,6 +781,25 @@ ipcMain.handle('app:hide-live', () => {
 ipcMain.handle('app:open-draft', () => {
     if (!draftWindow) createDraftWindow();
     else draftWindow.show();
+});
+
+ipcMain.handle('media:get-track', async () => {
+    return await media.getSpotifyTrack();
+});
+
+ipcMain.handle('media:run-action', async (e, action) => {
+    return await media.runPs(action);
+});
+
+ipcMain.handle('media:seek', async (e, targetMs) => {
+    const path = require('path');
+    const { exec } = require('child_process');
+    const scriptPath = path.join(__dirname, 'media_seek.py');
+    return new Promise((resolve) => {
+        exec(`python "${scriptPath}" ${targetMs}`, (err, stdout) => {
+            resolve(!err);
+        });
+    });
 });
 
 // --- Discord Rich Presence ---

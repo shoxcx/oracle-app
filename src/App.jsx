@@ -41,6 +41,10 @@ import {
   Globe,
   Power,
   Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Music,
   Scissors,
   Swords,
   Swords as SwordsIcon,
@@ -1270,6 +1274,8 @@ function App() {
     content = <LoadingOverlay visualMode={visualMode} theme={theme} t={t} overlaySettings={overlaySettings} />;
   } else if (appMode === 'toast') {
     content = <SocialToastOverlay ddragonVersion={ddragonVersion} />;
+  } else if (appMode === 'music') {
+    content = <MusicOverlay />;
   } else {
     content = (
       <MainApp
@@ -1289,6 +1295,184 @@ function App() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {content}
+      {(appMode === 'music' || appMode === 'toast' || appMode === 'live') && (
+        <style>{`
+          html, body, #root {
+            background-color: transparent !important;
+            background: transparent !important;
+          }
+        `}</style>
+      )}
+    </div>
+  );
+}
+
+function MusicOverlay() {
+  const [track, setTrack] = useState(null);
+  const [progressMs, setProgressMs] = useState(0);
+  const trackRef = useRef(track);
+  trackRef.current = track;
+  const isSeeking = useRef(false);
+
+  useEffect(() => {
+    document.body.style.backgroundColor = 'transparent';
+    document.documentElement.style.backgroundColor = 'transparent';
+    if (!window.ipcRenderer) return;
+
+    const fetchTrack = async () => {
+      try {
+        const t = await window.ipcRenderer.invoke('media:get-track');
+        setTrack(prev => {
+          if (!isSeeking.current) {
+            if (!prev || prev.title !== t?.title || prev.artist !== t?.artist) {
+              setProgressMs(t?.positionMs || 0);
+            } else if (t && Math.abs((t.positionMs || 0) - progressMs) > 3000) {
+              setProgressMs(t.positionMs || 0);
+            }
+          }
+          return t;
+        });
+      } catch (e) { }
+    };
+
+    fetchTrack();
+    const iv = setInterval(fetchTrack, 2000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    let lastTime = Date.now();
+    const iv = setInterval(() => {
+      const now = Date.now();
+      const delta = now - lastTime;
+      lastTime = now;
+      const currentTrack = trackRef.current;
+      if (currentTrack?.isPlaying && currentTrack?.durationMs) {
+        setProgressMs(p => Math.min(p + delta, currentTrack.durationMs));
+      }
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const handleAction = async (action) => {
+    if (window.ipcRenderer) await window.ipcRenderer.invoke('media:run-action', action);
+    if (action === 'playpause' && track) {
+      setTrack(prev => ({ ...prev, isPlaying: !prev.isPlaying }));
+    }
+  };
+
+  const handleSeek = async (e) => {
+    if (!track || !track.durationMs) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetMs = Math.round(percent * track.durationMs);
+
+    isSeeking.current = true;
+    setProgressMs(targetMs);
+
+    if (window.ipcRenderer) {
+      await window.ipcRenderer.invoke('media:seek', targetMs);
+    }
+
+    // Prevent snapback for 3.5s while API catches up
+    setTimeout(() => {
+      isSeeking.current = false;
+    }, 3500);
+  };
+
+  // Hide overlay if no track or if it's the "En pause" dummy state with no actual music
+  if (!track || (track.title === 'En pause' && track.artist === 'Spotify' && !track.durationMs)) return null;
+
+  const formatTime = (ms) => {
+    if (!ms) return '0:00';
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleCoverClick = () => {
+    if (track) {
+      const query = encodeURIComponent(`${track.artist} ${track.title}`);
+      // Use spotify:search: URI scheme to open desktop app
+      window.location.href = `spotify:search:${query}`;
+    }
+  };
+
+  return (
+    <div className="w-full h-full p-2 select-none" style={{ WebkitAppRegion: 'drag' }}>
+      <div className="bg-[#18181b] hover:bg-[#19191c] rounded-2xl border border-white/5 p-3 flex flex-col justify-between relative h-full transition-colors overflow-hidden">
+
+        {/* Top: Cover + Info */}
+        <div className="flex gap-4 items-center px-1">
+          {/* Cover Art - Clickable */}
+          <div
+            onClick={handleCoverClick}
+            className="cursor-pointer transition-transform hover:scale-105 group relative overflow-hidden rounded-md shadow-lg"
+            style={{ WebkitAppRegion: 'no-drag' }}
+            title="Ouvrir sur Spotify"
+          >
+            {track.cover ? (
+              <img
+                src={track.cover}
+                alt="Cover"
+                className={`w-[52px] h-[52px] rounded-md object-cover shrink-0 border border-white/10 ${track.isPlaying ? 'shadow-green-500/20' : ''}`}
+              />
+            ) : (
+              <div className={`w-[52px] h-[52px] rounded-md bg-green-500/10 flex items-center justify-center shrink-0 border border-green-500/30 ${track.isPlaying ? 'shadow-green-500/20' : ''}`}>
+                <Music size={24} className="text-green-400" />
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.434-5.305-1.76-8.784-.964-.326.074-.652-.13-.726-.456-.074-.326.13-.652.456-.726 3.82-.87 7.07-.497 9.704 1.11.294.18.386.562.207.857zm1.22-3.195c-.227.368-.7.486-1.066.26-2.684-1.648-6.784-2.13-9.96-1.164-.41.124-.836-.107-.96-.518-.124-.41.107-.836.518-.96 3.65-1.115 8.163-.584 11.208 1.288.367.226.485.7.26 1.066zm.032-3.322C14.62 8.01 8.496 7.8 4.953 8.875c-.496.15-1.015-.13-1.166-.625-.15-.496.13-1.015.625-1.166 4.05-1.23 10.83-1.002 14.665 1.275.447.266.594.846.328 1.293-.266.447-.846.594-1.293.328z" /></svg>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0 pr-1 flex flex-col justify-center">
+            <div className="text-white text-[15px] font-bold truncate leading-tight drop-shadow-md">{track.title}</div>
+            <div className="text-gray-400 text-[12px] font-medium truncate mt-0.5">{track.artist}</div>
+          </div>
+        </div>
+
+        {/* Bottom: Controls & Progress Bar */}
+        <div className="flex flex-col gap-2 mt-2 w-full px-1">
+          {/* Center Controls */}
+          <div style={{ WebkitAppRegion: 'no-drag' }} className="flex justify-center items-center gap-6">
+            <button onClick={() => handleAction('prev')} className="text-white/60 hover:text-white transition-colors cursor-pointer outline-none">
+              <SkipBack size={18} fill="currentColor" />
+            </button>
+            <button onClick={() => handleAction('playpause')} className="w-9 h-9 rounded-full bg-white hover:scale-105 text-black flex items-center justify-center transition-transform cursor-pointer outline-none shadow-md" style={{ paddingLeft: track.isPlaying ? '0' : '2px' }}>
+              {track.isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+            </button>
+            <button onClick={() => handleAction('next')} className="text-white/60 hover:text-white transition-colors cursor-pointer outline-none">
+              <SkipForward size={18} fill="currentColor" />
+            </button>
+          </div>
+
+          {/* Progress Bar & Timestamps */}
+          <div className="flex items-center gap-2 w-full">
+            <span className="text-[10px] text-white/50 font-medium tabular-nums min-w-[32px] text-left">
+              {track.durationMs ? formatTime(progressMs) : '0:00'}
+            </span>
+            <div
+              className="h-1.5 flex-1 bg-white/10 rounded-full overflow-hidden shrink-0 relative"
+              style={{ WebkitAppRegion: 'no-drag' }}
+            >
+              {track.durationMs && (
+                <div
+                  className="h-full bg-white transition-all duration-300 ease-linear rounded-full"
+                  style={{ width: `${Math.min(100, (progressMs / track.durationMs) * 100)}%` }}
+                />
+              )}
+            </div>
+            <span className="text-[10px] text-white/50 font-medium tabular-nums min-w-[32px] text-right">
+              {track.durationMs ? formatTime(track.durationMs) : '0:00'}
+            </span>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
@@ -1356,7 +1540,7 @@ function SocialToastOverlay({ ddragonVersion }) {
           return (
             <div
               key={toast.id}
-              className="w-[320px] bg-[#111115]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)] relative overflow-hidden pointer-events-auto"
+              className="w-[320px] bg-[#111115] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-auto"
             >
               {/* Vertical Accent Line */}
               <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${borderColor}`} />
@@ -1434,6 +1618,10 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   const [socialOverlayEnabled, setSocialOverlayEnabled] = useState(() => {
     const val = localStorage.getItem('oracle_social_overlay');
     return val !== 'false'; // Defaults to true
+  });
+  const [musicOverlayEnabled, setMusicOverlayEnabled] = useState(() => {
+    const val = localStorage.getItem('oracle_music_overlay');
+    return val === 'true'; // Defaults to false
   });
 
 
@@ -1519,6 +1707,13 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
       });
     }
   }, [socialOverlayEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('oracle_music_overlay', musicOverlayEnabled);
+    if (window.ipcRenderer) {
+      window.ipcRenderer.invoke('window:toggle-music', musicOverlayEnabled);
+    }
+  }, [musicOverlayEnabled]);
 
   useEffect(() => {
     localStorage.setItem('oracle_flash_position', flashPosition);
@@ -2176,6 +2371,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   setFlashPosition={setFlashPosition}
                   socialOverlayEnabled={socialOverlayEnabled}
                   setSocialOverlayEnabled={setSocialOverlayEnabled}
+                  musicOverlayEnabled={musicOverlayEnabled}
+                  setMusicOverlayEnabled={setMusicOverlayEnabled}
                   overlaySettings={overlaySettings}
                   setOverlaySettings={setOverlaySettings}
                   panelClass={panelClass}
@@ -2577,8 +2774,39 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
   const [metaProgress, setMetaProgress] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [loading, setLoading] = useState(!userRank && !userHistory?.length);
+  const [lpHistoryMap, setLpHistoryMap] = useState({});
 
-  const lastFetchedPuuid = useRef(null);
+  const lastFetchedPuuid = useRef(null); useEffect(() => {
+    if (displayUser?.gameName) {
+      const nameQuery = displayUser.gameName + "#" + displayUser.tagLine;
+      const rKey = displayUser.region || 'euw';
+
+      window.ipcRenderer.invoke('scraper:get-lp-history', nameQuery, rKey)
+        .then(res => {
+          if (res && Object.keys(res).length > 0) {
+            setLpHistoryMap(res);
+          }
+        }).catch(err => console.log("LP history fetch failed", err));
+    } else {
+      setLpHistoryMap({});
+    }
+  }, [displayUser]);
+
+  useEffect(() => {
+    if (displayUser?.gameName) {
+      const nameQuery = displayUser.gameName + "#" + displayUser.tagLine;
+      const rKey = displayUser.region || 'euw';
+
+      window.ipcRenderer.invoke('scraper:get-lp-history', nameQuery, rKey)
+        .then(res => {
+          if (res && Object.keys(res).length > 0) {
+            setLpHistoryMap(res);
+          }
+        }).catch(err => console.log("LP history fetch failed", err));
+    } else {
+      setLpHistoryMap({});
+    }
+  }, [displayUser]);
 
   useEffect(() => {
     if (userRank) setRankedStats(userRank);
@@ -2665,12 +2893,11 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
   }, []);
 
   // Real data calculations
-  // Real data calculations with history for sparklines
   const dashboardStats = useMemo(() => {
     const base = {
-      kda: "0.0", wr: "0%", csm: "0.0", kp: "0", vision: "0", gpm: "0", oracle: "0", dpm: "0", dmgPct: "0%",
+      kda: "0.0", wr: "0%", csm: "0.0", kp: "0", vision: "0", gpm: "0", oracle: "0", dpm: "0", objTaken: "0",
       wins: 0, count: 0, losses: 0, goldDiff: "0", kaDiff: "0",
-      history: { kda: [], oracle: [], kp: [], csm: [], vision: [], gpm: [], gold: [], ka: [], dpm: [], dmgPct: [] },
+      history: { kda: [], oracle: [], kp: [], csm: [], vision: [], gpm: [], gold: [], ka: [], dpm: [], objTaken: [] },
       trends: {
         kda: { text: "0.0", down: false },
         oracle: { text: "0.0", down: false },
@@ -2679,7 +2906,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
         vision: { text: "0.0", down: false },
         gpm: { text: "0", down: false },
         dpm: { text: "0", down: false },
-        dmgPct: { text: "0", down: false }
+        objTaken: { text: "0", down: false }
       }
     };
 
@@ -2691,12 +2918,12 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
 
     if (!recentGames.length || !displayUser) return base;
 
-    let kTotal = 0, dTotal = 0, aTotal = 0, csSum = 0, wins = 0, visionTotal = 0, gpmSum = 0, dpmTotal = 0, dmgPctSum = 0, kpSum = 0;
+    let kTotal = 0, dTotal = 0, aTotal = 0, csSum = 0, wins = 0, visionTotal = 0, gpmSum = 0, dpmTotal = 0, objTakenSum = 0, kpSum = 0;
     let count = 0, validDiffCount = 0;
     let totalGoldDiffSum = 0, totalKaDiffSum = 0;
     let totalDurationMin = 0;
 
-    const hist = { kda: [], oracle: [], kp: [], csm: [], vision: [], gpm: [], gold: [], ka: [], dpm: [], dmgPct: [] };
+    const hist = { kda: [], oracle: [], kp: [], csm: [], vision: [], gpm: [], gold: [], ka: [], dpm: [], objTaken: [] };
 
     [...recentGames].reverse().forEach((g, i) => {
       const participants = g.participants || g.info?.participants || [];
@@ -2758,10 +2985,10 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
       dpmTotal += myStats.damage;
       hist.dpm.push(gameDpm);
 
-      // --- KP and DMG % Logic ---
+      // --- KP and Objectives Logic ---
       const chFields = stats.challenges || p.challenges || {};
       let gameKp = 0;
-      let gameDmgPct = 0;
+      let gameObjTaken = 0;
 
       // Challenges provide exact %
       if (typeof chFields.killParticipation === 'number') {
@@ -2781,27 +3008,27 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
         }
       }
 
-      if (typeof chFields.teamDamagePercentage === 'number') {
-        gameDmgPct = Math.round(chFields.teamDamagePercentage * 100);
-      } else {
-        const teamParticipants = participants.filter(tp => {
-          const tid = Number(tp.teamId || tp.stats?.teamId || 0);
-          return tid === myStats.teamId && tid !== 0;
-        });
-        if (teamParticipants.length > 1) {
-          const teamDmgTotalBase = teamParticipants.reduce((acc, tp) => acc + (getNormalized(tp).damage), 0);
-          gameDmgPct = teamDmgTotalBase > 0 ? Math.min(100, Math.round((myStats.damage / teamDmgTotalBase) * 100)) : 0;
-          // Avoid fake 100% if team data is missing
-          if (gameDmgPct === 100 && teamParticipants.length < 5) gameDmgPct = 21;
-        } else {
-          gameDmgPct = 21;
-        }
+      // Objective taken total from team objectives
+      const myTeam = g.teams?.find(t => Number(t.teamId) === myStats.teamId);
+      if (myTeam && myTeam.objectives) {
+        const objs = myTeam.objectives;
+        gameObjTaken = (objs.baron?.kills || 0) +
+          (objs.dragon?.kills || 0) +
+          (objs.tower?.kills || 0) +
+          (objs.inhibitor?.kills || 0) +
+          (objs.riftHerald?.kills || 0) +
+          (objs.horde?.kills || 0);
+        // Sometimes LCU structures are nested under stats for LCU
+      } else if (typeof chFields.teamDamagePercentage !== 'undefined') {
+        // Fallback: estimate through player stats
+        // but normally LCU matches have .teams array
+        gameObjTaken = Math.round(myStats.kills + 0.5); // Fallback if no objectives parsed
       }
 
       hist.kp.push(gameKp);
-      hist.dmgPct.push(gameDmgPct);
+      hist.objTaken.push(gameObjTaken);
       kpSum += gameKp;
-      dmgPctSum += gameDmgPct;
+      objTakenSum += gameObjTaken;
 
       // Opponent logic
       const myLane = (p.timeline?.lane || p.lane || "").toUpperCase();
@@ -2840,7 +3067,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
     };
 
     const kpTrend = getTrend(hist.kp, 0);
-    const dmgTrend = getTrend(hist.dmgPct, 0);
+    const objTrend = getTrend(hist.objTaken, 1);
     const kdaTrend = getTrend(hist.kda, 1);
     const oracleTrend = getTrend(hist.oracle, 1);
     const csmTrend = getTrend(hist.csm, 1);
@@ -2856,12 +3083,12 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
       vision: (visionTotal / count).toFixed(1),
       gpm: (gpmSum / count).toFixed(0),
       dpm: Math.round(dpmTotal / totalDurationMin),
-      dmgPct: Math.round(dmgPctSum / count) + "%",
+      objTaken: (objTakenSum / count).toFixed(1),
       oracle: oracleScoreValue,
       wins, count,
       losses: count - wins,
       history: hist,
-      trends: { kda: kdaTrend, oracle: oracleTrend, kp: kpTrend, csm: csmTrend, vision: visTrend, gpm: gpmTrend, dpm: dpmTrend, dmgPct: dmgTrend },
+      trends: { kda: kdaTrend, oracle: oracleTrend, kp: kpTrend, csm: csmTrend, vision: visTrend, gpm: gpmTrend, dpm: dpmTrend, objTaken: objTrend },
       goldDiff: validDiffCount > 0 ? (totalGoldDiffSum / validDiffCount).toFixed(0) : "0",
       kaDiff: validDiffCount > 0 ? (totalKaDiffSum / validDiffCount).toFixed(1) : "0"
     };
@@ -2967,12 +3194,12 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
               data={dashboardStats.history.dpm}
             />
             <DashboardStatCard
-              label="DMG %"
-              value={dashboardStats.dmgPct || "0%"}
-              trend={dashboardStats.trends.dmgPct.text + "%"}
-              trendDown={dashboardStats.trends.dmgPct.down}
-              color={dashboardStats.trends.dmgPct.down ? "#ff4e50" : "#4ade80"}
-              data={dashboardStats.history.dmgPct}
+              label="OBJECTIFS"
+              value={dashboardStats.objTaken || "0"}
+              trend={dashboardStats.trends?.objTaken?.text || "0"}
+              trendDown={dashboardStats.trends?.objTaken?.down || false}
+              color={dashboardStats.trends?.objTaken?.down ? "#ff4e50" : "#4ade80"}
+              data={dashboardStats.history?.objTaken || []}
             />
           </div>
         </div>
@@ -3132,6 +3359,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
                 key={i}
                 game={g}
                 puuid={displayUser?.puuid}
+                lpHistoryMap={lpHistoryMap}
                 onClick={() => setSelectedGame(g)}
                 t={t}
               />
@@ -5595,15 +5823,15 @@ function ModernRankCard({ rankedStats, history, puuid, panelClass, t }) {
 }
 
 
-function HistoryRowV2({ game, puuid, onClick, t }) {
-  const identity = game.participantIdentities.find(i => i.player.puuid === puuid);
+function HistoryRowV2({ game, puuid, lpHistoryMap, onClick, t }) {
+  const identity = game.participantIdentities?.find(i => i.player.puuid === puuid);
   if (!identity) return null;
   const part = game.participants?.find(p => p.participantId === identity.participantId);
   if (!part || !part.stats) return null;
 
   const isWin = part.stats.win;
   const champId = part.championId;
-  const champName = part.championName || "";
+  const champName = part.championName || "unknown";
   const champIcon = (champId && champId > 0)
     ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${champId}.png`
     : `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "15.1.1"}/img/champion/${normalizeChampName(champName)}.png`;
@@ -5660,12 +5888,28 @@ function HistoryRowV2({ game, puuid, onClick, t }) {
             <span className="font-bold">{part.stats.assists}</span>
             <span className="text-[10px] text-gray-600 dark:text-gray-400 ml-1 opacity-70 font-mono">{kdaRatio} KDA</span>
           </div>
-          {/* LP info - Only show if we actually have the real lpDelta value */}
-          {(game.queueId === 420 || game.queueId === 440 || game.queueId === 410) && game.lpDelta != null && (
-            <div className={cn("text-[10px] font-black px-1.5 py-0.5 rounded bg-black/20", isWin ? "text-blue-400" : "text-red-400")}>
-              {isWin ? '+' : '-'}{Math.abs(game.lpDelta)} LP
-            </div>
-          )}
+          {/* LP info - Display real LP values from LCU or LeagueOfGraphs (which only gives LP for ranked) */}
+          {(() => {
+            let lpToDisplay = null;
+            if (game.lpDelta != null) lpToDisplay = `${isWin ? '+' : '-'}${Math.abs(game.lpDelta)} LP`;
+            else if (game.lpChange) lpToDisplay = game.lpChange;
+            else if (lpHistoryMap && (game.queueId === 420 || game.queueId === 440 || game.queueId === 410)) {
+              const key = `${champName.toLowerCase()}_${isWin}`;
+              if (lpHistoryMap[key] && lpHistoryMap[key].length > 0) {
+                // Consume the first mapped LP change to prevent duplicate matches pulling same value too easily, 
+                // but for read-only view, just taking the [0] element is decent enough heuristic
+                lpToDisplay = lpHistoryMap[key][0];
+              }
+            }
+            if (!lpToDisplay) return null;
+
+            return (
+              <div className={cn("text-[10px] font-black px-1.5 py-0.5 rounded border shadow-sm",
+                lpToDisplay.includes('+') ? "text-blue-400 border-blue-400/20 bg-blue-500/10" : "text-red-400 border-red-400/20 bg-red-500/10")}>
+                {lpToDisplay}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -5839,7 +6083,7 @@ function CustomSelect({ value, onChange, options, className = "", buttonClassNam
   );
 }
 
-function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast }) {
+function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, musicOverlayEnabled, setMusicOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast }) {
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const languages = [
     { code: 'en', label: 'English (US)' },
@@ -5961,6 +6205,11 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             icon={Users} color="indigo"
             title="Overlay Social" desc="Affiche une notification visuelle en bas à droite de l'écran quand vos amis se connectent ou lancent une partie."
             action={<SettingsToggle active={socialOverlayEnabled} onToggle={() => setSocialOverlayEnabled(!socialOverlayEnabled)} />}
+          />
+          <SettingCard
+            icon={Music} color="green"
+            title="Overlay Musique (Spotify)" desc="Affiche un mini-lecteur transparent en haut à droite pour contrôler votre musique."
+            action={<SettingsToggle active={musicOverlayEnabled} onToggle={() => setMusicOverlayEnabled(!musicOverlayEnabled)} />}
           />
         </SettingsSection>
 
@@ -9736,15 +9985,15 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
   const currentPlayer = playerList.find(p => p.summonerName === activePlayer?.summonerName);
   const isJungle = currentPlayer?.position === 'JUNGLE' || isTest;
 
-  // Add visibility debugging if needed
+  /* Add visibility debugging if needed */
   if (isTest && !gameData) {
-    // Ensure we still render in test mode even without LCU data
+    /* Ensure we still render in test mode even without LCU data */
   }
 
   return (
     <div
       className="fixed inset-0 pointer-events-none select-none z-[9999]"
-      style={{ display: 'block' }} // Ensure it's not hidden by some weird CSS state
+      style={{ display: 'block' }} /* Ensure it's not hidden by some weird CSS state */
     >
       {/* Win% Widget (ALT+O) - REMOVED AS PER USER REQUEST */}
 

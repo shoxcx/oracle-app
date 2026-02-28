@@ -1578,6 +1578,58 @@ class Scraper {
 
         return final;
     }
+
+    async getRankedLPHistory(nameQuery, region = 'EUW') {
+        const { slug } = this.parseName(nameQuery);
+        const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br' };
+        const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
+        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug}`;
+
+        console.log(`[Scraper] Scraping LP history for ${nameQuery} from ${url}`);
+
+        return this.runBrowserTask(url, async (win) => {
+            try {
+                const status = await this.waitForSelector(win, '.recentGamesTable');
+                if (status !== 'READY') return {};
+
+                const lpDict = await win.webContents.executeJavaScript(`
+                    (() => {
+                        const rows = Array.from(document.querySelectorAll('.recentGamesTable tbody tr'));
+                        const dict = {};
+                        rows.forEach((row) => {
+                            const clean = t => t ? t.innerText.trim() : "";
+                            const isWin = row.className.includes('won');
+                            const champImg = row.querySelector('.page_summoner_recent_game_champion img');
+                            const champName = champImg ? champImg.alt.toLowerCase() : "unknown";
+                            
+                            const lpSpan = Array.from(row.querySelectorAll('span, div')).find(el => el.innerText && el.innerText.includes('LP'));
+                            let lpChange = null;
+                            if(lpSpan) {
+                                const m = clean(lpSpan).match(/([+-]?\\d+)\\s*LP/i);
+                                if(m) lpChange = m[0];
+                            }
+
+                            if (lpChange) {
+                                // Match by champion name and win status
+                                const key = \`\${champName}_\${isWin}\`;
+                                // Only keep the most recent if there are duplicates
+                                if(!dict[key]) {
+                                    dict[key] = [];
+                                }
+                                dict[key].push(lpChange);
+                            }
+                        });
+                        return dict;
+                    })()
+                `);
+                return lpDict;
+            } catch (e) {
+                console.error("[Scraper] LP History failed:", e);
+                return {};
+            }
+        });
+    }
+
     async getMatchHistory(puuid) {
         if (!puuid.startsWith('ext~')) return { games: { games: [] } };
         const parts = puuid.split('~');
@@ -1627,6 +1679,13 @@ class Scraper {
                             const durationSec = duration.split(':').reduce((acc, time) => (60 * acc) + +time, 0) || 1200;
                             
                             const gameId = 2000000 + idx;
+
+                            const lpSpan = Array.from(row.querySelectorAll('span, div')).find(el => el.innerText && el.innerText.includes('LP'));
+                            let lpChange = null;
+                            if(lpSpan) {
+                                const m = clean(lpSpan).match(/([+-]\\d+)\\s*LP/i);
+                                if(m) lpChange = m[0];
+                            }
 
                             // Heuristic to guess Gold from CS/Kills (Better than random)
                         const estGold = (cs * 21) + (kills * 300) + (assists * 100) + (durationSec * 2.5);
@@ -1694,6 +1753,7 @@ class Scraper {
 
                             return {
                                 gameId,
+                                lpChange,
                                 gameDuration: durationSec,
                                 gameCreation,
                                 participants: [myPart, opPart, ...teammates],
