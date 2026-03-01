@@ -1953,7 +1953,7 @@ const normalizeChampName = (name) => {
 
   const mapping = {
     'KhaZix': 'Khazix', 'KaiSa': 'Kaisa', 'BelVeth': 'Belveth', 'ChoGath': 'Chogath',
-    'VelKoz': 'Velkoz', 'RekSai': 'Reksai', 'KSante': 'KSante', 'Wukong': 'MonkeyKing',
+    'VelKoz': 'Velkoz', 'RekSai': 'RekSai', 'KSante': 'KSante', 'Wukong': 'MonkeyKing',
     'NunuWillump': 'Nunu', 'Nunu': 'Nunu', 'NunuandWillump': 'Nunu', 'RenataGlasc': 'Renata', 'LeBlanc': 'Leblanc',
     'DrMundo': 'DrMundo', 'Mundo': 'DrMundo', 'MasterYi': 'MasterYi', 'TahmKench': 'TahmKench',
     'JarvanIV': 'JarvanIV', 'FiddleSticks': 'Fiddlesticks', 'MonkeyKing': 'MonkeyKing',
@@ -7794,7 +7794,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
       // 1. Skill Level Up Check
       if (overlaySettings.skillLevelUp && active?.abilities) {
         const totalPointsSpent = Object.values(active.abilities).reduce((sum, a) => sum + (a.abilityLevel || 0), 0);
-        const level = active.level || 0; // Use 0 fallback to catch the very first level
+        const level = current?.level || active.level || 1; // Retrieve the target level from allPlayers
         const pointsAvailable = level - totalPointsSpent;
 
         if (pointsAvailable > 0) {
@@ -7821,7 +7821,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
           const iconUrl = spellId ? `https://ddragon.leagueoflegends.com/cdn/13.24.1/img/spell/${spellId}.png` : null;
 
           triggerNotif({
-            id: `skill-${level}-${currentPointNumber}`, // ID based on level + point count
+            id: `skill-point-${currentPointNumber}`, // Stable ID based strictly on point spent to avoid dupes across levels
             type: 'info',
             key: bestKey, // Keep track of which key was suggested
             icon: iconUrl ? (
@@ -7832,7 +7832,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
                 </div>
               </div>
             ) : <Brain size={14} />,
-            title: `Niveau ${active.level} Ã¢â‚¬Â¢ ${skillOrder ? 'LIVE DATA' : 'AI SUGGEST'}`,
+            title: `Niveau ${level} • ${skillOrder ? 'LIVE DATA' : 'AI SUGGEST'}`,
             desc: `${t('skill_advice')} ${spellName}`
           });
         }

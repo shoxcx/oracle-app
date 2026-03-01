@@ -1322,6 +1322,8 @@ function App() {
     content = <SocialToastOverlay ddragonVersion={ddragonVersion} />;
   } else if (appMode === 'music') {
     content = <MusicOverlay />;
+  } else if (appMode === 'skills') {
+    content = <SkillsOverlay ddragonVersion={ddragonVersion} />;
   } else {
     content = (
       <MainApp
@@ -1341,7 +1343,7 @@ function App() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {content}
-      {(appMode === 'music' || appMode === 'toast' || appMode === 'live') && (
+      {(appMode === 'music' || appMode === 'toast' || appMode === 'live' || appMode === 'skills') && (
         <style>{`
   html, body, #root {
     background - color: transparent!important;
@@ -1351,6 +1353,132 @@ function App() {
       )}
     </div>
   );
+}
+
+function SkillsOverlay({ ddragonVersion }) {
+  const [skillOrder, setSkillOrder] = useState(null);
+  const [champName, setChampName] = useState("");
+  const [isVisible, setIsVisible] = useState(false);
+  const [overlaySettings, setOverlaySettings] = useState({ skillLevelUp: true });
+  const timeoutRef = useRef(null);
+  const lastPointsRef = useRef(-1);
+
+  useEffect(() => {
+    document.body.style.backgroundColor = 'transparent';
+    document.documentElement.style.backgroundColor = 'transparent';
+    if (!window.ipcRenderer) return;
+
+    // Load initial settings and subscribe to syncs
+    window.ipcRenderer.invoke('app:get-settings').then(s => setOverlaySettings(s?.overlaySettings || { skillLevelUp: true }));
+    const handleSync = (_, s) => setOverlaySettings(s?.overlaySettings || { skillLevelUp: true });
+    window.ipcRenderer.on('settings:sync', handleSync);
+
+    window.ipcRenderer.on('skills:update', async (_, champ) => {
+      setChampName(champ);
+      try {
+        const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, 'mid');
+        if (build && build.skillOrder) {
+          setSkillOrder(build.skillOrder);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    // Poll live data to detect level up
+    const interval = setInterval(async () => {
+      try {
+        const data = await window.ipcRenderer.invoke('live:get-all-data');
+        if (data && data.activePlayer && data.allPlayers) {
+          const active = data.activePlayer;
+          const current = data.allPlayers.find(p => p.summonerName === active.summonerName);
+          const level = current?.level || active.level || 1;
+
+          if (active.abilities) {
+            const totalPointsSpent = Object.values(active.abilities).reduce((sum, a) => sum + (a.abilityLevel || 0), 0);
+            const pointsAvailable = level - totalPointsSpent;
+
+            // Trigger visibility ON level up
+            if (pointsAvailable > 0 && totalPointsSpent !== lastPointsRef.current) {
+              lastPointsRef.current = totalPointsSpent;
+              setIsVisible(true);
+
+              if (timeoutRef.current) clearTimeout(timeoutRef.current);
+              timeoutRef.current = setTimeout(() => setIsVisible(false), 5000); // Automatically hide after 5s
+            }
+          }
+        }
+      } catch (e) { }
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      window.ipcRenderer.removeListener('settings:sync', handleSync);
+    };
+  }, []);
+
+  if (!skillOrder || (!isVisible && !overlaySettings.testMode) || !overlaySettings.skillLevelUp) return null;
+
+  const skillsMapping = {
+    'Q': { color: 'from-blue-600 to-blue-400', label: 'A', id: 'Q' },
+    'W': { color: 'from-green-600 to-green-400', label: 'Z', id: 'W' },
+    'E': { color: 'from-yellow-600 to-yellow-400', label: 'E', id: 'E' },
+    'R': { color: 'from-purple-600 to-purple-400', label: 'R', id: 'R' }
+  };
+
+  const getMapping = (s) => skillsMapping[s] || skillsMapping['Q'];
+  const maxOrder = skillOrder.filter(s => s !== "R");
+  const uniqueMaxOrder = [...new Set(maxOrder)].slice(0, 3);
+  const levelByLevel = skillOrder.slice(0, 15);
+
+  return (
+    <div className="w-full h-full p-2 select-none" style={{ WebkitAppRegion: 'drag' }}>
+      <div className="bg-black/70 hover:bg-black/80 dark:bg-[#080a14]/90 dark:hover:bg-[#080a14]/95 backdrop-blur-[24px] rounded-2xl border border-white/20 p-3 h-full overflow-hidden shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] flex flex-col justify-between" style={{ transform: 'translateZ(0)' }}>
+
+        {/* Title and Champion */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-white/60 font-medium text-xs uppercase tracking-wider flex items-center gap-1">
+            <Star className="w-3 h-3 text-accent-primary" /> Max Order
+            <div className="text-white/30 lowercase ml-1">{champName}</div>
+          </div>
+        </div>
+
+        {/* Max Order Visual */}
+        <div className="flex items-center gap-1.5 mb-2">
+          {uniqueMaxOrder.map((s, idx) => {
+            const keyObj = getMapping(s);
+            return (
+              <React.Fragment key={idx}>
+                <div className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs bg-gradient-to-br ${keyObj.color} text-white shadow-lg border border-white/20`}>
+                  {keyObj.label}
+                </div>
+                {idx < uniqueMaxOrder.length - 1 && (
+                  <div className="text-white/30"><ChevronRight size={12} /></div>
+                )}
+              </React.Fragment>
+            )
+          })}
+        </div>
+
+        {/* Level by level detailed view up to 15 */}
+        <div className="flex items-center gap-0.5 justify-start">
+          {levelByLevel.map((s, idx) => {
+            const keyObj = getMapping(s);
+            return (
+              <div key={idx} className="flex flex-col items-center">
+                <div className="text-[8px] text-white/40 leading-none mb-0.5">{idx + 1}</div>
+                <div className="w-4 h-4 rounded-sm flex items-center justify-center font-bold text-[9px] bg-white/10 text-white border border-white/5">
+                  {keyObj.label}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+      </div>
+    </div>
+  )
 }
 
 function MusicOverlay() {
@@ -1446,7 +1574,7 @@ function MusicOverlay() {
   };
 
   return (
-    <div className="w-full h-full p-2 select-none" style={{ WebkitAppRegion: 'drag' }}>
+    <div className="w-full h-full p-2 select-none" style={{ WebkitAppRegion: 'drag' }} onContextMenu={(e) => e.preventDefault()}>
       <div
         className="bg-black/50 hover:bg-black/60 dark:bg-[#080a14]/80 dark:hover:bg-[#080a14]/90 backdrop-blur-[24px] rounded-3xl border border-white/20 p-3 flex flex-col justify-between relative h-full transition-all duration-500 overflow-hidden shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
         style={{ transform: 'translateZ(0)' }}
@@ -2800,7 +2928,7 @@ const normalizeChampName = (name) => {
 
   const mapping = {
     'KhaZix': 'Khazix', 'KaiSa': 'Kaisa', 'BelVeth': 'Belveth', 'ChoGath': 'Chogath',
-    'VelKoz': 'Velkoz', 'RekSai': 'Reksai', 'KSante': 'KSante', 'Wukong': 'MonkeyKing',
+    'VelKoz': 'Velkoz', 'RekSai': 'RekSai', 'KSante': 'KSante', 'Wukong': 'MonkeyKing',
     'NunuWillump': 'Nunu', 'Nunu': 'Nunu', 'NunuandWillump': 'Nunu', 'RenataGlasc': 'Renata', 'LeBlanc': 'Leblanc',
     'DrMundo': 'DrMundo', 'Mundo': 'DrMundo', 'MasterYi': 'MasterYi', 'TahmKench': 'TahmKench',
     'JarvanIV': 'JarvanIV', 'FiddleSticks': 'Fiddlesticks', 'MonkeyKing': 'MonkeyKing',
@@ -6294,6 +6422,15 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           />
         </SettingsSection>
 
+        {/* Section: Modules Tactiques */}
+        <SettingsSection title="Modules Tactiques" icon={Layers}>
+          <SettingCard
+            icon={Brain} color="blue"
+            title={t('skill_levelup')} desc={t('skill_desc')}
+            action={<SettingsToggle active={overlaySettings.skillLevelUp} onToggle={() => setOverlaySettings(p => ({ ...p, skillLevelUp: !p.skillLevelUp }))} />}
+          />
+        </SettingsSection>
+
         {/* Section: Notifications & Social */}
         <SettingsSection title="Notifications & Social" icon={Bell}>
           <SettingCard
@@ -6303,7 +6440,7 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           />
           <SettingCard
             icon={Music} color="green"
-            title="Overlay Musique (Spotify)" desc="Affiche un mini-lecteur transparent en haut à droite pour contrôler votre musique."
+            title="Overlay Musique" desc="Affiche un mini-lecteur transparent en haut à droite pour contrôler votre musique."
             action={<SettingsToggle active={musicOverlayEnabled} onToggle={() => setMusicOverlayEnabled(!musicOverlayEnabled)} />}
           />
         </SettingsSection>
@@ -10029,7 +10166,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
       // 1. Skill Level Up Check
       if (overlaySettings.skillLevelUp && active?.abilities) {
         const totalPointsSpent = Object.values(active.abilities).reduce((sum, a) => sum + (a.abilityLevel || 0), 0);
-        const level = active.level || 0; // Use 0 fallback to catch the very first level
+        const level = current?.level || active.level || 1; // Retrieve the target level from allPlayers
         const pointsAvailable = level - totalPointsSpent;
 
         if (pointsAvailable > 0) {
@@ -10056,7 +10193,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
           const iconUrl = spellId ? `https://ddragon.leagueoflegends.com/cdn/13.24.1/img/spell/${spellId}.png` : null;
 
           triggerNotif({
-            id: `skill-${level}-${currentPointNumber}`, // ID based on level + point count
+            id: `skill-point-${currentPointNumber}`, // Stable ID based strictly on point spent to avoid dupes across levels
             type: 'info',
             key: bestKey, // Keep track of which key was suggested
             icon: iconUrl ? (
@@ -10067,7 +10204,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
                 </div>
               </div>
             ) : <Brain size={14} />,
-            title: `${t('level')} ${active.level} • ${skillOrder ? 'LIVE DATA' : 'AI SUGGEST'}`,
+            title: `${t('level')} ${level} • ${skillOrder ? 'LIVE DATA' : 'AI SUGGEST'}`,
             desc: `${t('skill_advice')} ${spellName}`
           });
         }

@@ -16,6 +16,7 @@ let draftWindow;
 let toastWindow;
 let voiceWindow; // New Voice Assistant Window
 let musicWindow; // Music Overlay
+let skillsWindow; // Skills Overlay
 
 const media = require('./media.cjs');
 
@@ -256,12 +257,12 @@ ipcMain.handle('window:hide', (event) => {
 function createMusicWindow() {
     if (musicWindow) return;
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width } = primaryDisplay.workAreaSize;
+    const { width, height } = primaryDisplay.workAreaSize;
     musicWindow = new BrowserWindow({
         width: 360,
         height: 170,
         x: 20,
-        y: 20,
+        y: height - 190, // Bottom left corner
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -303,6 +304,56 @@ ipcMain.handle('window:toggle-music', (e, enable) => {
         if (musicWindow) {
             musicWindow.close();
         }
+    }
+});
+
+function createSkillsWindow() {
+    if (skillsWindow) return;
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    skillsWindow = new BrowserWindow({
+        width: 320,
+        height: 120, // compact overlay
+        x: width - 340,
+        y: height - 420, // Bottom right, above minimap
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false
+        },
+        title: 'Oracle Skills',
+        backgroundColor: '#00000000',
+        show: false,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        resizable: false,
+        focusable: false,
+        hasShadow: false,
+        type: 'toolbar'
+    });
+
+    skillsWindow.setIgnoreMouseEvents(true);
+
+    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    const url = isDev ? 'http://localhost:5173?mode=skills' : `file://${path.join(__dirname, '../dist/index.html')}?mode=skills`;
+
+    skillsWindow.loadURL(url);
+    skillsWindow.setAlwaysOnTop(true, 'screen-saver');
+
+    skillsWindow.on('closed', () => {
+        skillsWindow = null;
+    });
+}
+
+ipcMain.handle('window:toggle-skills', (e, enable, champName) => {
+    if (enable) {
+        if (!skillsWindow) createSkillsWindow();
+        skillsWindow.showInactive();
+        if (champName) skillsWindow.webContents.send('skills:update', champName);
+    } else if (skillsWindow && !skillsWindow.isDestroyed()) {
+        skillsWindow.hide();
     }
 });
 
@@ -534,7 +585,25 @@ async function monitorGameLoop() {
                 updateDiscordActivity(phase);
             }
             if (phase === 'ChampSelect') await updateChampMap();
-            else lastLockedChampId = 0; // Reset
+
+            if (phase === 'InProgress') {
+                if (lastLockedChampId) {
+                    const champName = champMap[lastLockedChampId];
+                    if (champName) {
+                        if (!skillsWindow) createSkillsWindow();
+                        skillsWindow.showInactive();
+                        skillsWindow.webContents.send('skills:update', champName);
+                    }
+                }
+            } else {
+                if (skillsWindow && !skillsWindow.isDestroyed()) {
+                    skillsWindow.hide();
+                }
+            }
+
+            if (phase !== 'ChampSelect' && phase !== 'InProgress') {
+                lastLockedChampId = 0; // Reset
+            }
         }
 
         if (phase === 'ChampSelect') {

@@ -724,14 +724,7 @@ class Scraper {
 
                 if (!data || data.length === 0) return [];
 
-                // Sort: Best Tier (Primary) then Highest Win Rate (Secondary)
-                const weights = { 'S+': 100, 'S': 95, 'A': 80, 'B': 70, 'C': 60, 'D': 50 };
-                data.sort((a, b) => {
-                    const wa = weights[a.tier] || 0;
-                    const wb = weights[b.tier] || 0;
-                    if (wb !== wa) return wb - wa;
-                    return b.wrVal - a.wrVal;
-                });
+                // Keep original U.GG sorting (already sorted by their true 'score' formula combining WR, PR, BR)
 
                 const finalResult = data.slice(0, 5).map(item => ({
                     name: item.name,
