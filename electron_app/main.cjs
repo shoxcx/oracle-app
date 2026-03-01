@@ -393,6 +393,7 @@ ipcMain.handle('scraper:get-top-live-streams', async () => scraper.getTopLiveStr
 ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getChampionBuild(champ1, champ2, role));
 ipcMain.handle('scraper:get-rank-history', async (_, puuid, region) => scraper.getRankHistory(puuid, region));
 ipcMain.handle('scraper:get-lp-history', async (_, name, region) => scraper.getRankedLPHistory(name, region));
+ipcMain.handle('scraper:get-recent-lp', async (_, name, region) => scraper.getRecentLPGains(name, region));
 
 ipcMain.handle('lcu:get-ranked-stats', async (_, puuid) => {
     if (puuid && puuid.startsWith('ext~')) return scraper.getRankedStats(puuid);
@@ -528,6 +529,9 @@ async function monitorGameLoop() {
             lastPhase = phase;
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('lcu:phase-changed', phase);
+            }
+            if (typeof updateDiscordActivity === 'function') {
+                updateDiscordActivity(phase);
             }
             if (phase === 'ChampSelect') await updateChampMap();
             else lastLockedChampId = 0; // Reset
@@ -811,11 +815,19 @@ DiscordRPC.register(clientId);
 const rpc = new DiscordRPC.Client({ transport: 'ipc' });
 const startTimestamp = new Date();
 
-rpc.on('ready', () => {
-    console.log('[Discord RPC] Connected and ready');
+function updateDiscordActivity(phase) {
+    if (!rpc) return;
+    let detailsTxt = 'Dans les menus';
+    if (phase === 'ChampSelect') detailsTxt = 'Sélection des champions';
+    else if (phase === 'InProgress' || phase === 'GameStart' || phase === 'InGame' || phase === 'Reconnect') detailsTxt = 'En partie';
+    else if (phase === 'Matchmaking') detailsTxt = "En file d'attente";
+    else if (phase === 'Lobby') detailsTxt = 'Dans un salon';
+    else if (phase === 'EndOfGame') detailsTxt = 'Stats de fin de partie';
+
     try {
         rpc.setActivity({
-            details: 'V1.0.0',
+            details: detailsTxt,
+            state: 'V1.0.0',
             startTimestamp,
             largeImageKey: 'oracle_logo', // L'asset devra s'appeler 'oracle_logo' sur Discord
             largeImageText: 'Oracle',
@@ -827,6 +839,11 @@ rpc.on('ready', () => {
     } catch (err) {
         console.error('[Discord RPC] Error setting activity:', err);
     }
+}
+
+rpc.on('ready', () => {
+    console.log('[Discord RPC] Connected and ready');
+    updateDiscordActivity(lastPhase || 'None');
 });
 
 // Tentative de connexion (Silencieux si Discord n'est pas ouvert ou ID invalide)

@@ -1,0 +1,578 @@
+[
+  {
+    "t1": "OH MY GOD",
+    "t2": "INVICTUS GAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1686821355861_OMG_2023_logo-01.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png"
+  },
+  {
+    "t1": "OH MY GOD",
+    "t2": "INVICTUS GAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1686821355861_OMG_2023_logo-01.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png"
+  },
+  {
+    "t1": "SUZHOU LNG ESPORTS",
+    "t2": "XI'AN TEAM WE",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1717487697003_LNGlogo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png"
+  },
+  {
+    "t1": "SUZHOU LNG ESPORTS",
+    "t2": "XI'AN TEAM WE",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1717487697003_LNGlogo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png"
+  },
+  {
+    "t1": "DN SOOPERS",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "DN SOOPERS",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "DRX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672910733664_01.Basic_W.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "DRX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672910733664_01.Basic_W.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "GEN.G ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1655210113163_GenG_logo_200407-05.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "GEN.G ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1655210113163_GenG_logo_200407-05.png"
+  },
+  {
+    "t1": "SENTINELS",
+    "t2": "DISGUISED",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1731496922454_Disguised-Wordmark-Yellow-Main.png"
+  },
+  {
+    "t1": "SENTINELS",
+    "t2": "DISGUISED",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1731496922454_Disguised-Wordmark-Yellow-Main.png"
+  },
+  {
+    "t1": "BNK FEARX",
+    "t2": "T1",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1726801573959_539px-T1_2019_full_allmode.png"
+  },
+  {
+    "t1": "BNK FEARX",
+    "t2": "T1",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1726801573959_539px-T1_2019_full_allmode.png"
+  },
+  {
+    "t1": "CLOUD9 KIA",
+    "t2": "FLYQUEST",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736924120254_C9Kia_IconBlue_Transparent_2000x2000.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fflyquest-new-on-dark.png"
+  },
+  {
+    "t1": "CLOUD9 KIA",
+    "t2": "FLYQUEST",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736924120254_C9Kia_IconBlue_Transparent_2000x2000.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fflyquest-new-on-dark.png"
+  },
+  {
+    "t1": "NATUS VINCERE",
+    "t2": "FNATIC",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1752746833620_NAVI_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819669150_fnc-2021-worlds.png"
+  },
+  {
+    "t1": "NATUS VINCERE",
+    "t2": "FNATIC",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1752746833620_NAVI_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819669150_fnc-2021-worlds.png"
+  },
+  {
+    "t1": "MOVISTAR KOI",
+    "t2": "TEAM VITALITY",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675865863968_Vitality_FullColor.png"
+  },
+  {
+    "t1": "MOVISTAR KOI",
+    "t2": "TEAM VITALITY",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675865863968_Vitality_FullColor.png"
+  },
+  {
+    "t1": "TEAM HERETICS",
+    "t2": "G2 ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png"
+  },
+  {
+    "t1": "TEAM HERETICS",
+    "t2": "G2 ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png"
+  },
+  {
+    "t1": "KARMINE CORP",
+    "t2": "GIANTX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png"
+  },
+  {
+    "t1": "KARMINE CORP",
+    "t2": "GIANTX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png"
+  },
+  {
+    "t1": "DRX",
+    "t2": "DN SOOPERS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672910733664_01.Basic_W.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp"
+  },
+  {
+    "t1": "DRX",
+    "t2": "DN SOOPERS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672910733664_01.Basic_W.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp"
+  },
+  {
+    "t1": "DN SOOPERS",
+    "t2": "DPLUS KIA",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png"
+  },
+  {
+    "t1": "DN SOOPERS",
+    "t2": "DPLUS KIA",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767340467921_DN_SOOPerslogo_profile.webp",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png"
+  },
+  {
+    "t1": "MOVISTAR KOI",
+    "t2": "NATUS VINCERE",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1752746833620_NAVI_FullColor.png"
+  },
+  {
+    "t1": "MOVISTAR KOI",
+    "t2": "NATUS VINCERE",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1752746833620_NAVI_FullColor.png"
+  },
+  {
+    "t1": "G2 ESPORTS",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "G2 ESPORTS",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "TLALIENWARE MINIMAL BUG-WHITE",
+    "t2": "DISGUISED",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1769357207762_TLAlienware_Minimal_Bug-White.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1731496922454_Disguised-Wordmark-Yellow-Main.png"
+  },
+  {
+    "t1": "TLALIENWARE MINIMAL BUG-WHITE",
+    "t2": "DISGUISED",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1769357207762_TLAlienware_Minimal_Bug-White.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1731496922454_Disguised-Wordmark-Yellow-Main.png"
+  },
+  {
+    "t1": "GEN.G ESPORTS",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1655210113163_GenG_logo_200407-05.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "GEN.G ESPORTS",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1655210113163_GenG_logo_200407-05.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "GIANTX",
+    "t2": "TEAM HERETICS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png"
+  },
+  {
+    "t1": "GIANTX",
+    "t2": "TEAM HERETICS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1672933861879_Heretics-Full-Color.png"
+  },
+  {
+    "t1": "TEAM VITALITY",
+    "t2": "FNATIC",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675865863968_Vitality_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819669150_fnc-2021-worlds.png"
+  },
+  {
+    "t1": "TEAM VITALITY",
+    "t2": "FNATIC",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675865863968_Vitality_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1631819669150_fnc-2021-worlds.png"
+  },
+  {
+    "t1": "LYON",
+    "t2": "FLYQUEST",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fflyquest-new-on-dark.png"
+  },
+  {
+    "t1": "LYON",
+    "t2": "FLYQUEST",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2Fflyquest-new-on-dark.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "T1",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1726801573959_539px-T1_2019_full_allmode.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "T1",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1726801573959_539px-T1_2019_full_allmode.png"
+  },
+  {
+    "t1": "NATUS VINCERE",
+    "t2": "GIANTX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1752746833620_NAVI_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png"
+  },
+  {
+    "t1": "NATUS VINCERE",
+    "t2": "GIANTX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1752746833620_NAVI_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png"
+  },
+  {
+    "t1": "TEAM VITALITY",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675865863968_Vitality_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "TEAM VITALITY",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1675865863968_Vitality_FullColor.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "SENTINELS",
+    "t2": "CLOUD9 KIA",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736924120254_C9Kia_IconBlue_Transparent_2000x2000.png"
+  },
+  {
+    "t1": "SENTINELS",
+    "t2": "CLOUD9 KIA",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736924120254_C9Kia_IconBlue_Transparent_2000x2000.png"
+  },
+  {
+    "t1": "G2 ESPORTS",
+    "t2": "MOVISTAR KOI",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png"
+  },
+  {
+    "t1": "G2 ESPORTS",
+    "t2": "MOVISTAR KOI",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png"
+  },
+  {
+    "t1": "TOP ESPORTS",
+    "t2": "BEIJING JDG ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1627457924722_29.png"
+  },
+  {
+    "t1": "TOP ESPORTS",
+    "t2": "BEIJING JDG ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1627457924722_29.png"
+  },
+  {
+    "t1": "XI'AN TEAM WE",
+    "t2": "ANYONE'S LEGEND",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png"
+  },
+  {
+    "t1": "XI'AN TEAM WE",
+    "t2": "ANYONE'S LEGEND",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png"
+  },
+  {
+    "t1": "INVICTUS GAMING",
+    "t2": "WEIBOGAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641202879910_3.png"
+  },
+  {
+    "t1": "INVICTUS GAMING",
+    "t2": "WEIBOGAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641202879910_3.png"
+  },
+  {
+    "t1": "BILIBILI GAMING",
+    "t2": "NIP-SYMBOL-RGB-NEONYELLOW1",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673425724696_NIP-Symbol-RGB-NeonYellow1.png"
+  },
+  {
+    "t1": "BILIBILI GAMING",
+    "t2": "NIP-SYMBOL-RGB-NEONYELLOW1",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673425724696_NIP-Symbol-RGB-NeonYellow1.png"
+  },
+  {
+    "t1": "ANYONE'S LEGEND",
+    "t2": "BEIJING JDG ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1627457924722_29.png"
+  },
+  {
+    "t1": "ANYONE'S LEGEND",
+    "t2": "BEIJING JDG ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1627457924722_29.png"
+  },
+  {
+    "t1": "BILIBILI GAMING",
+    "t2": "WEIBOGAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641202879910_3.png"
+  },
+  {
+    "t1": "BILIBILI GAMING",
+    "t2": "WEIBOGAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641202879910_3.png"
+  },
+  {
+    "t1": "GIANTX",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "GIANTX",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1765897105091_GIANTX-logotype-white.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "TLALIENWARE MINIMAL BUG-WHITE",
+    "t2": "LYON",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1769357207762_TLAlienware_Minimal_Bug-White.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png"
+  },
+  {
+    "t1": "TLALIENWARE MINIMAL BUG-WHITE",
+    "t2": "LYON",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1769357207762_TLAlienware_Minimal_Bug-White.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "DPLUS KIA",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673260049703_DPlusKIALOGO11.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "XI'AN TEAM WE",
+    "t2": "TOP ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png"
+  },
+  {
+    "t1": "XI'AN TEAM WE",
+    "t2": "TOP ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634763008788_220px-Team_WE_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png"
+  },
+  {
+    "t1": "MOVISTAR KOI",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "MOVISTAR KOI",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734012609283_MKOI_FullColor_Blue.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "LYON",
+    "t2": "SENTINELS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png"
+  },
+  {
+    "t1": "LYON",
+    "t2": "SENTINELS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1767769784669_Sentinels_2020_Icon.png"
+  },
+  {
+    "t1": "GEN.G ESPORTS",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1655210113163_GenG_logo_200407-05.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "GEN.G ESPORTS",
+    "t2": "BNK FEARX",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1655210113163_GenG_logo_200407-05.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1734691810721_BFXfullcolorfordarkbg.png"
+  },
+  {
+    "t1": "NIP-SYMBOL-RGB-NEONYELLOW1",
+    "t2": "INVICTUS GAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673425724696_NIP-Symbol-RGB-NeonYellow1.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png"
+  },
+  {
+    "t1": "NIP-SYMBOL-RGB-NEONYELLOW1",
+    "t2": "INVICTUS GAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1673425724696_NIP-Symbol-RGB-NeonYellow1.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png"
+  },
+  {
+    "t1": "G2 ESPORTS",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "G2 ESPORTS",
+    "t2": "KARMINE CORP",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2FG2-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1704714951336_KC.png"
+  },
+  {
+    "t1": "LYON",
+    "t2": "CLOUD9 KIA",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736924120254_C9Kia_IconBlue_Transparent_2000x2000.png"
+  },
+  {
+    "t1": "LYON",
+    "t2": "CLOUD9 KIA",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1743717443673_isotypelyon-03.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1736924120254_C9Kia_IconBlue_Transparent_2000x2000.png"
+  },
+  {
+    "t1": "TOP ESPORTS",
+    "t2": "WEIBOGAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641202879910_3.png"
+  },
+  {
+    "t1": "TOP ESPORTS",
+    "t2": "WEIBOGAMING",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1592592064571_TopEsportsTES-01-FullonDark.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641202879910_3.png"
+  },
+  {
+    "t1": "INVICTUS GAMING",
+    "t2": "ANYONE'S LEGEND",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png"
+  },
+  {
+    "t1": "INVICTUS GAMING",
+    "t2": "ANYONE'S LEGEND",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1634762917340_300px-Invictus_Gaming_logo.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1641199582689_.png"
+  },
+  {
+    "t1": "BILIBILI GAMING",
+    "t2": "BEIJING JDG ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1627457924722_29.png"
+  },
+  {
+    "t1": "BILIBILI GAMING",
+    "t2": "BEIJING JDG ESPORTS",
+    "src1": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1682322954525_Bilibili_Gaming_logo_20211.png",
+    "src2": "https://am-a.akamaihd.net/image?resize=96:&f=http%3A%2F%2Fstatic.lolesports.com%2Fteams%2F1627457924722_29.png"
+  },
+  {
+    "t1": "TBD",
+    "t2": "TBD",
+    "src1": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75",
+    "src2": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75"
+  },
+  {
+    "t1": "TBD",
+    "t2": "TBD",
+    "src1": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75",
+    "src2": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75"
+  },
+  {
+    "t1": "TBD",
+    "t2": "TBD",
+    "src1": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75",
+    "src2": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75"
+  },
+  {
+    "t1": "TBD",
+    "t2": "TBD",
+    "src1": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75",
+    "src2": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75"
+  },
+  {
+    "t1": "TBD",
+    "t2": "TBD",
+    "src1": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75",
+    "src2": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75"
+  },
+  {
+    "t1": "TBD",
+    "t2": "TBD",
+    "src1": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75",
+    "src2": "https://lolesports.com/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Ftbd-team-logo-light.a5c0185b.png&w=96&q=75"
+  }
+]

@@ -1,0 +1,27 @@
+1138: function App() {
+1849: if (activeTab === 'notifications') {
+2064: <NavItem active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<LayoutDashboard size={18} />} label="Dashboard" />
+2065: <NavItem active={activeTab === 'tierlist'} onClick={() => { }} icon={<Trophy size={18} />} label="Tierlist & Builds" disabled={true} />
+2066: <NavItem active={activeTab === 'leaderboards'} onClick={() => { }} icon={<Trophy size={18} />} label="Leaderboards" disabled={true} />
+2067: <NavItem active={activeTab === 'matchups'} onClick={() => setActiveTab('matchups')} icon={<Gamepad2 size={18} />} label="Matchups" />
+2073: <NavItem active={activeTab === 'replays'} onClick={() => setActiveTab('replays')} icon={<MonitorPlay size={18} />} label="Analyse" />
+2074: <NavItem active={activeTab === 'collections'} onClick={() => setActiveTab('collections')} icon={<Brain size={18} />} label="Collections" />
+2075: <NavItem active={activeTab === 'training'} onClick={() => { }} icon={<Target size={18} />} label="Training" disabled={true} />
+2081: <NavItem active={activeTab === 'esports'} onClick={() => setActiveTab('esports')} icon={<Globe size={18} />} label="Esports" />
+2082: <NavItem active={activeTab === 'tutorial'} onClick={() => { }} icon={<HelpCircle size={18} />} label="Tutoriel" disabled={true} />
+2293: activeTab === 'settings'
+2299: <Settings size={18} className={cn(activeTab === 'settings' && "animate-[spin_3s_linear_infinite]")} />
+2311: {activeTab === 'dashboard' && <DashboardView
+2329: {activeTab === 'profile' && <ProfileView
+2339: {activeTab === 'tierlist' && <BuildView panelClass={panelClass} t={t} initialChamp={targetChamp} ddragonVersion={ddragonVersion} championList={championList} />}
+2344: {activeTab === 'matchups' && <MatchupsView panelClass={panelClass} t={t} championList={championList} ddragonVersion={ddragonVersion} onOpenUrl={setBrowserUrl} />}
+2345: {activeTab === 'esports' && <EsportsView panelClass={panelClass} t={t} prefetchedData={prefetchedData} onShowNews={setSelectedArticle} />}
+2346: {activeTab === 'collections' && <CollectionsView panelClass={panelClass} t={t} ddragonVersion={ddragonVersion} currentUser={currentUser} championList={championList} />}
+2347: {activeTab === 'leaderboards' && <RankingsView
+2354: {activeTab === 'watch' && <EsportsView panelClass={panelClass} t={t} prefetchedData={prefetchedData} />}
+2357: {activeTab === 'draft' && <DraftSimView panelClass={panelClass} t={t} />}
+2358: {activeTab === 'live' && <LiveGameLoadingView panelClass={panelClass} t={t} />}
+2364: <h2 className="text-xl font-bold">{t(activeTab) || (activeTab === 'tutorial' ? "Tutoriel" : "Training")}</h2>
+2369: {activeTab === 'settings' && <SettingsView
+8343: function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
+8966: function EsportsView({ t, prefetchedData }) {

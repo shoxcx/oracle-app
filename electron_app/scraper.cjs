@@ -1856,9 +1856,74 @@ class Scraper {
             }
         });
     }
+
+    async getRecentLPGains(puuid_or_name, region = 'EUW') {
+        const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br', 'TR': 'tr', 'LAS': 'las', 'LAN': 'lan', 'OCE': 'oce', 'RU': 'ru', 'JP': 'jp' };
+        let name = puuid_or_name;
+        if (puuid_or_name.startsWith('ext~')) {
+            const parts = puuid_or_name.split('~');
+            name = decodeURIComponent(parts[1]);
+            region = parts[2] || region;
+        }
+        const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
+        const { slug } = this.parseName(name);
+
+        const cacheKey = `lp_gains_${rKey}_${slug}`;
+        const cached = this.getCachedData(cacheKey, 600000); // 10 mins cache
+        if (cached) return cached;
+
+        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug}`;
+        console.log(`[Scraper] Fetching recent LP gains for ${name} from ${url}`);
+
+        const result = await this.runBrowserTask(url, async (win) => {
+            try {
+                // League of Graphs often shows a cookie consent banner that we might need to click or just ignore
+                await new Promise(r => setTimeout(r, 2000));
+
+                const lpData = await win.webContents.executeJavaScript(`
+                    (() => {
+                        const results = [];
+                        const rows = document.querySelectorAll('tr');
+                        rows.forEach(row => {
+                            const killsEl = row.querySelector('.kda .kills');
+                            const deathsEl = row.querySelector('.kda .deaths');
+                            const assistsEl = row.querySelector('.kda .assists');
+                            let kda = null;
+                            if (killsEl && deathsEl && assistsEl) {
+                                kda = \`\${killsEl.innerText.trim()} / \${deathsEl.innerText.trim()} / \${assistsEl.innerText.trim()}\`;
+                            }
+
+                            const lpEl = row.querySelector('.lpChange');
+                            let lpStr = null;
+                            if (lpEl && lpEl.innerText.includes('LP')) {
+                                const match = lpEl.innerText.match(/(-?\\+?\\d+\\s+LP)/);
+                                if (match) lpStr = match[1];
+                            }
+
+                            if (kda && lpStr) {
+                                results.push({ kda, lpStr });
+                            }
+                        });
+                        return results;
+                    })()
+                `);
+
+                return lpData || [];
+            } catch (e) {
+                console.error("[Scraper] Recent LP Task failed:", e);
+                return [];
+            }
+        });
+
+        if (result && result.length > 0) {
+            this.setCachedData(cacheKey, result);
+        }
+        return result || [];
+    }
+
     async getEsportsSchedule() {
         const cacheKey = 'esports_schedule';
-        const cached = this.getCachedData(cacheKey, 3600000); // 1 hour
+        const cached = this.getCachedData(cacheKey, 300000); // 5 minutes cache limit
         if (cached) return cached;
 
         const url = 'https://lolesports.com/en-GB/schedule?leagues=lec,lck,lpl,lcs';
@@ -1898,11 +1963,61 @@ class Scraper {
                             if (text.includes('FINAL') && !text.includes('Today')) return;
 
                             const lines = text.split('\\n').map(l => l.trim()).filter(l => l.length >= 2 && l.length < 30);
-                            const teams = lines.filter(l => !l.match(/LEC|LCK|LPL|LCS|Bo\\d|Today|Tomorrow|Match|Score|LIVE|\\d{1,2}:\\d{2}/i));
+                            const textTeams = lines.filter(l => 
+                                !l.match(/LEC|LCK|LPL|LCS|Bo\\\\d|Today|Tomorrow|Match|Score|LIVE|\\\\d{1,2}:\\\\d{2}/i) &&
+                                !l.match(/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i) &&
+                                !l.includes(' - ') &&
+                                l.toUpperCase() !== 'TBD' &&
+                                !l.toUpperCase().includes('CLICK') &&
+                                !l.toUpperCase().includes('REVEAL') &&
+                                !l.toUpperCase().includes('REGIONS') &&
+                                !l.toUpperCase().includes('SPLIT') &&
+                                !l.toUpperCase().includes('PLAYOFFS') &&
+                                !l.toUpperCase().includes('FINALS') &&
+                                !l.toUpperCase().includes('ROUND') &&
+                                !l.toUpperCase().includes('SEASON') &&
+                                !l.toUpperCase().includes('INTERNATIONAL') &&
+                                l.toUpperCase() !== 'UPCOMING'
+                            );
                             
-                            if (teams.length < 2) return;
-                            let t1 = teams[0];
-                            let t2 = teams[1];
+                            const imgs = Array.from(container.querySelectorAll('img'));
+                            let t1 = "TBD";
+                            let t2 = "TBD";
+                            
+                            const getTeamFromImg = (img) => {
+                                let altContent = img.alt ? img.alt.trim().toUpperCase() : "";
+                                if (altContent === "PREVIOUS" || altContent === "NEXT" || altContent === "TBD") return "TBD";
+                                // if alt is a 8+ char completely hex string, ignore it
+                                if (altContent.match(/^[0-9A-F]{8,}$/i)) altContent = "";
+
+                                if (altContent && altContent.length > 1 && altContent.length < 30 && !altContent.toLowerCase().includes('logo') && !altContent.toLowerCase().includes('lolesports')) {
+                                    return altContent;
+                                }
+                                try {
+                                    let url = decodeURIComponent(img.src);
+                                    if (url.toLowerCase().includes('tbd')) return "TBD";
+                                    let name = url.split('/').pop().split('.')[0];
+                                    name = name.replace(/_logo|-logo|logo/i, '').replace(/_/g, ' ').toUpperCase();
+                                    name = name.replace(/^\\d+\\s*(PX-|-|\\s+)|^\\d+\\s+/i, '').trim();
+                                    name = name.replace(/^\\d+PX-/i, '');
+                                    if (name.includes("LIGHTMODE") || name.includes("DARKMODE") || name.includes("LOLESPORTS") || name.includes("TBD")) return "TBD";
+                                    if (name.match(/^[0-9A-F]{8,}$/i)) return "TBD";
+                                    return name;
+                                } catch(e) {
+                                    return "TBD";
+                                }
+                            };
+
+                            if (imgs.length >= 2) {
+                                t1 = getTeamFromImg(imgs[0]);
+                                t2 = getTeamFromImg(imgs[1]);
+                                
+                                if (t1 === "TBD" || t2 === "TBD") {
+                                    return; // Just skip matches if we can't extract team names, better than showing hex strings
+                                }
+                            } else {
+                                return;
+                            }
 
                             const matchKey = (t1 + t2).toLowerCase();
                             if (seenMatches.has(matchKey)) return;

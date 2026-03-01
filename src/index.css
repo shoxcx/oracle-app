@@ -7,21 +7,25 @@
     --bg-main: 10 15 30;
     /* Deep blue tint for Classic */
     --accent-primary: 59 130 246;
+    --color-accent-primary: 59, 130, 246;
   }
 
   .theme-pourpre {
     --bg-main: 18 10 26;
     --accent-primary: 168 85 247;
+    --color-accent-primary: 168, 85, 247;
   }
 
   .theme-tempete {
     --bg-main: 22 24 28;
     --accent-primary: 100 116 139;
+    --color-accent-primary: 100, 116, 139;
   }
 
   .theme-radiant {
     --bg-main: 28 22 10;
     --accent-primary: 234 179 8;
+    --color-accent-primary: 234, 179, 8;
   }
 
   body {

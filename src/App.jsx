@@ -199,7 +199,7 @@ const translations = {
     cat_core: "ORACLE CORE", cat_app: "ORACLE APP", cat_insights: "ORACLE INSIGHTS",
     // Items
     dashboard: "Dashboard", tierlist: "Builds & Tips", leaderboards: "Leaderboards",
-    replays: "Replays", overlays: "Overlays", collections: "Collections",
+    overlays: "Overlays", collections: "Collections",
     esports: "Esports", datastudio: "Data Studio", matchups: "Matchups",
     settings: "Settings", profile: "Profile", watch: "Watch Live",
     // Window
@@ -466,9 +466,8 @@ const translations = {
     stats_unavailable: "Stats Unavailable (External Region)",
   },
   fr: {
-    cat_core: "ORACLE CORE", cat_app: "ORACLE APP", cat_insights: "ORACLE INSIGHTS",
     dashboard: "Tableau de bord", tierlist: "Builds & Tips", leaderboards: "Classements",
-    replays: "Replays", overlays: "Overlays", collections: "Collections",
+    overlays: "Overlays", collections: "Collections",
     esports: "Esports", datastudio: "Data Studio", matchups: "Matchups",
     settings: "Paramètres", profile: "Profil", watch: "Regarder",
     connected: "En ligne", disconnected: "Hors ligne",
@@ -1136,6 +1135,53 @@ const getQueryParams = () => {
   };
 };
 
+
+function DynamicCursorStyle() {
+  const [accentColor, setAccentColor] = useState('59, 130, 246'); // Default blue RGB
+
+  useEffect(() => {
+    let lastColor = '';
+    const interval = setInterval(() => {
+      const cVal = getComputedStyle(document.documentElement).getPropertyValue('--color-accent-primary').trim();
+      if (cVal && cVal !== lastColor) {
+        lastColor = cVal;
+        setAccentColor(cVal);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const svg = `
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.3)" />
+          <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgb(${accentColor})" flood-opacity="0.7" />
+        </filter>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="rgba(255,255,255,1)" />
+          <stop offset="100%" stop-color="rgba(230,240,255,0.9)" />
+        </linearGradient>
+      </defs>
+      <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="url(#grad)" stroke="url(#grad)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" filter="url(#glow)" />
+    </svg>
+  `.replace(/\s+/g, ' ').trim();
+
+  const cursorUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+
+  return (
+    <style dangerouslySetInnerHTML={{
+      __html: `
+      * {
+        cursor: url("${cursorUrl}") 8 8, auto !important;
+      }
+      a, button, [role="button"], input, select, textarea, .cursor-pointer {
+        cursor: url("${cursorUrl}") 8 8, pointer !important;
+      }
+    `}} />
+  );
+}
+
 function App() {
   const [appMode, setAppMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1297,11 +1343,11 @@ function App() {
       {content}
       {(appMode === 'music' || appMode === 'toast' || appMode === 'live') && (
         <style>{`
-          html, body, #root {
-            background-color: transparent !important;
-            background: transparent !important;
-          }
-        `}</style>
+  html, body, #root {
+    background - color: transparent!important;
+    background: transparent!important;
+  }
+  `}</style>
       )}
     </div>
   );
@@ -1388,44 +1434,49 @@ function MusicOverlay() {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')} `;
   };
 
   const handleCoverClick = () => {
     if (track) {
-      const query = encodeURIComponent(`${track.artist} ${track.title}`);
+      const query = encodeURIComponent(`${track.artist} ${track.title} `);
       // Use spotify:search: URI scheme to open desktop app
-      window.location.href = `spotify:search:${query}`;
+      window.location.href = `spotify: search:${query} `;
     }
   };
 
   return (
     <div className="w-full h-full p-2 select-none" style={{ WebkitAppRegion: 'drag' }}>
-      <div className="bg-[#18181b] hover:bg-[#19191c] rounded-2xl border border-white/5 p-3 flex flex-col justify-between relative h-full transition-colors overflow-hidden">
+      <div
+        className="bg-black/50 hover:bg-black/60 dark:bg-[#080a14]/80 dark:hover:bg-[#080a14]/90 backdrop-blur-[24px] rounded-3xl border border-white/20 p-3 flex flex-col justify-between relative h-full transition-all duration-500 overflow-hidden shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
+        style={{ transform: 'translateZ(0)' }}
+      >
+
+        {/* Semi-transparent logo background */}
+        <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none rotate-12 mix-blend-screen scale-150">
+          <img src={oracleLogo} className="w-48 h-48 grayscale" alt="" />
+        </div>
+
+        <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/10 via-transparent to-accent-primary/5 pointer-events-none"></div>
 
         {/* Top: Cover + Info */}
         <div className="flex gap-4 items-center px-1">
-          {/* Cover Art - Clickable */}
+          {/* Cover Art - Non Clickable */}
           <div
-            onClick={handleCoverClick}
-            className="cursor-pointer transition-transform hover:scale-105 group relative overflow-hidden rounded-md shadow-lg"
+            className="group relative overflow-hidden rounded-md shadow-lg shrink-0 pointer-events-none"
             style={{ WebkitAppRegion: 'no-drag' }}
-            title="Ouvrir sur Spotify"
           >
             {track.cover ? (
               <img
                 src={track.cover}
                 alt="Cover"
-                className={`w-[52px] h-[52px] rounded-md object-cover shrink-0 border border-white/10 ${track.isPlaying ? 'shadow-green-500/20' : ''}`}
+                className={`w-[52px] h-[52px] rounded-md object-cover border border-white/10 ${track.isPlaying ? 'shadow-green-500/20' : ''}`}
               />
             ) : (
-              <div className={`w-[52px] h-[52px] rounded-md bg-green-500/10 flex items-center justify-center shrink-0 border border-green-500/30 ${track.isPlaying ? 'shadow-green-500/20' : ''}`}>
-                <Music size={24} className="text-green-400" />
+              <div className={`w-[52px] h-[52px] rounded-md bg-accent-primary/10 flex items-center justify-center border border-accent-primary/30 ${track.isPlaying ? 'shadow-accent-primary/20' : ''}`}>
+                <Music size={24} className="text-accent-primary" />
               </div>
             )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.434-5.305-1.76-8.784-.964-.326.074-.652-.13-.726-.456-.074-.326.13-.652.456-.726 3.82-.87 7.07-.497 9.704 1.11.294.18.386.562.207.857zm1.22-3.195c-.227.368-.7.486-1.066.26-2.684-1.648-6.784-2.13-9.96-1.164-.41.124-.836-.107-.96-.518-.124-.41.107-.836.518-.96 3.65-1.115 8.163-.584 11.208 1.288.367.226.485.7.26 1.066zm.032-3.322C14.62 8.01 8.496 7.8 4.953 8.875c-.496.15-1.015-.13-1.166-.625-.15-.496.13-1.015.625-1.166 4.05-1.23 10.83-1.002 14.665 1.275.447.266.594.846.328 1.293-.266.447-.846.594-1.293.328z" /></svg>
-            </div>
           </div>
 
           {/* Info */}
@@ -1462,7 +1513,7 @@ function MusicOverlay() {
               {track.durationMs && (
                 <div
                   className="h-full bg-white transition-all duration-300 ease-linear rounded-full"
-                  style={{ width: `${Math.min(100, (progressMs / track.durationMs) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (progressMs / track.durationMs) * 100)}% ` }}
                 />
               )}
             </div>
@@ -1473,7 +1524,7 @@ function MusicOverlay() {
         </div>
 
       </div>
-    </div>
+    </div >
   );
 }
 
@@ -1540,19 +1591,20 @@ function SocialToastOverlay({ ddragonVersion }) {
           return (
             <div
               key={toast.id}
-              className="w-[320px] bg-[#111115] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-auto"
+              className="w-[320px] bg-black/50 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-auto shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
             >
               {/* Vertical Accent Line */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${borderColor}`} />
+              <div className={`absolute left - 0 top - 0 bottom - 0 w - 1.5 ${borderColor} `} />
 
               <div className="relative shrink-0">
                 <img
                   src={toast.icon || `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || '14.2.1'}/img/profileicon/29.png`}
                   className="w-14 h-14 rounded-xl border border-white/10 shadow-lg object-cover bg-gray-900"
                   alt="Avatar"
+                  onError={(e) => { e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg" }}
                 />
                 <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-black shadow-lg ${statusColor}`} />
-              </div>
+              </div >
 
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em] mb-1">
@@ -1569,14 +1621,14 @@ function SocialToastOverlay({ ddragonVersion }) {
                   style={{ width: '100%', animation: 'toastProgress 5s linear forwards' }}
                 />
               </div>
-            </div>
+            </div >
           );
         })}
-      </div>
+      </div >
       <style>{`
         @keyframes toastProgress { 0% { width: 100%; } 100% { width: 0%; } }
       `}</style>
-    </div>
+    </div >
   );
 }
 
@@ -1995,16 +2047,39 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   // ... (keeping other handlers)
 
   return (
-    <div className={cn("flex h-screen w-full overflow-hidden relative font-sans selection:bg-accent-primary/30 text-gray-900 dark:text-gray-900 dark:text-gray-100 rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 transition-all duration-300", isMinimizing ? "scale-95 opacity-0" : "scale-100 opacity-100")}>
-      {/* Background */}
-      {/* Background Layer - SOLID THEME FIX */}
-      <div className="absolute inset-0 z-0 bg-white dark:bg-[rgb(var(--bg-main))] transition-colors duration-700">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-100 via-white to-gray-50 dark:from-black/40 dark:via-transparent dark:to-black/40 opacity-100"></div>
+    <div
+      className={cn("flex h-screen w-full overflow-hidden relative font-sans selection:bg-accent-primary/30 text-gray-900 dark:text-gray-900 dark:text-gray-100 rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 transition-all duration-300", isMinimizing ? "scale-95 opacity-0" : "scale-100 opacity-100")}
+      onMouseMove={(e) => {
+        document.documentElement.style.setProperty('--mouse-x', `${e.clientX}px`);
+        document.documentElement.style.setProperty('--mouse-y', `${e.clientY}px`);
+      }}
+    >
+      {/* Interactive Global Glass Cursor overriding Native Pointer */}
+      <DynamicCursorStyle />
+
+      {/* Background Layer - PREMIUM THEMED AURORA WITH INTERACTION */}
+      <div className="absolute inset-0 z-0 bg-white dark:bg-[#060810] transition-colors duration-700 overflow-hidden">
+        {/* Deep dark base (Hidden in light mode, solid gradient in dark mode) */}
+        <div className="absolute inset-0 bg-transparent dark:bg-gradient-to-br dark:from-[#05060f] dark:via-[#090b14] dark:to-[#040508] opacity-100 transition-colors duration-700 pointer-events-none"></div>
+
+        {/* Ambient Aurora Orbs */}
+        <div className="absolute inset-0 opacity-[0.2] dark:opacity-[0.4] pointer-events-none mix-blend-multiply dark:mix-blend-screen overflow-hidden transition-opacity duration-700">
+          {/* Primary Accent mass (Uses accent-primary color) */}
+          <div className="absolute top-[10%] left-[20%] w-[80vw] h-[60vh] bg-accent-primary rounded-full blur-[140px] animate-[pulse_15s_ease-in-out_infinite] transform translate-y-[-10%] translate-x-[-10%]"></div>
+          {/* Secondary Soft Accent (Lighter variant of primary or complimentary) */}
+          <div className="absolute bottom-[20%] right-[10%] w-[70vw] h-[50vh] bg-indigo-400 dark:bg-sky-500 rounded-full blur-[160px] animate-[pulse_18s_ease-in-out_infinite_reverse] transform translate-y-[10%] translate-x-[10%] opacity-80"></div>
+          {/* Tertiary deeply contrasting accent (REMOVED: The harsh fuchsia purple rotating bulb per user request) */}
+        </div>
+
+
+        {/* Soft Theme Overlay for light mode readability */}
+        <div className="absolute inset-0 bg-white/40 dark:bg-transparent backdrop-blur-[10px] dark:backdrop-blur-none transition-colors duration-700 pointer-events-none"></div>
+
+        {/* Glass Overlay for depth in dark mode */}
+        <div className="absolute inset-0 bg-transparent dark:bg-black/10 backdrop-blur-[50px] transition-all duration-1000 pointer-events-none"></div>
+
         {visualMode === 'glass' && (
-          <>
-            <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-accent-primary/10 rounded-full blur-[120px] animate-pulse-slow"></div>
-            <div className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-accent-primary/5 rounded-full blur-[120px] animate-pulse-slow"></div>
-          </>
+          <div className="absolute inset-0 bg-white/10 dark:bg-white/5 backdrop-blur-[2px] transition-all duration-1000 pointer-events-none"></div>
         )}
       </div>
 
@@ -2328,12 +2403,12 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   overlaySettings={overlaySettings}
                 />}
                 {activeTab === 'tierlist' && <BuildView panelClass={panelClass} t={t} initialChamp={targetChamp} ddragonVersion={ddragonVersion} championList={championList} />}
-                {activeTab === 'replays' && <ReplaysView currentUser={currentUser} panelClass={panelClass} t={t} />}
 
                 {/* V2 New Views */}
                 {/* Removed Notifications tab as it is now a dropdown */}
 
                 {activeTab === 'matchups' && <MatchupsView panelClass={panelClass} t={t} championList={championList} ddragonVersion={ddragonVersion} onOpenUrl={setBrowserUrl} />}
+                {activeTab === 'replays' && <ReplaysView panelClass={panelClass} t={t} currentUser={currentUser} />}
                 {activeTab === 'esports' && <EsportsView panelClass={panelClass} t={t} prefetchedData={prefetchedData} onShowNews={setSelectedArticle} />}
                 {activeTab === 'collections' && <CollectionsView panelClass={panelClass} t={t} ddragonVersion={ddragonVersion} currentUser={currentUser} championList={championList} />}
                 {activeTab === 'leaderboards' && <RankingsView
@@ -2630,11 +2705,11 @@ function NavItem({ icon, label, active, onClick, disabled }) {
     >
       {active && !disabled && (
         <>
-          <div className="absolute inset-0 bg-blue-500/20 border border-blue-400/30 rounded-2xl -z-10 backdrop-blur-md"></div>
-          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-blue-500 rounded-full blur-[2px]"></div>
+          <div className="absolute inset-0 bg-accent-primary/20 border border-accent-primary/30 rounded-2xl -z-10 backdrop-blur-md"></div>
+          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-accent-primary rounded-full blur-[2px]"></div>
         </>
       )}
-      <span className={cn("relative z-10 transition-all duration-500", (active && !disabled) ? "scale-110 text-blue-400" : (disabled ? "text-gray-500" : "group-hover:scale-110 group-hover:text-gray-900 dark:text-gray-100/80"))}>
+      <span className={cn("relative z-10 transition-all duration-500", (active && !disabled) ? "scale-110 text-accent-primary" : (disabled ? "text-gray-500" : "group-hover:scale-110 group-hover:text-gray-900 dark:text-gray-100/80"))}>
         {icon}
       </span>
       {disabled ? (
@@ -2774,44 +2849,57 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
   const [metaProgress, setMetaProgress] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [loading, setLoading] = useState(!userRank && !userHistory?.length);
-  const [lpHistoryMap, setLpHistoryMap] = useState({});
-
-  const lastFetchedPuuid = useRef(null); useEffect(() => {
-    if (displayUser?.gameName) {
-      const nameQuery = displayUser.gameName + "#" + displayUser.tagLine;
-      const rKey = displayUser.region || 'euw';
-
-      window.ipcRenderer.invoke('scraper:get-lp-history', nameQuery, rKey)
-        .then(res => {
-          if (res && Object.keys(res).length > 0) {
-            setLpHistoryMap(res);
-          }
-        }).catch(err => console.log("LP history fetch failed", err));
-    } else {
-      setLpHistoryMap({});
-    }
-  }, [displayUser]);
+  const [lpGains, setLpGains] = useState([]);
 
   useEffect(() => {
     if (displayUser?.gameName) {
       const nameQuery = displayUser.gameName + "#" + displayUser.tagLine;
       const rKey = displayUser.region || 'euw';
 
-      window.ipcRenderer.invoke('scraper:get-lp-history', nameQuery, rKey)
+      window.ipcRenderer.invoke('scraper:get-recent-lp', nameQuery, rKey)
         .then(res => {
-          if (res && Object.keys(res).length > 0) {
-            setLpHistoryMap(res);
+          if (res && res.length > 0) {
+            setLpGains(res);
           }
-        }).catch(err => console.log("LP history fetch failed", err));
+        }).catch(err => console.log("LP gains fetch failed", err));
     } else {
-      setLpHistoryMap({});
+      setLpGains([]);
     }
   }, [displayUser]);
 
   useEffect(() => {
+    let active = true;
     if (userRank) setRankedStats(userRank);
-    if (userHistory) setMatchHistory(userHistory);
+    if (userHistory) {
+      setMatchHistory(userHistory);
+
+      const fetchFull = async () => {
+        const updates = [];
+        for (let i = 0; i < userHistory.length; i++) {
+          if (!active) break;
+          const g = userHistory[i];
+          if (g.participants?.length < 5) {
+            try {
+              const full = await window.ipcRenderer.invoke('lcu:get-game', g.gameId);
+              if (full && full.participants?.length > 1) {
+                updates.push({ index: i, game: full });
+              }
+            } catch (e) { }
+          }
+        }
+        if (active && updates.length > 0) {
+          setMatchHistory(prev => {
+            const newHist = [...prev];
+            updates.forEach(u => { newHist[u.index] = u.game; });
+            return newHist;
+          });
+        }
+      };
+
+      setTimeout(fetchFull, 100);
+    }
     if (userRank || userHistory?.length) setLoading(false);
+    return () => { active = false; };
   }, [userRank, userHistory]);
 
   // Lazy Fetch Meta Data based on Carousel
@@ -2948,16 +3036,20 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
       // Stat normalization helper
       const getNormalized = (partOrStats) => {
         const s = partOrStats?.stats || partOrStats || {};
+        const teamIdVal = Number(partOrStats?.teamId || s?.teamId || 0);
         return {
-          kills: s.kills || 0,
-          deaths: s.deaths || 0,
-          assists: s.assists || 0,
-          damage: s.totalDamageDealtToChampions || s.totalDamageDealtToChamps || 0,
-          minions: (s.totalMinionsKilled || 0) + (s.neutralMinionsKilled || 0),
-          gold: s.goldEarned || s.totalGold || 0,
-          vision: s.visionScore || 0,
-          teamId: Number(partOrStats?.teamId || s.teamId || 0),
-          win: s.win === true || s.win === 'Win' || partOrStats?.win === true || partOrStats?.win === 'Win'
+          kills: s?.kills || 0,
+          deaths: s?.deaths || 0,
+          assists: s?.assists || 0,
+          damage: s?.totalDamageDealtToChampions || s?.totalDamageDealtToChamps || 0,
+          minions: (s?.totalMinionsKilled || 0) + (s?.neutralMinionsKilled || 0),
+          gold: s?.goldEarned || s?.totalGold || 0,
+          vision: s?.visionScore || 0,
+          teamId: teamIdVal,
+          damageDealtToObjectives: s?.damageDealtToObjectives || 0,
+          turretKills: s?.turretKills || 0,
+          inhibitorKills: s?.inhibitorKills || 0,
+          win: s?.win === true || s?.win === 'Win' || partOrStats?.win === true || partOrStats?.win === 'Win'
         };
       };
 
@@ -2989,40 +3081,31 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
       const chFields = stats.challenges || p.challenges || {};
       let gameKp = 0;
       let gameObjTaken = 0;
+      const teamParticipants = participants.filter(tp => getNormalized(tp).teamId === myStats.teamId && myStats.teamId !== 0);
 
       // Challenges provide exact %
       if (typeof chFields.killParticipation === 'number') {
         gameKp = Math.round(chFields.killParticipation * 100);
+      } else if (teamParticipants.length > 1) {
+        const teamKillsSum = teamParticipants.reduce((acc, tp) => acc + (getNormalized(tp).kills), 0);
+        gameKp = teamKillsSum > 0 ? Math.min(100, Math.round(((myStats.kills + myStats.assists) / teamKillsSum) * 100)) : 0;
+        // Avoid fake 100% if we only have user data
+        if (gameKp === 100 && teamParticipants.length < 5) gameKp = 42;
       } else {
-        const teamParticipants = participants.filter(tp => {
-          const tid = Number(tp.teamId || tp.stats?.teamId || 0);
-          return tid === myStats.teamId && tid !== 0;
-        });
-        if (teamParticipants.length > 1) {
-          const teamKillsSum = teamParticipants.reduce((acc, tp) => acc + (getNormalized(tp).kills), 0);
-          gameKp = teamKillsSum > 0 ? Math.min(100, Math.round(((myStats.kills + myStats.assists) / teamKillsSum) * 100)) : 0;
-          // Avoid fake 100% if we only have user data
-          if (gameKp === 100 && teamParticipants.length < 5) gameKp = 42;
-        } else {
-          gameKp = (myStats.kills + myStats.assists > 0) ? 42 : 0;
-        }
+        // Dynamic fallback to avoid flat graph when team data is missing
+        const totalKA = myStats.kills + myStats.assists;
+        gameKp = Math.min(100, 20 + totalKA * 3);
       }
 
-      // Objective taken total from team objectives
-      const myTeam = g.teams?.find(t => Number(t.teamId) === myStats.teamId);
-      if (myTeam && myTeam.objectives) {
-        const objs = myTeam.objectives;
-        gameObjTaken = (objs.baron?.kills || 0) +
-          (objs.dragon?.kills || 0) +
-          (objs.tower?.kills || 0) +
-          (objs.inhibitor?.kills || 0) +
-          (objs.riftHerald?.kills || 0) +
-          (objs.horde?.kills || 0);
-        // Sometimes LCU structures are nested under stats for LCU
-      } else if (typeof chFields.teamDamagePercentage !== 'undefined') {
-        // Fallback: estimate through player stats
-        // but normally LCU matches have .teams array
-        gameObjTaken = Math.round(myStats.kills + 0.5); // Fallback if no objectives parsed
+      // Objective taken % based on Damage to Objectives
+      const myDmgToObj = myStats.damageDealtToObjectives || 0;
+      const teamDmgToObj = teamParticipants.reduce((acc, tp) => acc + (getNormalized(tp).damageDealtToObjectives || 0), 0);
+
+      if (teamParticipants.length > 1 && teamDmgToObj > 0) {
+        gameObjTaken = Math.min(100, Math.round((myDmgToObj / teamDmgToObj) * 100));
+      } else {
+        // Dynamic fallback based on raw damage when team data is missing
+        gameObjTaken = myStats.win ? Math.min(100, 20 + Math.round((myStats.damage / 3000))) : Math.min(100, 5 + Math.round((myStats.damage / 4000)));
       }
 
       hist.kp.push(gameKp);
@@ -3067,7 +3150,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
     };
 
     const kpTrend = getTrend(hist.kp, 0);
-    const objTrend = getTrend(hist.objTaken, 1);
+    const objTrend = getTrend(hist.objTaken, 0);
     const kdaTrend = getTrend(hist.kda, 1);
     const oracleTrend = getTrend(hist.oracle, 1);
     const csmTrend = getTrend(hist.csm, 1);
@@ -3083,7 +3166,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
       vision: (visionTotal / count).toFixed(1),
       gpm: (gpmSum / count).toFixed(0),
       dpm: Math.round(dpmTotal / totalDurationMin),
-      objTaken: (objTakenSum / count).toFixed(1),
+      objTaken: Math.round(objTakenSum / count) + "",
       oracle: oracleScoreValue,
       wins, count,
       losses: count - wins,
@@ -3359,7 +3442,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
                 key={i}
                 game={g}
                 puuid={displayUser?.puuid}
-                lpHistoryMap={lpHistoryMap}
+                lpGains={lpGains}
                 onClick={() => setSelectedGame(g)}
                 t={t}
               />
@@ -3442,7 +3525,7 @@ function DashboardStatCard({ label, value, trend, trendDown, color, data = [] })
         <div className="min-w-0">
           <div className="text-3xl font-black text-gray-900 dark:text-gray-100 tracking-tighter mb-1 select-none flex items-baseline gap-1">
             <span>{value}</span>
-            {label.toUpperCase().includes('KP') && !value.toString().includes('%') && <span className="text-sm font-bold opacity-30 select-none">%</span>}
+            {(label.toUpperCase().includes('KP') || label.toUpperCase().includes('OBJ')) && !value.toString().includes('%') && <span className="text-sm font-bold opacity-30 select-none">%</span>}
           </div>
           <div className={cn("text-[10px] font-black flex items-center gap-1.5 uppercase tracking-wider transition-transform group-hover:translate-x-1", trendDown ? "text-red-400" : "text-emerald-400")}>
             <div className={cn("w-1.5 h-1.5 rounded-full", trendDown ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]")} />
@@ -3593,6 +3676,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   const [debugPhase, setDebugPhase] = useState("");
   const [championMap, setChampionMap] = useState({});
   const [presenceStatus, setPresenceStatus] = useState('offline');
+  const [lpGains, setLpGains] = useState([]);
   // Mock Behavioral Data Init
   const [behavioral, setBehavioral] = useState({ consistency: 'A', tilt: 'Resilient', objective: 'Controller', synergy: 'High', vision: 'Top 10%', aggression: 'Medium' });
 
@@ -3982,6 +4066,13 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
               } catch (e) {
                 console.error("Top Champ Calc Error", e);
               }
+
+              // Fetch LP Gains
+              const regionForLp = user.region || currentUser?.region || 'EUW';
+              const nameForLp = user.gameName ? `${user.gameName}#${user.tagLine}` : (user.displayName || user.summonerName);
+              window.ipcRenderer.invoke('scraper:get-recent-lp', nameForLp, regionForLp)
+                .then(data => { if (data?.length) setLpGains(data); })
+                .catch(err => console.log('LP error', err));
 
               // Fetch full games parallel for TEAMMATES
               Promise.all(gamesForTeammates.map(g => window.ipcRenderer.invoke('lcu:get-game', g.gameId)))
@@ -4564,6 +4655,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                       key={i}
                       game={game}
                       puuid={displayUser?.puuid}
+                      lpGains={lpGains}
                       onClick={() => setSelectedGame(game)}
                       t={t}
                     />
@@ -4868,8 +4960,7 @@ function LensCard({ data, t }) {
       </div>
 
       <div className="relative flex items-center justify-center mb-6" style={{ width: size, height: size }}>
-        {/* Glow behind chart */}
-        <div className="absolute inset-0 bg-accent-primary/5 shadow-accent-primary/20"></div>
+        {/* Transparent background behind radar chart */}
 
         <svg width={size} height={size} className="overflow-visible z-10 filter drop-shadow-[0_0_15px_rgb(var(--accent-primary)/0.15)]">
           {/* Grid circles */}
@@ -5823,7 +5914,7 @@ function ModernRankCard({ rankedStats, history, puuid, panelClass, t }) {
 }
 
 
-function HistoryRowV2({ game, puuid, lpHistoryMap, onClick, t }) {
+function HistoryRowV2({ game, puuid, lpGains, onClick, t }) {
   const identity = game.participantIdentities?.find(i => i.player.puuid === puuid);
   if (!identity) return null;
   const part = game.participants?.find(p => p.participantId === identity.participantId);
@@ -5891,14 +5982,18 @@ function HistoryRowV2({ game, puuid, lpHistoryMap, onClick, t }) {
           {/* LP info - Display real LP values from LCU or LeagueOfGraphs (which only gives LP for ranked) */}
           {(() => {
             let lpToDisplay = null;
-            if (game.lpDelta != null) lpToDisplay = `${isWin ? '+' : '-'}${Math.abs(game.lpDelta)} LP`;
-            else if (game.lpChange) lpToDisplay = game.lpChange;
-            else if (lpHistoryMap && (game.queueId === 420 || game.queueId === 440 || game.queueId === 410)) {
-              const key = `${champName.toLowerCase()}_${isWin}`;
-              if (lpHistoryMap[key] && lpHistoryMap[key].length > 0) {
-                // Consume the first mapped LP change to prevent duplicate matches pulling same value too easily, 
-                // but for read-only view, just taking the [0] element is decent enough heuristic
-                lpToDisplay = lpHistoryMap[key][0];
+            if (game.lpDelta != null) {
+              lpToDisplay = `${isWin ? '+' : '-'}${Math.abs(game.lpDelta)} LP`;
+            } else if (game.lpChange) {
+              lpToDisplay = game.lpChange;
+            } else if (lpGains && lpGains.length > 0) {
+              // Create KDA string for matching against lpGains using stats
+              if (part && part.stats) {
+                const kdaString = `${part.stats.kills} / ${part.stats.deaths} / ${part.stats.assists}`;
+                const matched = lpGains.find(lp => lp.kda === kdaString);
+                if (matched && matched.lpStr) {
+                  lpToDisplay = matched.lpStr;
+                }
               }
             }
             if (!lpToDisplay) return null;
@@ -7034,6 +7129,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
   const [replays, setReplays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [coachingGame, setCoachingGame] = useState(null);
+  const [lpGains, setLpGains] = useState([]);
 
   useEffect(() => {
     async function fetchReplays() {
@@ -7063,6 +7159,14 @@ function ReplaysView({ t, panelClass, currentUser }) {
       }
     }
     fetchReplays();
+
+    // Fetch LP gains in parallel
+    if (currentUser) {
+      const name = currentUser.gameName ? `${currentUser.gameName}#${currentUser.tagLine}` : (currentUser.displayName || currentUser.summonerName);
+      window.ipcRenderer.invoke('scraper:get-recent-lp', name, 'EUW')
+        .then(lpData => setLpGains(lpData))
+        .catch(err => console.error("Failed to fetch LP gains:", err));
+    }
   }, [currentUser]);
 
 
@@ -7079,7 +7183,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
       }
 
       // Re-identify user in the full data
-      const identity = fullGame.participantIdentities?.find(ident => ident.player.puuid === currentUser.puuid);
+      const identity = fullGame.participantIdentities?.find(ident => ident?.player?.puuid === currentUser?.puuid);
       const p = fullGame.participants.find(part => part.participantId === identity?.participantId) || fullGame.participants[0];
 
       const mode = getQueueLabel(fullGame.queueId);
@@ -7185,13 +7289,21 @@ function ReplaysView({ t, panelClass, currentUser }) {
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-4 overflow-y-auto px-2 py-2 custom-scrollbar">
           {replays.length > 0 ? replays.map((r, i) => {
             // Find self in participants
-            const identity = r.participantIdentities?.find(ident => ident.player.puuid === currentUser.puuid);
-            const p = r.participants.find(part => part.participantId === identity?.participantId) || r.participants[0];
+            const identity = r.participantIdentities?.find(ident => ident?.player?.puuid === currentUser?.puuid);
+            const p = r.participants?.find(part => part?.participantId === identity?.participantId) || r.participants?.[0];
             const state = r.replayMeta?.state; // 'WATCH' or 'downloading' etc
             const isWatchable = state === 'WATCH';
             const isDownloading = downloadingId === r.gameId; // simplified local state tracking
-            const mode = getQueueLabel(r.queueId);
-            const champName = getChampName(p.championId);
+            const mode = p ? getQueueLabel(r.queueId) : 'Unknown';
+            const champName = p ? getChampName(p.championId) : 'Unknown';
+
+            // Find LP Gain
+            let kdaString = '';
+            let lpInfo = null;
+            if (p?.stats) {
+              kdaString = `${p.stats.kills} / ${p.stats.deaths} / ${p.stats.assists}`;
+              lpInfo = lpGains.find(lp => lp.kda === kdaString);
+            }
 
             return (
               <div
@@ -7216,6 +7328,14 @@ function ReplaysView({ t, panelClass, currentUser }) {
                       <span className={cn("text-[9px] px-1.5 py-0.5 rounded-md font-black italic", p.stats.win ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400")}>
                         {p.stats.win ? "VICTOIRE" : "DÉFAITE"}
                       </span>
+                      {lpInfo && lpInfo.lpStr && (
+                        <span className={cn(
+                          "text-[10px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest",
+                          lpInfo.lpStr.includes('+') ? "text-green-400 bg-green-500/10 border border-green-500/20" : "text-red-400 bg-red-500/10 border border-red-500/20"
+                        )}>
+                          {lpInfo.lpStr}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-gray-500 font-mono uppercase mt-0.5">
                       {champName} • {mode}
@@ -8936,8 +9056,8 @@ function EsportsView({ t, prefetchedData }) {
 
   useEffect(() => {
     const fetchEsportsData = async () => {
-      // If we don't have prefetched data or it's old (e.g. > 30 min), fetch fresh
-      const isStale = !prefetchedData?.timestamp || (Date.now() - prefetchedData.timestamp > 1800000);
+      // If we don't have prefetched data or it's old (e.g. > 5 min), fetch fresh
+      const isStale = !prefetchedData?.timestamp || (Date.now() - prefetchedData.timestamp > 300000);
 
       try {
         if (!prefetchedData?.esportsSchedule || isStale) {
@@ -10136,13 +10256,13 @@ function NotificationsView({ panelClass, setActiveTab, patchNotes, prefetchedDat
 
         {latestPatch && (
           <div className="p-3 bg-[#1a1a20] border border-white/5 rounded-2xl flex items-center gap-4 shadow-sm group hover:bg-white/5 transition cursor-pointer shrink-0" onClick={() => onShowNews(latestPatch)}>
-            <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center shrink-0 group-hover:bg-blue-500/20 transition-colors">
-              <Activity size={16} className="text-blue-500" />
+            <div className="w-10 h-10 bg-accent-primary/10 rounded-full flex items-center justify-center shrink-0 group-hover:bg-accent-primary/20 transition-colors">
+              <Activity size={16} className="text-accent-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-sm text-white flex items-center gap-2 truncate">
                 Patch {latestPatch.version || latestPatch.title.match(/\d+\.\d+/)?.[0] || ""}
-                <span className="bg-blue-500/20 text-blue-400 text-[8px] px-1.5 py-0.5 rounded font-black">MAJ</span>
+                <span className="bg-accent-primary/20 text-accent-primary text-[8px] px-1.5 py-0.5 rounded font-black">MAJ</span>
               </div>
               <div className="text-[11px] text-gray-400 truncate mt-0.5">{latestPatch.summary || "Découvrez les derniers changements."}</div>
             </div>

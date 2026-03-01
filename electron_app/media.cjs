@@ -52,7 +52,10 @@ function getSpotifyTrack() {
                     return resolve({ title: 'En pause', artist: 'Spotify', isPlaying: false, cover: null });
                 }
 
-                let cover = null;
+                let cover = data.cover || null;
+
+                // Fallback / primary check on iTunes to ensure accurate artwork
+                // Windows sometimes passes a very low resolution or generic executable icon
                 try {
                     const searchUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(data.artist + ' ' + data.title)}&entity=song&limit=1`;
                     const itunesRes = await fetch(searchUrl);
