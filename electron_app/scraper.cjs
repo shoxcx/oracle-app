@@ -6,6 +6,7 @@ class Scraper {
         this.processing = false;
         this.statsCache = new Map();
         this.dataCache = new Map(); // New cache for Esports, Meta, Patch Notes etc.
+        this.searchPromises = new Map(); // Deduplication
 
         // Simple File Cache
         this.fs = require('fs');
@@ -136,33 +137,51 @@ class Scraper {
     }
 
     async searchSummoner(nameQuery, region = 'EUW') {
-        this.logToFile(`[SuperScraper] Starting search for ${nameQuery} [${region}]`);
-        console.log(`[SuperScraper] Starting search for ${nameQuery} [${region}]`);
+        const cacheKey = `${nameQuery}-${region}`;
+        if (this.searchPromises.has(cacheKey)) {
+            this.logToFile(`[SuperScraper] Joining existing search for ${nameQuery} [${region}]`);
+            console.log(`[SuperScraper] Joining existing search for ${nameQuery} [${region}]`);
+            return this.searchPromises.get(cacheKey);
+        }
 
-        // 1. Try OP.GG (Standard for Global)
-        let result = await this.tryProvider(this.scrapeOPGG.bind(this), nameQuery, region, "OP.GG");
-        if (result) return result;
+        const runSearch = async () => {
+            this.logToFile(`[SuperScraper] Starting search for ${nameQuery} [${region}]`);
+            console.log(`[SuperScraper] Starting search for ${nameQuery} [${region}]`);
 
-        // 2. Try LeagueOfGraphs (Good backup)
-        result = await this.tryProvider(this.scrapeLOG.bind(this), nameQuery, region, "LeagueOfGraphs");
-        if (result) return result;
+            // 1. Try OP.GG (Standard for Global)
+            let result = await this.tryProvider(this.scrapeOPGG.bind(this), nameQuery, region, "OP.GG");
+            if (result) return result;
 
-        // 3. Try DeepLol (Fast fallback)
-        result = await this.tryProvider(this.scrapeDeepLol.bind(this), nameQuery, region, "DeepLol");
-        if (result) return result;
+            // 2. Try LeagueOfGraphs (Good backup)
+            result = await this.tryProvider(this.scrapeLOG.bind(this), nameQuery, region, "LeagueOfGraphs");
+            if (result) return result;
 
-        // 4. Try U.GG (Last resort)
-        result = await this.tryProvider(this.scrapeUGG.bind(this), nameQuery, region, "U.GG");
-        if (result) return result;
+            // 3. Try DeepLol (Fast fallback)
+            result = await this.tryProvider(this.scrapeDeepLol.bind(this), nameQuery, region, "DeepLol");
+            if (result) return result;
 
-        this.logToFile("[SuperScraper] All providers failed");
-        console.log("[SuperScraper] All providers failed");
-        return null;
+            // 4. Try U.GG (Last resort)
+            result = await this.tryProvider(this.scrapeUGG.bind(this), nameQuery, region, "U.GG");
+            if (result) return result;
+
+            this.logToFile("[SuperScraper] All providers failed");
+            console.log("[SuperScraper] All providers failed");
+            return null;
+        };
+
+        const promise = runSearch();
+        this.searchPromises.set(cacheKey, promise);
+
+        try {
+            return await promise;
+        } finally {
+            this.searchPromises.delete(cacheKey);
+        }
     }
 
     // --- OP.GG IMPLEMENTATION ---
     async scrapeOPGG(nameQuery, region) {
-        const { gameName, tagLine, slug } = this.parseName(nameQuery);
+        const { gameName, tagLine, slug } = this.parseName(nameQuery, region);
         const opRegion = region.toLowerCase();
         const url = `https://www.op.gg/summoners/${opRegion}/${slug.replace('%20', '+')}`;
 
@@ -252,7 +271,7 @@ class Scraper {
         };
         // Fallback for regions not mapped
         const regionKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase() + '1';
-        const { gameName, tagLine, slug } = this.parseName(nameQuery);
+        const { gameName, tagLine, slug } = this.parseName(nameQuery, region);
         // U.GG URL format
         const url = `https://u.gg/lol/profile/${regionKey}/${slug}/overview`;
 
@@ -350,13 +369,16 @@ class Scraper {
             'JP': 'jp', 'PH': 'ph', 'SG': 'sg', 'TH': 'th', 'TW': 'tw', 'VN': 'vn'
         };
         const regionKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
-        const { slug } = this.parseName(nameQuery);
+        let { slug } = this.parseName(nameQuery);
+        if (!nameQuery.includes('#')) {
+            slug = encodeURIComponent(this.parseName(nameQuery).gameName) + `-${region.toLowerCase()}`;
+        }
         // Ensure slug is clean for URL
         const url = `https://www.leagueofgraphs.com/summoner/${regionKey}/${slug}`;
 
         return this.runBrowserTask(url, async (win) => {
             // Wait for header name OR 404 text
-            const status = await this.waitForSelector(win, '.summoner_name, #headerSummonerName, .best-league');
+            const status = await this.waitForSelector(win, '.summoner_name, #headerSummonerName, .best-league, .pageBanner h2');
 
             if (status !== 'READY') {
                 // Check if it's a 404 / Not Found page
@@ -380,15 +402,31 @@ class Scraper {
                 (() => {
                     try {
                         const clean = t => t ? t.innerText.trim() : "";
-                        const nameEl = document.querySelector('.summoner_name') || document.querySelector('#headerSummonerName');
-                        if (!nameEl) return { error: "Name element not found" };
+                        let nameEl = document.querySelector('.summoner_name') || document.querySelector('#headerSummonerName') || document.querySelector('.pageBanner h2') || document.querySelector('h2');
+                        
+                        let nameFull = nameEl ? clean(nameEl) : "";
+                        let name = nameFull.split('#')[0] || nameFull; 
+                        let tag = nameFull.includes('#') ? nameFull.split('#')[1] : "";
+                        
+                        if (!nameEl || !name || name.includes("Your Use of Our Content") || document.title.includes("Your Use of Our Content")) {
+                            // Fallback to title: "SummonerName#Tag (Region) - LeagueOfGraphs"
+                            if (document.title.includes(" LeagueOfGraphs") || document.title.includes("League of Graphs")) {
+                                const titleMatch = document.title.match(/^(.*?)(?:\\s*\\((?:.*?)\\))?\\s*-/);
+                                if (titleMatch && !titleMatch[1].includes("Your Use of Our Content")) {
+                                    nameFull = titleMatch[1].trim();
+                                    name = nameFull.split('#')[0] || nameFull;
+                                    tag = nameFull.includes('#') ? nameFull.split('#')[1] : "";
+                                } else {
+                                    return { error: "GDPR or Challenge page blocked extraction: " + document.title };
+                                }
+                            } else {
+                                return { error: "GDPR or Challenge page blocked extraction: " + document.title };
+                            }
+                        }
 
-                        const nameFull = clean(nameEl);
-                        let name = nameFull.split(' #')[0] || nameFull; 
-                        let tag = nameFull.split(' #')[1] || "";
-                        if (!tag) {
+                        if (!tag && nameEl) {
                              // Try getting tag from sub-span if structure differs
-                             const tagSpan = nameEl.querySelector('span.produce-tag'); 
+                             const tagSpan = nameEl.querySelector('.tag, .produce-tag') || document.querySelector('.pageBanner .tag'); 
                              if(tagSpan) tag = clean(tagSpan).replace('#','');
                         }
                         
@@ -444,8 +482,10 @@ class Scraper {
     // --- DEEPLOL IMPLEMENTATION ---
     async scrapeDeepLol(nameQuery, region) {
         // DeepLol uses simple /summoner/REGION/Name-Tag
-        const { slug } = this.parseName(nameQuery);
-        const url = `https://www.deeplol.gg/summoner/${region.toUpperCase()}/${slug}`;
+        const REGION_MAP = { 'EUW': 'EUW', 'NA': 'NA', 'KR': 'KR', 'EUNE': 'EUNE', 'BR': 'BR', 'TR': 'TR', 'LAS': 'LA2', 'LAN': 'LA1', 'OCE': 'OC1', 'JP': 'JP1' };
+        const rKey = REGION_MAP[region.toUpperCase()] || 'EUW';
+        const { gameName, tagLine } = this.parseName(nameQuery, region);
+        const url = `https://www.deeplol.gg/summoner/${rKey}/${encodeURIComponent(gameName)}-${encodeURIComponent(tagLine || region)}`;
 
         return this.runBrowserTask(url, async (win) => {
             const status = await this.waitForSelector(win, '.summoner-name');
@@ -487,14 +527,18 @@ class Scraper {
 
     // --- HELPERS ---
 
-    parseName(nameQuery) {
+    parseName(nameQuery, region = null) {
         let gameName = (nameQuery || "").trim();
         let tagLine = '';
         if (gameName.includes('#')) {
             const parts = gameName.split('#');
             gameName = parts[0].trim();
             tagLine = parts[1].trim();
+        } else if (region) {
+            // Default to region tag if missing, most players who just type names use their region as tag since the Riot ID change
+            tagLine = region;
         }
+
         let slug = encodeURIComponent(gameName);
         if (tagLine) slug += `-${encodeURIComponent(tagLine)}`;
         return { gameName, tagLine, slug };
@@ -541,22 +585,28 @@ class Scraper {
         });
     }
 
-    async waitForSelector(win, selector) {
+    async waitForSelector(win, selector, customAttempts = 100) {
         let attempts = 0;
-        while (attempts < 15) {
+        while (attempts < customAttempts) {
             if (win.isDestroyed()) return 'DESTROYED';
             const res = await win.webContents.executeJavaScript(`
                 (() => {
-                    const txt = document.body.innerText;
-                    if(document.title.includes('Not Found') || txt.includes('Summoner not found')) return 'NOT_FOUND';
-                    if(document.querySelector('${selector}')) return 'READY';
-                    return 'WAITING';
+                    try {
+                        const txt = document.body ? document.body.innerText : "";
+                        if(document.title.includes('Not Found') || (txt && txt.includes('Summoner not found'))) return 'NOT_FOUND';
+                        if(document.querySelector('${selector}')) return 'READY';
+                        return 'WAITING';
+                    } catch(e) { return 'ERROR'; }
                 })()
-            `).catch(() => 'ERROR');
+            `).catch(e => {
+                // Ignore transient navigation errors
+                return 'ERROR';
+            });
 
             if (res === 'READY' || res === 'NOT_FOUND') return res;
-            if (res === 'ERROR') return 'ERROR';
-            await new Promise(r => setTimeout(r, 100)); // Faster polling
+            // Removed: if (res === 'ERROR') return 'ERROR'; -> Continue retrying!
+
+            await new Promise(r => setTimeout(r, 150));
             attempts++;
         }
         return 'TIMEOUT';
@@ -850,10 +900,55 @@ class Scraper {
                 const data = await win.webContents.executeJavaScript(`
                     (() => {
                         try {
-                            const html = document.documentElement.innerHTML;
-                            const match = html.match(/window\\.__SSR_DATA__\\s*=\\s*({.*?});/s);
-                            if (!match) return null;
-                            const ssr = JSON.parse(match[1]);
+                            const str = document.documentElement.innerHTML;
+                            let start = str.indexOf('__SSR_DATA__ = {');
+                            if (start === -1) start = str.indexOf('window.__SSR_DATA__ = {');
+                            if (start !== -1) {
+                                start = str.indexOf('{', start);
+                                let braceCount = 0;
+                                let end = -1;
+                                let inString = false;
+                                let escape = false;
+
+                                for(let i=start; i<str.length; i++) {
+                                    let c = str[i];
+                                    if (escape) {
+                                        escape = false;
+                                        continue;
+                                    }
+                                    if (c === '\\\\') {
+                                        escape = true;
+                                        continue;
+                                    }
+                                    if (c === '"') {
+                                        inString = !inString;
+                                        continue;
+                                    }
+
+                                    if (!inString) {
+                                        if (c === '{') braceCount++;
+                                        else if (c === '}') {
+                                            braceCount--;
+                                            if (braceCount === 0) {
+                                                end = i + 1;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (end !== -1) {
+                                    let jsonStr = str.substring(start, end);
+                                    ssr = JSON.parse(jsonStr);
+                                }
+                            }
+                            
+                            if (!ssr) {
+                                const match = str.match(/window\\.__SSR_DATA__\\s*=\\s*({.*?});/s);
+                                if (!match) return null;
+                                ssr = JSON.parse(match[1]);
+                            }
+
                             const key = Object.keys(ssr).find(k => k.includes('overview') && k.includes('world') && k.includes('recommended'));
                             if (!key || !ssr[key]?.data) return null;
                             const buildObj = ssr[key].data;
@@ -869,7 +964,7 @@ class Scraper {
                                     pickRate: "Meta", 
                                     tier: build.win_rate > 51.5 ? "S" : (build.win_rate > 49.5 ? "A" : "B")
                                 },
-                                skillOrder: build.rec_skills?.slots || build.rec_skill_path?.slots?.slice(0,3) || ["Q", "W", "E"],
+                                skillOrder: build.rec_skill_path?.slots || build.rec_skills?.slots || ["Q", "W", "E"],
                                 items: {
                                     starting: (build.rec_starting_items?.ids || ["1056", "2003"]).map(String),
                                     core: (build.rec_core_items?.ids || ["3118", "3020", "4645"]).map(String),
@@ -1643,11 +1738,19 @@ class Scraper {
 
                 const games = await win.webContents.executeJavaScript(`
                     (() => {
-                        const rows = Array.from(document.querySelectorAll('.recentGamesTable tbody tr')).slice(0, 10);
+                        const clean = t => t ? t.innerText.trim() : "";
+                        
+                        let rows = Array.from(document.querySelectorAll('.recentGamesTable tbody tr'));
+                        // Filter to valid game rows only (must contain kills stats or match specific structure)
+                        rows = rows.filter(r => r.querySelector('.kills') && r.querySelector('.deaths'));
+                        rows = rows.slice(0, 15); // get up to 15 recent games
+
                         return rows.map((row, idx) => {
-                            const clean = t => t ? t.innerText.trim() : "";
-                            const isWin = row.className.includes('won');
-                            const champImg = row.querySelector('.page_summoner_recent_game_champion img');
+                            // Win or loss
+                            const vicDefEl = row.querySelector('.victoryDefeatText');
+                            const isWin = vicDefEl ? clean(vicDefEl).toLowerCase() === 'victory' || vicDefEl.classList.contains('victory') : false;
+                            
+                            const champImg = row.querySelector('.page_summoner_recent_game_champion img') || row.querySelector('img[alt]');
                             const champName = champImg ? champImg.alt : "Unknown";
                             
                             // KDA
@@ -1655,22 +1758,32 @@ class Scraper {
                             const deaths = parseInt(clean(row.querySelector('.deaths'))) || 0;
                             const assists = parseInt(clean(row.querySelector('.assists'))) || 0;
                             
-                            // Real CS
-                            const csEl = row.querySelector('.minions');
-                            const csText = clean(csEl); // e.g. "185 (7.5)"
-                            const cs = parseInt(csText.split(' ')[0]) || 0;
+                            // CS
+                            let cs = 0;
+                            const csSpan = row.querySelector('.cs span.number') || row.querySelector('.cs .number') || row.querySelector('.cs');
+                            if (csSpan) {
+                                cs = parseInt(clean(csSpan)) || 0;
+                            }
 
                             // Real Level
                             const lvlEl = row.querySelector('.level');
                             const level = parseInt(clean(lvlEl)) || 1;
 
-                            // KP (Kill Participation) - Useful for synergy
+                            // KP (Kill Participation)
                             const kpEl = row.querySelector('.killParticipation'); // e.g. "45%"
                             const kp = kpEl ? (parseInt(clean(kpEl).replace('%','')) || 0) : 0;
 
-                            const duration = clean(row.querySelector('.game_duration')); // "25:30"
-                            const durationSec = duration.split(':').reduce((acc, time) => (60 * acc) + +time, 0) || 1200;
-                            
+                            const duration = clean(row.querySelector('.gameDuration') || row.querySelector('.game_duration')) || "25:30"; 
+                            const dMatch = duration.match(/(?:(\\d+)h\\s*)?(?:(\\d+)m(?:in)?\\s*)?(?:(\\d+)s)?/);
+                            let durationSec = 1500;
+                            if (dMatch) {
+                                const h = parseInt(dMatch[1] || 0);
+                                const m = parseInt(dMatch[2] || 0);
+                                const s = parseInt(dMatch[3] || 0);
+                                if (h || m || s) durationSec = (h * 3600) + (m * 60) + s;
+                                else durationSec = duration.split(':').reduce((acc, time) => (60 * acc) + +time, 0) || 1200;
+                            }
+
                             const gameId = 2000000 + idx;
 
                             const lpSpan = Array.from(row.querySelectorAll('span, div')).find(el => el.innerText && el.innerText.includes('LP'));
@@ -1681,84 +1794,149 @@ class Scraper {
                             }
 
                             // Heuristic to guess Gold from CS/Kills (Better than random)
-                        const estGold = (cs * 21) + (kills * 300) + (assists * 100) + (durationSec * 2.5);
-                        // Mock opponent stats to be slightly different so Gold Diff isn't always 0
-                        const opGold = Math.floor(estGold * (isWin ? 0.85 : 1.15));
-                        const opKills = Math.max(0, deaths + (isWin ? -1 : 1));
-                        const opDeaths = Math.max(0, kills + (isWin ? 1 : -1));
-                        const opAssists = Math.max(0, 5 + (isWin ? -2 : 2));
+                            const estGold = (cs * 21) + (kills * 300) + (assists * 100) + (durationSec * 2.5);
 
-                        const myPart = {
-                            participantId: 1,
-                            championId: 0,
-                            championName: champName,
-                            teamId: isWin ? 100 : 200,
-                            stats: {
-                                win: isWin,
-                                kills, deaths, assists,
-                                totalMinionsKilled: cs, 
-                                neutralMinionsKilled: 0,
-                                visionScore: Math.floor(durationSec / 60 * 0.7), 
-                                goldEarned: Math.floor(estGold),
-                                totalDamageDealtToChampions: Math.floor(estGold * 1.5), 
-                                champLevel: level
-                            },
-                            timeline: { lane: "MIDDLE", role: "SOLO" },
-                            kp: kp 
-                        };
+                            // Parse real participants from the rows
+                            let parsedPlayers = [];
+                            try {
+                                const columns = Array.from(row.querySelectorAll('.summonersTdLight .summoners > div.summonerColumn')); 
+                                
+                                let userTeam = 100; // default 1st column
+                                columns.forEach((col, colIdx) => {
+                                    if (col.querySelector('.selected')) {
+                                        userTeam = colIdx === 0 ? 100 : 200;
+                                    }
+                                });
 
-                        const opPart = {
-                            participantId: 6,
-                            championId: 1,
-                            championName: "Enemy",
-                            teamId: isWin ? 200 : 100,
-                            stats: {
-                                win: !isWin,
-                                kills: opKills, deaths: opDeaths, assists: opAssists,
-                                totalMinionsKilled: Math.floor(cs * (isWin ? 0.9 : 1.1)),
-                                neutralMinionsKilled: 0,
-                                visionScore: Math.max(5, Math.floor(durationSec / 60 * 0.5)),
-                                goldEarned: opGold,
-                                totalDamageDealtToChampions: Math.floor(opGold * 1.2)
-                            },
-                            timeline: { lane: "MIDDLE", role: "SOLO" }
-                        };
+                                let pIndex = 1;
+                                columns.forEach((col, colIdx) => {
+                                    const teamId = colIdx === 0 ? 100 : 200;
+                                    const pWin = (teamId === userTeam) ? isWin : !isWin;
+                                    
+                                    const entries = Array.from(col.querySelectorAll('.img-align-block-right, .img-align-block, .selected, :scope > a'));
+                                    
+                                    entries.forEach(el => {
+                                        let pName = "Unknown";
+                                        let pChamp = "Unknown";
+                                        
+                                        const imgEl = el.querySelector('img');
+                                        if(imgEl) {
+                                            pChamp = imgEl.getAttribute('title') || imgEl.alt || "Unknown";
+                                        }
 
-                        const participation = kills + assists;
-                        let teamKills = participation;
-                        if (kp > 0) teamKills = Math.floor(participation / (kp / 100));
-                        if(teamKills < participation) teamKills = participation;
+                                        const txtEl = el.querySelector('.txt a');
+                                        if (txtEl) {
+                                            pName = clean(txtEl);
+                                        } else {
+                                            const iconDiv = el.querySelector('.championIcon');
+                                            if (iconDiv && iconDiv.getAttribute('tooltip')) {
+                                                pName = iconDiv.getAttribute('tooltip').replace(/<\\/?[^>]+(>|$)/g, "").trim();
+                                            } else {
+                                                const link = el.nodeName === 'A' ? el : el.querySelector('a');
+                                                if(link && link.href) {
+                                                    const spl = link.href.split('/summoner/');
+                                                    if(spl[1]) {
+                                                        const dec = decodeURIComponent(spl[1].split('/')[1] || spl[1].split('/')[0]);
+                                                        pName = dec.replace('-', '#');
+                                                    }
+                                                }
+                                            }
+                                        }
 
-                        const remainingKills = Math.max(0, teamKills - kills);
-                        
-                        const teammates = [2,3,4,5].map(id => ({
-                            participantId: id,
-                            teamId: isWin ? 100 : 200,
-                            stats: { 
-                                kills: Math.floor(remainingKills / 4), 
-                                assists: Math.floor(teamKills / 2), 
-                                deaths: 5, 
-                                goldEarned: 8000 
+                                        // If this is the searched user, use exact scraped stats, otherwise use defaults
+                                        const isSelected = el.classList.contains('selected') || !!el.querySelector('.selected');
+
+                                        const stats = {
+                                            win: pWin,
+                                            kills: (isSelected ? kills : (pWin ? 5 : 2)),
+                                            deaths: (isSelected ? deaths : (pWin ? 2 : 5)),
+                                            assists: (isSelected ? assists : (pWin ? 8 : 4)),
+                                            totalMinionsKilled: (isSelected ? cs : 100),
+                                            neutralMinionsKilled: 0,
+                                            totalDamageDealtToChampions: (isSelected ? 15000 : 10000),
+                                            visionScore: (isSelected ? Math.floor(durationSec / 60 * 0.7) : 10),
+                                            goldEarned: (isSelected ? estGold : 8000),
+                                            champLevel: (isSelected ? level : 12)
+                                        };
+
+                                        parsedPlayers.push({
+                                            participantId: pIndex,
+                                            teamId: teamId,
+                                            championName: pChamp,
+                                            stats: stats,
+                                            puuid: isSelected ? "${puuid}" : ("ext~" + encodeURIComponent(pName) + "~${region}"),
+                                            summonerName: pName,
+                                            kp: isSelected ? kp : 0
+                                        });
+
+                                        pIndex++;
+                                    });
+                                });
+                            } catch (err) {
+                                console.error("[Scraper] Participant extraction failed", err);
+                                parsedPlayers = [{ participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: "${puuid}", summonerName: "${name}", kp: kp, playerError: err.message }];
                             }
-                        }));
 
-                            const gameCreation = Date.now() - (idx * 24 * 60 * 60 * 1000); 
+                            // Fallback if parsing failed
+                            if(parsedPlayers.length === 0) {
+                                parsedPlayers = [
+                                    { participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: "${puuid}", summonerName: "${name}", kp: kp, playerError: "None found in DOM" }
+                                ];
+                            }
+
+                            const participants = parsedPlayers.map(p => ({
+                                participantId: p.participantId,
+                                championId: 0,
+                                championName: p.championName,
+                                teamId: p.teamId,
+                                puuid: p.puuid,
+                                stats: p.stats,
+                                timeline: { lane: "MIDDLE", role: "SOLO" },
+                                kp: p.kp,
+                                playerError: p.playerError
+                            }));
+
+                            const participantIdentities = parsedPlayers.map(p => ({
+                                participantId: p.participantId,
+                                player: { summonerName: p.summonerName, puuid: p.puuid }
+                            }));
+
+                            let gameCreation = Date.now();
+                            const dateStr = clean(row.querySelector('.gameDate')).toLowerCase();
+                            const matchNum = dateStr.match(/(\\d+)\\s*(hour|day|month|year|minute|second)/);
+                            if (matchNum) {
+                                const val = parseInt(matchNum[1]);
+                                const unit = matchNum[2];
+                                if (unit.includes('hour')) gameCreation -= val * 3600 * 1000;
+                                else if (unit.includes('day')) gameCreation -= val * 24 * 3600 * 1000;
+                                else if (unit.includes('month')) gameCreation -= val * 30 * 24 * 3600 * 1000;
+                                else if (unit.includes('year')) gameCreation -= val * 365 * 24 * 3600 * 1000;
+                                else if (unit.includes('minute')) gameCreation -= val * 60 * 1000;
+                                else if (unit.includes('second')) gameCreation -= val * 1000;
+                            } else {
+                                gameCreation -= (idx * 24 * 3600 * 1000); 
+                            }
+                            
+                            let queueId = 400; // Normal Draft default
+                            const gmStr = clean(row.querySelector('.gameMode')).toLowerCase();
+                            if (gmStr.includes('solo') || gmStr.includes('duo')) queueId = 420;
+                            else if (gmStr.includes('flex')) queueId = 440;
+                            else if (gmStr.includes('aram')) queueId = 450;
+                            else if (gmStr.includes('arena')) queueId = 1700;
+                            else if (gmStr.includes('bot') || gmStr.includes('intro')) queueId = 830;
+                            else if (gmStr.includes('clash')) queueId = 700;
 
                             return {
                                 gameId,
                                 lpChange,
+                                queueId,
                                 gameDuration: durationSec,
                                 gameCreation,
-                                participants: [myPart, opPart, ...teammates],
-                                participantIdentities: [
-                                    { participantId: 1, player: { summonerName: "${name}", puuid: "${puuid}" } },
-                                    { participantId: 2, player: { summonerName: "Ally1", puuid: "a1" } },
-                                    { participantId: 3, player: { summonerName: "Ally2", puuid: "a2" } },
-                                    { participantId: 4, player: { summonerName: "Ally3", puuid: "a3" } },
-                                    { participantId: 5, player: { summonerName: "Ally4", puuid: "a4" } },
-                                    { participantId: 6, player: { summonerName: "Opponent", puuid: "opp" } }
-                                ],
-                                isExternal: true
+                                participants: participants,
+                                participantIdentities: participantIdentities,
+                                isExternal: true,
+                                region: '${region}',
+                                platformId: '${region}'
                             };
                         });
                     })()
@@ -1927,7 +2105,15 @@ class Scraper {
                 await new Promise(r => setTimeout(r, 5000));
 
                 const data = await win.webContents.executeJavaScript(`
-                    (() => {
+                    (async () => {
+                        try {
+                            const reveals = Array.from(document.querySelectorAll('*')).filter(el => el.innerText && el.innerText.trim().toUpperCase() === 'CLICK TO REVEAL');
+                            for (const btn of reveals) {
+                                try { btn.click(); } catch(e){}
+                            }
+                            if (reveals.length > 0) await new Promise(r => setTimeout(r, 2000));
+                        } catch (e) {}
+
                         const clean = t => t ? t.innerText.trim() : "";
                         const results = [];
                         const seenMatches = new Set();
@@ -1941,19 +2127,35 @@ class Scraper {
                         indicators.forEach(ind => {
                             let container = ind;
                             let limit = 8;
+                            let found = false;
                             while(container && limit > 0) {
-                                if (container.innerText.length > 30 && container.innerText.length < 600) {
-                                    if (container.innerText.match(/\\d{1,2}:\\d{2}/) || container.querySelectorAll('img').length >= 1) {
+                                if (container.innerText.length > 20 && container.innerText.length < 400) {
+                                    if (container.innerText.match(/\\d{1,2}:\\d{2}/) || container.innerText.includes('LIVE')) {
+                                        found = true;
                                         break;
                                     }
                                 }
                                 container = container.parentElement;
                                 limit--;
                             }
+                            
+                            if (!found) {
+                                container = ind;
+                                for(let i=0; i<4; i++) {
+                                    if(container.parentElement) container = container.parentElement;
+                                }
+                            }
+
                             if (!container) return;
 
                             const text = container.innerText || "";
-                            if (text.includes('FINAL') && !text.includes('Today')) return;
+                            if (text.match(/\\bFINAL\\b/i) && !text.match(/\\bFINALS\\b/i)) return;
+                            if (text.toUpperCase().includes('VOD')) return;
+                            if (text.match(/(^|\\n)\\s*[0-5]\\s*-\\s*[0-5]\\s*($|\\n)/)) return;
+                            
+                            // A match is either LIVE or has a scheduled time block. 
+                            // If it lacks both, it's a finished match where time was hidden by "Click to reveal spoilers"
+                            if (!text.toUpperCase().includes('LIVE') && !text.match(/\\d{1,2}:\\d{2}/)) return;
 
                             const lines = text.split('\\n').map(l => l.trim()).filter(l => l.length >= 2 && l.length < 30);
                             const textTeams = lines.filter(l => 
@@ -2028,7 +2230,9 @@ class Scraper {
                                 dateLimit--;
                             }
 
-                            if (date.match(/2[0-6]\\s+(Jan|jan)/)) return;
+                            if (date.match(/\\b([1-9]|1[0-9]|2[0-9]|3[0-1])\\s+(Jan|Feb|jan|fev|fév)\\b/i)) {
+                                if (!date.match(/Mar/i) && new Date().getMonth() >= 2) return; 
+                            }
 
                             let time = "TBD";
                             const timeMatch = text.match(/(\d{1,2}:\d{2})/);

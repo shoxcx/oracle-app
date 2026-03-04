@@ -2,6 +2,26 @@ const { app, BrowserWindow, ipcMain, globalShortcut, screen, shell } = require('
 const path = require('path');
 const fs = require('fs');
 
+process.on('uncaughtException', (err) => {
+    if (err.code === 'EPIPE') {
+        // Ignore broken pipe errors which can crash the app when console.log/warn writes to a closed stdout
+        return;
+    }
+    console.error('Uncaught Exception:', err);
+});
+
+// Ignore stdout and stderr EPIPE errors
+if (process.stdout && process.stdout.on) {
+    process.stdout.on('error', (err) => {
+        if (err.code !== 'EPIPE') console.error('stdout error:', err);
+    });
+}
+if (process.stderr && process.stderr.on) {
+    process.stderr.on('error', (err) => {
+        if (err.code !== 'EPIPE') console.error('stderr error:', err);
+    });
+}
+
 // Allow self-signed certs for LCU
 app.commandLine.appendSwitch('ignore-certificate-errors');
 // Add local relative imports
@@ -16,7 +36,7 @@ let draftWindow;
 let toastWindow;
 let voiceWindow; // New Voice Assistant Window
 let musicWindow; // Music Overlay
-let skillsWindow; // Skills Overlay
+let ingameWindow; // InGame Helper Overlay
 
 const media = require('./media.cjs');
 
@@ -307,21 +327,21 @@ ipcMain.handle('window:toggle-music', (e, enable) => {
     }
 });
 
-function createSkillsWindow() {
-    if (skillsWindow) return;
+function createInGameWindow() {
+    if (ingameWindow) return;
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
-    skillsWindow = new BrowserWindow({
-        width: 320,
-        height: 120, // compact overlay
-        x: width - 340,
-        y: height - 420, // Bottom right, above minimap
+    ingameWindow = new BrowserWindow({
+        width: 380,
+        height: 600, // taller overlay
+        x: width - 400,
+        y: (height - 600) / 2, // Middle right
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
             webSecurity: false
         },
-        title: 'Oracle Skills',
+        title: 'Oracle InGame',
         backgroundColor: '#00000000',
         show: false,
         frame: false,
@@ -334,26 +354,26 @@ function createSkillsWindow() {
         type: 'toolbar'
     });
 
-    skillsWindow.setIgnoreMouseEvents(true);
+    ingameWindow.setIgnoreMouseEvents(true);
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-    const url = isDev ? 'http://localhost:5173?mode=skills' : `file://${path.join(__dirname, '../dist/index.html')}?mode=skills`;
+    const url = isDev ? 'http://localhost:5173?mode=ingame' : `file://${path.join(__dirname, '../dist/index.html')}?mode=ingame`;
 
-    skillsWindow.loadURL(url);
-    skillsWindow.setAlwaysOnTop(true, 'screen-saver');
+    ingameWindow.loadURL(url);
+    ingameWindow.setAlwaysOnTop(true, 'screen-saver');
 
-    skillsWindow.on('closed', () => {
-        skillsWindow = null;
+    ingameWindow.on('closed', () => {
+        ingameWindow = null;
     });
 }
 
-ipcMain.handle('window:toggle-skills', (e, enable, champName) => {
+ipcMain.handle('window:toggle-ingame', (e, enable, data) => {
     if (enable) {
-        if (!skillsWindow) createSkillsWindow();
-        skillsWindow.showInactive();
-        if (champName) skillsWindow.webContents.send('skills:update', champName);
-    } else if (skillsWindow && !skillsWindow.isDestroyed()) {
-        skillsWindow.hide();
+        if (!ingameWindow) createInGameWindow();
+        ingameWindow.showInactive();
+        if (data) ingameWindow.webContents.send('ingame:update', data);
+    } else if (ingameWindow && !ingameWindow.isDestroyed()) {
+        ingameWindow.hide();
     }
 });
 
@@ -551,6 +571,7 @@ ipcMain.on('settings:updated', (_, settings) => {
 // --- CHAMP SELECT AUTOMATION ---
 let lastPhase = null;
 let lastLockedChampId = 0;
+let lastLockedSpells = { spell1Id: 0, spell2Id: 0 };
 let champMap = {};
 
 async function updateChampMap() {
@@ -590,19 +611,20 @@ async function monitorGameLoop() {
                 if (lastLockedChampId) {
                     const champName = champMap[lastLockedChampId];
                     if (champName) {
-                        if (!skillsWindow) createSkillsWindow();
-                        skillsWindow.showInactive();
-                        skillsWindow.webContents.send('skills:update', champName);
+                        if (!ingameWindow) createInGameWindow();
+                        ingameWindow.showInactive();
+                        ingameWindow.webContents.send('ingame:update', { champName, spells: lastLockedSpells });
                     }
                 }
             } else {
-                if (skillsWindow && !skillsWindow.isDestroyed()) {
-                    skillsWindow.hide();
+                if (ingameWindow && !ingameWindow.isDestroyed()) {
+                    ingameWindow.hide();
                 }
             }
 
             if (phase !== 'ChampSelect' && phase !== 'InProgress') {
                 lastLockedChampId = 0; // Reset
+                lastLockedSpells = { spell1Id: 0, spell2Id: 0 };
             }
         }
 
@@ -625,6 +647,7 @@ async function monitorGameLoop() {
             if (me.championId > 0 && me.championId !== lastLockedChampId) {
                 console.log(`[Monitor] Champion Change Detected: ${me.championId} (${champMap[me.championId] || 'Unknown'})`);
                 lastLockedChampId = me.championId;
+                lastLockedSpells = { spell1Id: me.spell1Id, spell2Id: me.spell2Id };
 
                 const settings = getSettings();
                 console.log(`[Monitor] Current Settings: Flash=${settings.flashPosition}, AutoRunes=${settings.autoImportRunes}`);

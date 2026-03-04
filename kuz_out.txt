@@ -1,0 +1,14 @@
+HISTORY LENGTH: 10
+FIRST MATCH ID: 2000000
+TEAM 100:
+Sett (kuzkuz45#EUW | ext~kuzkuz45%23EUW~EUW | KDA: 2/10/1)
+Nunu & Willump (Lukawaii#1950 | ext~Lukawaii%231950~EUW | KDA: 5/2/8)
+Veigar (berken#4450 | ext~berken%234450~EUW | KDA: 5/2/8)
+Swain (ghostlightboy#ghost | ext~ghostlightboy%23ghost~EUW | KDA: 5/2/8)
+Nidalee (Carovel#EUW | ext~Carovel%23EUW~EUW | KDA: 5/2/8)
+TEAM 200:
+Illaoi (GiveMeYourStacks#0000 | ext~GiveMeYourStacks%230000~EUW | KDA: 2/5/4)
+Volibear (wardrake#EUW | ext~wardrake%23EUW~EUW | KDA: 2/5/4)
+Vel'Koz (hackzor#1337 | ext~hackzor%231337~EUW | KDA: 2/5/4)
+Jinx (Merida#80085 | ext~Merida%2380085~EUW | KDA: 2/5/4)
+Mel (LittleWaffle#IKEA | ext~LittleWaffle%23IKEA~EUW | KDA: 2/5/4)

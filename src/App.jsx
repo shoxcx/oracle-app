@@ -115,6 +115,7 @@ import oracleLogo from './assets/oracle_logo.png';
 import { MatchDetailsModal } from './MatchDetailsModal';
 import { LiveGameRow } from './LiveGameRow';
 import { ClientDisconnectedView } from './ClientDisconnectedView';
+import { InGameHelper } from './components/InGameHelper';
 
 function cn(...inputs) {
   return twMerge(clsx(inputs));
@@ -232,6 +233,7 @@ const translations = {
     build_fifth: "5th Item", build_sixth: "6th Item",
     visual_glass: "Glass", visual_opaque: "Opaque", records: "Records", lens: "Lens", behavioral: "Behavioral",
     pings: "Pings", solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM", coming_soon: "Coming soon...",
+    estimated_solo: "ESTIMATED (SOLO, 20 GAMES)", estimated_flex: "ESTIMATED (FLEX, 20 GAMES)",
     appearance: "Appearance", chooseStyleDesc: "Choose between Liquid Glass or Solid",
     themeToggleDesc: "Change the application color appearance",
     theme_classic: "Classic", theme_purple: "Purple", theme_storm: "Storm", theme_radiant: "Radiant",
@@ -270,7 +272,7 @@ const translations = {
     // Game Modes & Status
     queue_custom: "Custom", queue_draft: "Draft Pick", queue_solo: "Ranked Solo", queue_flex: "Ranked Flex",
     queue_blind: "Blind Pick", queue_aram: "ARAM", queue_arena: "Arena", queue_urf: "URF", queue_coop: "Co-op vs AI",
-    queue_unknown: "Unknown", ingame: "In Game", playing: "Playing", spectate_btn: "Spectate",
+    queue_normal: "Normal", queue_unknown: "Unknown", ingame: "In Game", playing: "Playing", spectate_btn: "Spectate",
     // New Additions - ALL VIEWS
     waiting_for_match: "Waiting for Match...", enter_game_live: "Please enter a game to see live stats.", toggle_hint: "[CTRL+X] TO TOGGLE",
     team_blue: "Order (Blue)", team_red: "Chaos (Red)", you: "YOU", hot_streak: "HOT STREAK",
@@ -321,7 +323,25 @@ const translations = {
     tactical_analysis: "Tactical analysis...", watch_replay: "Watch Replay",
     stat_obj_focus: "Objective Focus", stat_mechanics: "Mechanics", stat_kda_perf: "KDA Perf", stat_farming: "Farming",
     matchup_desc_example: "has a significant advantage at level 2. Look for early trades.",
-    // Tips
+    // Enhanced English Tips
+    tip_deaths_1: "You are dying too often. Analyze your replays to spot over-extensions. Each death gives gold, XP, and a numbers advantage to the enemy team.",
+    tip_deaths_2: "Critical mortality rate. Force yourself to play further back when you lack vision of the enemy jungler. Survival must be your #1 priority.",
+    tip_deaths_3: "You are bleeding resources. Take fewer unnecessary risks, especially right before a major neutral objective spawns.",
+    tip_csm_1: "Farming deficit (CS/min). Your farm is your most reliable income. Don't ARAM mid forever; go catch waves on the side lanes.",
+    tip_csm_2: "Very low CS count. Make a habit of taking jungle camps or minion waves between rotations. Items depend on leaving no gold on the map.",
+    tip_csm_3: "Economic bleed via minions. You're losing too many minions under tower or during roams. Work on your laning phase last-hitting.",
+    tip_vision_1: "Your vision score is alarming. Buy 1 or 2 Control Wards on every base trip and place them to protect your flanks.",
+    tip_vision_2: "Total map blindness. Stop face-checking without vision and help your team push up by placing wards in the enemy jungle.",
+    tip_vision_3: "Extremely poor vision. Remember to swap your trinket (Sweeper/Farsight) depending on your role and use it faithfully.",
+    tip_obj_1: "Zero pressure on turrets and epic monsters. Kills alone don't win the game. Help take Herald/Dragon after winning a teamfight.",
+    tip_obj_2: "No participation in destroying objectives. You need to push the wave to choke out the map, not just chase kills.",
+    tip_obj_3: "Negligible objective impact. If you have lane control, use it to get tower plating or invade the enemy jungle.",
+    tip_win_1: "Solid victory. Try to close out games even faster next time by forcing the Baron Nashor confidently.",
+    tip_win_2: "Excellent lead management. You capitalized on enemy mistakes brilliantly.",
+    tip_win_3: "Great execution. Keep pushing your macro advantage after the laning phase to suffocate your opponents.",
+    tip_loss_1: "Tough loss. Take a 5-minute break to reset, hydrate, and review the pivotal moments where the game flipped.",
+    tip_loss_2: "Lack of team cohesion. In defeats, systematically look for what YOU could have done better, and ignore your teammates' mistakes.",
+    tip_loss_3: "Poor mid/late game coordination. Identify your draft's weaknesses and play more cautiously next game.",
     // AI Tips - Generic Fallbacks for Dynamic Text
     tip_deaths_title: "Excessive Deaths", tip_deaths_desc: "High mortality rate detected. You are giving too many resources to the enemy.",
     tip_survival_title: "Perfect Survival", tip_survival_desc: "No deaths conceded. Your defensive positioning was flawless.",
@@ -351,59 +371,105 @@ const translations = {
     playstyle_passive: "Passive Player", playstyle_tactical: "Tactical Specialist",
     focus_farm: "Fix Farming", focus_vision: "Buy Wards", focus_positioning: "Positioning", focus_group: "Group Up",
     focus_towers: "Hit Towers", focus_survival: "Survival First", focus_expand: "Expand Lead",
+    focus_macro: "Improve Macro", focus_teamfights: "Teamfight Presence", focus_consistency: "Be Consistent", focus_pressure: "Apply Pressure", focus_roaming: "More Roaming",
     // Coach Verdicts
-    verdict_pivot: "Oracle : Strategic Pivot. You were the engine of your team. Your participation in kills defined the tempo of this match. You were everywhere, turning local skirmishes into map-wide advantages.",
-    verdict_soul: "Oracle : Soul Reaper. Economic Dominator. You didn't just win your lane; you bankrupted your opponent. By denying resources and snowballing your lead, you made the enemy irrelevant.",
-    verdict_fatal: "Oracle : Fatal Efficiency. Surgical Precision. You maximized every gold coin spent. Your damage output compared to your economy was off the charts, proving you don't need full build to be deadly.",
-    verdict_pillar: "Oracle : Victory Pillar. The Bedrock. You were the reliable foundation your team needed. While you may not have topped every stat, your presence in key moments and solid macro play secured the victory.",
-    verdict_vuln: "Oracle : Liability. You spent more time on the grey screen than impacting the map. Your positioning errors gave the enemy free gold and tempo. Stop forcing plays when you are behind.",
-    verdict_eco: "Oracle : Resource Starved. Economic Asphyxia. You fell behind on the basics: farming. Fighting with an item disadvantage is a losing strategy. Prioritize catching waves before contesting.",
-    verdict_leader: "Oracle : Lone Wolf. You played well individually, but failed to translate your lead into team advantages. KDA doesn't destroy the Nexus. You needed to use your strength to cover your team.",
-    verdict_defeat: "Oracle : Macro Collapse. Mechanically decent, but you lost the map. You allowed the enemy to dictate the rotations and objective control. Review your mid-game decision making.",
+    verdict_pivot: "Oracle : Strategic Pivot. You were the indisputable engine of your team. Your massive kill participation defined the entire tempo of this match. By being everywhere and turning local skirmishes into global advantages, you single-handedly drove this victory.",
+    verdict_soul: "Oracle : Soul Reaper. Total economic domination. You didn't just win your lane; you systematically bankrupted your direct opponent. By aggressively denying minions and XP, you turned this match into a 5v4.",
+    verdict_fatal: "Oracle : Fatal Efficiency. Surgical precision. You maximized the value of every single gold coin spent. Your damage output relative to your economy was completely off the charts. You proved that you don't need a full inventory to be entirely lethal.",
+    verdict_pillar: "Oracle : Victory Pillar. The Bedrock. You were the reliable foundation your team desperately needed. While you may not have topped the damage charts, your constant presence during key rotational moments and solid macro play silently secured the win.",
+    verdict_vuln: "Oracle : Liability. You spent considerably more time staring at a grey screen than impacting the Rift. Your uncalculated risks and positioning errors spoon-fed the enemy free gold and tempo. You must learn to stop forcing aggressive plays when playing from behind.",
+    verdict_eco: "Oracle : Economic Asphyxia. You fell drastically behind on the most fundamental aspect of the game: farming. Fighting while suffering a severe item disadvantage is a guaranteed losing strategy. You need to prioritize catching side waves before contesting neutral territory.",
+    verdict_leader: "Oracle : Lone Wolf. You performed well individually, but completely failed to translate your personal lead into tangible team advantages. A high KDA ratio does not destroy the enemy Nexus. You needed to use your inherent strength to cover your struggling allies.",
+    verdict_defeat: "Oracle : Macro Collapse. Mechanically decent, but you entirely forfeited the map. You allowed the enemy to comfortably dictate rotations and objective control without trading anywhere else. Review your mid-game decision making urgently.",
     verdict_intro: "Oracle :",
     // New Verdicts
-    verdict_perfect_kda: "Oracle : Immortal Performance. You never gave the enemy a shutdown. Perfect positioning and calculated aggression allowed you to deal damage without ever being caught.",
-    verdict_penta: "Oracle : Apex Predator. A Pentakill is not luck, it's total dominance. You read the fight perfectly and executed every target. You ARE the carry.",
-    verdict_visionary: "Oracle : All-Seeing Eye. Your vision control was suffocating. By tracking the enemy jungler and lighting up the map, you removed their ability to make plays.",
-    verdict_carry_hard: "Oracle : 1v9 Machine. You participated in over 75% of your team's kills. If you weren't there, this game was over at 15 minutes. Absolute backpack performance.",
-    verdict_stomp: "Oracle : Total Destruction. You ended the game with a massive gold lead. This wasn't a match, it was a clinic. You snowballed so hard the enemy never had a chance.",
-    verdict_efficient: "Oracle : Economic Miracle. You did insane damage with limited gold. You didn't need items to outplay, just pure mechanical skill.",
-    verdict_feeder: "Oracle : Intentional Griefing? Double digit deaths are unacceptable. You became a gold bag for the enemy carry. You must learn to play weakside and stop fighting.",
-    verdict_blind: "Oracle : Playing in the Dark. Your vision score was non-existent. You facechecked bushes and got caught because you refused to buy control wards. Map awareness is free.",
-    verdict_afk_farm: "Oracle : PvE Player. You have high CS but low impact. While you were farming wolves, your team was losing the game. League is PvP, join the fights.",
-    verdict_solid_effort: "Oracle : Tragic Hero. You tried your best. You won your lane and had good stats, but couldn't carry the heavy teammates. Sometimes you can't win them all.",
-    verdict_rich_loser: "Oracle : Shopkeeper's Best Friend. You had full build but lost. Gold is useless if you get caught before the elder dragon fight. Positioning > Items.",
-    verdict_unlucky_carry: "Oracle : Team Gap. You did everything right, highest damage, high KP, but the team difference was too big. Keep your mental up, you played well.",
+    verdict_perfect_kda: "Oracle : Immortal Performance. Flawless execution. You never once gave the enemy the satisfaction of a shutdown. Your impeccable backline positioning combined with calculated aggression allowed you to deal devastating damage without ever being caught out.",
+    verdict_penta: "Oracle : Apex Predator. A Pentakill is never purely luck; it is a manifestation of total dominance. You read the chaotic teamfight perfectly and executed every single target with lethal precision. You undeniably carried.",
+    verdict_visionary: "Oracle : All-Seeing Eye. Your vision control was absolutely suffocating. By relentlessly tracking the enemy jungler and illuminating the darkest corners of the map, you effectively removed their capacity to proactively make plays.",
+    verdict_carry_hard: "Oracle : 1v9 Machine. You actively participated in over 75% of your team's total kills. If you had not been present, this game would have concluded at the 15-minute mark. Deliveries don't get much heavier than this backpack performance.",
+    verdict_stomp: "Oracle : Total Destruction. You concluded the game with a mountain of excess gold. This wasn't a competitive match, it was a clinic. You commanded the snowball so aggressively that the enemy team never had a whisper of a chance.",
+    verdict_efficient: "Oracle : Economic Miracle. You inflicted highly disproportionate damage despite functioning on a limited budget. You didn't rely on raw item stats to outplay your opponents; you utilized pure, unadulterated mechanical skill.",
+    verdict_feeder: "Oracle : Sustained Hemorrhage. Accumulating double-digit deaths actively sabotages your entire team's effort. You became nothing more than a walking gold bag for the enemy carry. You must learn the discipline of playing 'weakside' and conceding farm.",
+    verdict_blind: "Oracle : Playing in the Dark. Your vision score was statistically non-existent. You repeatedly facechecked dangerous brush and paid the price because you refused to invest in Control Wards. Stop treating map awareness as an optional luxury.",
+    verdict_afk_farm: "Oracle : PvE Specialist. Your farming metrics are high, but your concrete impact was zero. While you were busy optimizing your jungle routing, your team was losing the actual game. League of Legends is PvP; you need to join the fights.",
+    verdict_solid_effort: "Oracle : Tragic Hero. A tough pill to swallow. You did virtually everything correctly—winning your lane and maintaining pristine stats—but you couldn't carry the dead weight of your teammates. Don't tilt; consistency like this guarantees climbing in the long run.",
+    verdict_rich_loser: "Oracle : Shopkeeper's Best Friend. You achieved a full build but still suffered defeat. Gold is utterly useless if you get caught out of position right before the Elder Dragon spawns. Late game, proper positioning is infinitely more valuable than your items.",
+    verdict_unlucky_carry: "Oracle : Team Gap. You assumed the mantle of leadership and dealt the most damage, but the sheer skill disparity between the remaining team members was too vast to overcome. Keep your mental fortitude intact; you played this match extremely well.",
     // Analysis Points
-    pos_kda: "Excellent contribution to fights (Solid KDA)",
-    pos_multikill: "Decisive impact in teamfights (Multikill)",
-    pos_kp: "Omnipresent in team actions (High KP)",
-    pos_farm: "Imperial farming, constant economic lead",
-    pos_gold: "You crushed your opponent in gold",
-    pos_obj: "Strong focus on objectives (Towers/Dragons)",
-    pos_vision: "Good map control through vision",
-    pos_carry: "Main carry: High damage share",
-    pos_default: "Played solid until the end",
-    neg_deaths: "Too many deaths, you fed the opponent",
-    neg_kp: "Kill participation too low. Played too solo.",
-    neg_farm: "Insufficient last-hitting, significant gold deficit",
-    neg_gold: "Economically dominated by your opponent",
-    neg_obj: "Zero pressure on towers/dragons (Objectives ignored)",
-    neg_vision: "Map too dark, lack of critical information",
+    pos_kda_1: "Incredible KDA ratio - you dominated teamfights completely.",
+    pos_kda_2: "Excellent survivability combined with high kill participation.",
+    pos_kda_3: "You severely punished the enemy without giving up shutdown gold.",
+    pos_multikill_1: "Devastating multikills. You were a nightmare to face in grouped combat.",
+    pos_multikill_2: "Clutch multikills that likely swung the game in your favor.",
+    pos_multikill_3: "Serial killer. Your mechanical execution in teamfights was flawless.",
+    pos_kp_1: "Omnipresent map awareness. Massive kill participation.",
+    pos_kp_2: "You were the catalyst for almost every team play.",
+    pos_kp_3: "High kill participation means high impact. You roamed effectively.",
+    pos_farm_1: "Relentless farming resulting in an insurmountable gold lead.",
+    pos_farm_2: "Imperial last-hitting. Your CS numbers single-handedly won you trades.",
+    pos_farm_3: "Perfect wave management yielded a massive CS advantage.",
+    pos_gold_1: "You financially ruined your direct opponent.",
+    pos_gold_2: "Massive gold difference generated purely through lane dominance.",
+    pos_gold_3: "Economic supremacy. You put your opponent in the dirt.",
+    pos_obj_1: "Incredible objective focus. You prioritize winning the game over chasing.",
+    pos_obj_2: "High damage to structures. You understand how to close out games.",
+    pos_obj_3: "Objective Melter. You translated your strength into map control.",
+    pos_vision_1: "Supreme map illumination. You denied the enemy any element of surprise.",
+    pos_vision_2: "Excellent vision control that effectively un-fogged the map.",
+    pos_vision_3: "Your warding completely suffocated the enemy jungler's routing.",
+    pos_carry_1: "Absolute carry performance. You dealt a vast majority of the team's damage.",
+    pos_carry_2: "You were the primary engine of your team's DPS.",
+    pos_carry_3: "Heavy lifting. You backpacked the team fight damage perfectly.",
+
+    neg_deaths_1: "Excessive deaths fed massive amounts of gold to the enemy carries.",
+    neg_deaths_2: "You spent too much time dead. Playing safe is sometimes the best play.",
+    neg_deaths_3: "Reckless positioning lead to too many free deaths.",
+    neg_kp_1: "You played too isolated. Low kill participation lost you tempo.",
+    neg_kp_2: "AFK side-laning while your team bled out in group combat.",
+    neg_kp_3: "Ghost-like presence. You barely participated in the game's outcome.",
+    neg_farm_1: "Extremely poor last-hitting. You fought too much and farmed too little.",
+    neg_farm_2: "You abandoned minion waves resulting in a massive item deficit.",
+    neg_farm_3: "CS/min is the most fundamental mechanic. Yours was severely lacking here.",
+    neg_gold_1: "Your opponent completely crushed you economically in lane.",
+    neg_gold_2: "You were effectively removed from the game due to your gold deficit.",
+    neg_gold_3: "Massive gold gap. You were forced to play defensively the entire match.",
+    neg_obj_1: "Zero pressure on turrets or epic monsters. You played for KDA.",
+    neg_obj_2: "Objectives win games. You completely ignored them.",
+    neg_obj_3: "Terrible objective conversion. Kills mean nothing if you don't hit towers.",
+    neg_vision_1: "You played in absolute darkness. Refusal to buy wards costs games.",
+    neg_vision_2: "No vision control whatsoever. You invited enemy ganks freely.",
+    neg_vision_3: "Map blindness. Start making Control Wards a core item purchase.",
     neg_support_vision: "Insufficient vision for a Support",
     neg_jungle_impact: "Ghost Jungler: little impact on lanes",
     neg_damage: "Lack of offensive impact in trades",
     neg_default: "No major mistakes detected",
+    pos_default: "Played solid until the end",
     analysis_pos: "Positive Points",
     analysis_neg: "Negative Points",
-    matchup_stomp: "You literally crushed {{champ}}. Your advantage allowed you to take them out of the game.",
-    matchup_lost_lane_won_game: "You won, but {{champ}} dominated the lane. Work on your laning phase.",
-    matchup_won_lane_lost_game: "Frustrating match. You won your duel against {{champ}}, but couldn't transfer the lead.",
-    matchup_feeding: "Nightmare matchup. {{champ}} took an early lead. Respect cooldowns more.",
-    matchup_passive: "Very passive farming duel. Take more calculated risks to lead.",
-    matchup_neutral: "Neutral matchup. Vision and rotations made the difference.",
-    matchup_vision_gap: "Vision warning. {{champ}} had much better map control.",
-    matchup_default: "Close duel against {{champ}}. Analyze their spell timings.",
+    matchup_stomp_1: "You completely neutralized {{champ}}. Your overwhelming gold/kill lead made them irrelevant.",
+    matchup_stomp_2: "Absolute lane kingdom against {{champ}}. You dominated every extended trade and starved them.",
+    matchup_stomp_3: "A masterclass in punishing {{champ}}. You capitalized on their cooldowns perfectly and snowballed.",
+    matchup_lost_lane_won_game_1: "{{champ}} pushed you to the brink in lane, but your superior macro won the war.",
+    matchup_lost_lane_won_game_2: "You conceded early pressure to {{champ}} but displayed great resilience by recovering in teamfights.",
+    matchup_lost_lane_won_game_3: "Rough laning phase against {{champ}}. Next time, respect their early power spikes more.",
+    matchup_won_lane_lost_game_1: "You thoroughly beat {{champ}}, but the lead was tragically wasted. Focus on spreading your advantage.",
+    matchup_won_lane_lost_game_2: "Frustrating match. You secured lane priority over {{champ}} but couldn't prevent the collapse elsewhere.",
+    matchup_won_lane_lost_game_3: "You held a mechanical upper hand over {{champ}}. Don't let team differences ruin your confidence.",
+    matchup_feeding_1: "{{champ}} severely outperformed you. You failed to respect their damage thresholds entirely.",
+    matchup_feeding_2: "Nightmare scenario. {{champ}} capitalized on your repeated positional errors. Practice playing safe.",
+    matchup_feeding_3: "You fed a monstrous lead to {{champ}}. Learn to concede CS when you are heavily out-traded.",
+    matchup_passive_1: "A mutual farming handshake with {{champ}}. Next time, test their limits earlier to establish dominance.",
+    matchup_passive_2: "Extremely low-conflict lane against {{champ}}. You played scaling roulette instead of actively winning.",
+    matchup_passive_3: "Passive standoff against {{champ}}. You missed critical windows to punish their mispositioning.",
+    matchup_neutral_1: "A beautifully balanced duel against {{champ}}. Rotations and jungle interference dictated this outcome.",
+    matchup_neutral_2: "Skill-expressive stalemate with {{champ}}. Both outplayed each other in equal measure.",
+    matchup_neutral_3: "Dead-heat matchup against {{champ}}. Small macro decisions ended up being the ultimate tiebreaker.",
+    matchup_vision_gap_1: "Vision warning. {{champ}} had much better map control than you.",
+    matchup_vision_gap_2: "You lost the vision war against {{champ}}. Buy sweepers earlier.",
+    matchup_vision_gap_3: "{{champ}} out-warded you heavily, setting up constant traps.",
+    matchup_default_1: "Close duel against {{champ}}. Analyze their spell timings next game.",
+    matchup_default_2: "Slightly tense matchup versus {{champ}}. Work on your spacing.",
+    matchup_default_3: "Even trade patterns against {{champ}}. Focus on minion manipulation.",
     profile_not_found_title: "Profile Not Found",
     profile_not_found_desc: "The player is not found or does not exist in this region.",
     others: "Others",
@@ -461,6 +527,7 @@ const translations = {
     loading_data: "Loading data...",
     searching_for: "Searching for",
     active_player: "Active Player",
+    friend: "Friend", oracle_estimate: "ORACLE ESTIMATE", friend_connected: "FRIEND CONNECTED", friend_connected_msg: "Just connected to Launcher", friend_disconnected: "FRIEND DISCONNECTED", friend_disconnected_msg: "Left League of Legends", game_started: "GAME STARTED", game_started_msg: "Just started a game",
     welcome: "Welcome to Oracle",
     welcome_back: "Welcome back to Oracle",
     stats_unavailable: "Stats Unavailable (External Region)",
@@ -536,7 +603,7 @@ const translations = {
     // Game Modes & Status
     queue_custom: "Personnalisé", queue_draft: "Draft", queue_solo: "Classé Solo", queue_flex: "Classé Flex",
     queue_blind: "Aveugle", queue_aram: "ARAM", queue_arena: "Arena", queue_urf: "URF", queue_coop: "Co-op vs IA",
-    queue_unknown: "Inconnu", ingame: "Partie en cours", playing: "Joue", spectate_btn: "Spectateur",
+    queue_normal: "Normal", queue_unknown: "Inconnu", ingame: "Partie en cours", playing: "Joue", spectate_btn: "Spectateur",
     explore_oracle: "Explorez l'app ORACLE", season: "Saison 15", owned_skins: "Skins possédés",
     survivability: "Survivabilité", tf_deaths: "Morts en Teamfight", performance: "Performance par champion",
     all: "TOUS", mvp: "MVP", score: "score", deaths: "Morts", ka: "Kills + Assists",
@@ -544,6 +611,7 @@ const translations = {
     replay: "REPLAY", victory: "Victoire", defeat: "Défaite", theme_dark: "Sombre", theme_light: "Clair",
     visual_glass: "Glass", visual_opaque: "Opaque", records: "Records", lens: "Lens", behavioral: "Comportemental",
     pings: "Pings", solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM", coming_soon: "Bientôt disponible...",
+    estimated_solo: "ESTIMÉ (SOLO, 20 GAMES)", estimated_flex: "ESTIMÉ (FLEX, 20 GAMES)",
     // New Additions
     waiting_for_match: "En attente du match...", enter_game_live: "Veuillez entrer en jeu pour voir les stats.", toggle_hint: "[CTRL+X] POUR BASCULER",
     team_blue: "Ordre (Bleu)", team_red: "Chaos (Rouge)", you: "VOUS", hot_streak: "SÉRIE",
@@ -558,6 +626,13 @@ const translations = {
     most_kills: "plus de Kills", dmg_dealt: "Dégâts infligés", vision_score: "Score Vision", cs_min: "CS / min", season_best: "MEILLEURE SAISON",
     aggression: "Agression", farming: "Farm", vision_radar: "Vision", survival: "Survie", objective: "Objectif",
     playstyle: "Style de jeu", focus: "Focus", aggressive_carry: "Carry Agressif", die_less: "Mourir Moins",
+    playstyle_berserker: "Berserker", playstyle_kda_player: "Joueur KDA", playstyle_supportive: "Âme Support",
+    playstyle_resource_hoard: "Accapareur Ressources", playstyle_obj_melter: "Destructeur d'Objectifs", playstyle_map_architect: "Architecte (Map)",
+    playstyle_facechecker: "Facechecker", playstyle_complete_carry: "Carry Ultime", playstyle_aggressive: "Carry Agressif",
+    playstyle_passive: "Joueur Passif", playstyle_tactical: "Spécialiste Tactique",
+    focus_farm: "Combler le Farm", focus_vision: "Poser Balises", focus_positioning: "Positionnement", focus_group: "Se Regrouper",
+    focus_towers: "Détruire Tours", focus_survival: "Survivre Plus", focus_expand: "Accroître l'Avance",
+    focus_macro: "Améliorer Macro", focus_teamfights: "Présence Teamfights", focus_consistency: "Être Constant", focus_pressure: "Mettre la Pression", focus_roaming: "Plus de Décalages",
     skill_levelup: "Guide Sorts", jungle_timers: "Timers Jungle", objective_voting: "Vote Objectifs", gold_diff: "Diff. Or",
     last_20_games: "20 Dernières Parties", summoner_not_found: "Invocateur Introuvable",
     strategic_desc_mock: "Irelia a un avantage significatif au niveau 2. Cherchez des échanges tôt. Évitez Darius quand son E est dispo. Construisez Blade of the Ruined King en premier.",
@@ -578,6 +653,7 @@ const translations = {
     analysis_direct: "Analyse Directe", duel_vs: "Duel contre", guide_matchup: "Guide Matchup", rival: "RIVAL",
     searching: "RECHERCHE...", sync_data: "Synchronisation...", coach_verdict: "Verdict Coach", view_tips: "Voir Conseils", back_btn: "Retour", matchup_tips_title: "Astuces Matchup",
     to_do: "À FAIRE", to_avoid: "À ÉVITER",
+    friend: "Ami", oracle_estimate: "ESTIMATION ORACLE", friend_connected: "AMI CONNECTÉ", friend_connected_msg: "Vient de se connecter au Launcher", friend_disconnected: "AMI DÉCONNECTÉ", friend_disconnected_msg: "A quitté League of Legends", game_started: "PARTIE LANCÉE", game_started_msg: "Vient de lancer une partie",
     title_to_do: "STRATÉGIE OFFENSIVE", title_to_avoid: "VIGILANCE CRITIQUE",
 
     // Profile & Replays
@@ -592,7 +668,27 @@ const translations = {
     tactical_analysis: "Analyse tactique...", watch_replay: "Visionner Replay",
     stat_obj_focus: "Focus Objectif", stat_mechanics: "Mécaniques", stat_kda_perf: "Perf KDA", stat_farming: "Farming",
     matchup_desc_example: "a un avantage significatif au niveau 2. Cherchez les échanges rapides.",
-    // Tips
+    // Enhanced French Tips
+    tip_deaths_1: "Vous mourez trop souvent. Analysez vos replays pour repérer vos sur-extensions. Chaque mort offre de l'or, de l'XP et un avantage numérique global à l'ennemi.",
+    tip_deaths_2: "Mortalité critique. Forcez-vous à jouer plus en retrait quand vous n'avez pas la vision sur le jungler adverse. La survie doit être votre priorité N°1.",
+    tip_deaths_3: "Vous donnez beaucoup trop de ressources. Prenez moins de risques inutiles, surtout avant l'apparition d'un objectif neutre majeur.",
+    tip_csm_1: "Retard de farm critique (CS/min). Votre farm est votre source de revenu la plus fiable. Évitez de rester au mid indéfiniment, allez récupérer les vagues sur les side lanes.",
+    tip_csm_2: "CSing très faible. Prenez l'habitude de tuer la jungle ou les sbires entre deux rotations. Vos objets dépendent de votre capacité à ne rien laisser au sol.",
+    tip_csm_3: "Déficit économique via les sbires. Vous perdez trop de sbires sous la tour ou lors de vos décalages. Améliorez votre last-hitting en phase de lane.",
+    tip_vision_1: "Votre score de vision est inquiétant. Achetez 1 à 2 Balises de Contrôle à chaque retour à la base et placez-les pour protéger vos flancs.",
+    tip_vision_2: "Cécité totale sur la carte. Ne face-checkez pas sans vision et aidez votre équipe en plaçant des wards profondes dans la jungle adverse.",
+    tip_vision_3: "Vision beaucoup trop faible. N'oubliez pas de changer votre relique (Brouilleur/Altération) selon votre rôle mid-game et utilisez-la au maximum.",
+    tip_obj_1: "Manque total de pression sur les tourelles et monstres épiques. Les kills isolés ne font pas gagner la partie. Aidez à prendre le Héraut/Dragon après un combat.",
+    tip_obj_2: "Aucune participation à la destruction des objectifs. Vous devez faire avancer la ligne de front pour asphyxier la carte, pas seulement chercher l'élimination.",
+    tip_obj_3: "Impact nul sur l'environnement. Si vous avez le contrôle de votre lane, servez-vous en pour prendre les plaques de barricade ou envahir la jungle.",
+    tip_win_1: "Victoire solide. Essayez de clôturer les parties encore plus vite la prochaine fois en forçant le Baron Nashor avec votre avantage.",
+    tip_win_2: "Excellente gestion de l'avantage. Vous avez su capitaliser sur les erreurs adverses avec brio. Continuez ainsi.",
+    tip_win_3: "Très bonne exécution. Continuez à appuyer votre macro après la phase de lane pour totalement étouffer l'adversaire.",
+    tip_loss_1: "Défaite difficile. Prenez 5 minutes de pause pour décompresser, hydratez-vous, et revoyez les moments où la partie a basculé.",
+    tip_loss_2: "Manque de cohésion globale. Dans vos défaites, cherchez systématiquement ce que VOUS auriez pu faire de mieux, ignorez les fautes de vos alliés.",
+    tip_loss_3: "Mauvaise coordination en mid/late game. Identifiez les faiblesses de votre composition et jouez de manière plus prudente la prochaine fois.",
+
+    // Generic fallbacks
     tip_deaths_title: "Morts Excessives", tip_deaths_desc: "Taux de mortalité trop élevé. Vous donnez trop de ressources.",
     tip_survival_title: "Survie Parfaite", tip_survival_desc: "Aucune mort. Positionnement irréprochable.",
     tip_csm_title: "Retard de Farm", tip_csm_desc: "CS/min critique. Priorisez les sbires.",
@@ -614,58 +710,105 @@ const translations = {
     beh_survival: "Survie", beh_survival_sub: "Évitement Morts",
     beh_aggression: "Aggression", beh_aggression_sub: "Impact / Min",
     // Verdicts
-    verdict_pivot: "Oracle : Pivot Stratégique. Vous étiez le moteur de votre équipe. Votre participation aux kills a défini le tempo du match. Vous étiez partout, transformant chaque escarmouche en avantage pour la carte.",
-    verdict_soul: "Oracle : Moissonneur d'Âmes",
-    verdict_fatal: "Oracle : Efficacité Fatale. Précision Chirurgicale. Vous avez maximisé chaque pièce d'or dépensée. Vos dégâts par rapport à votre économie sont hors normes. Pas besoin d'être full build pour être mortel.",
-    verdict_pillar: "Oracle : Pilier de Victoire. Le Roc. Vous étiez la fondation fiable dont votre équipe avait besoin. Sans forcément être MVP, votre présence aux moments clés et votre macro solide ont sécurisé la victoire.",
-    verdict_vuln: "Oracle : Fardeau. Vous avez passé plus de temps mort qu'à  impacter la carte. Vos erreurs de positionnement ont offert de l'or gratuit. Arrêtez de forcer les plays quand vous êtes derrière.",
-    verdict_eco: "Oracle : Asphyxie Économique. Famine de Ressources. Vous avez échoué sur les bases : le farm. Se battre avec un désavantage d'items est une stratégie perdante. Priorisez les vagues de sbires.",
-    verdict_leader: "Oracle : Loup Solitaire. Vous avez bien joué individuellement, mais n'avez pas su traduire votre avantage pour l'équipe. Le KDA ne détruit pas le Nexus. Aidez vos alliés en difficulté.",
-    verdict_defeat: "Oracle : Effondrement Macro. Mécaniquement décent, mais vous avez perdu la carte. Vous avez laissé l'ennemi dicter les rotations et le contrôle des objectifs. Revoyez vos décisions en mid-game.",
+    // Verdicts
+    verdict_pivot: "Oracle : Pivot Stratégique. Vous étiez le véritable moteur de votre équipe. Votre participation aux kills a défini le tempo global du match. En étant littéralement partout, vous avez su transformer chaque escarmouche locale en un avantage décisif sur la carte.",
+    verdict_soul: "Oracle : Moissonneur d'Âmes. Domination économique totale. Vous n'avez pas seulement gagné votre duel; vous avez ruiné la partie de votre adversaire direct. En le privant de sbires et d'XP de façon aussi agressive, le match s'est transformé en 5 contre 4.",
+    verdict_fatal: "Oracle : Efficacité Fatale. Précision Chirurgicale. Vous avez maximisé la valeur de chaque pièce d'or dépensée. Vos dégâts par rapport à votre économie sont époustouflants, prouvant qu'il n'y a pas besoin d'être totalement 'full build' pour être mortel.",
+    verdict_pillar: "Oracle : Pilier de Victoire. Le Roc inébranlable. Vous étiez la fondation fiable dont votre équipe manquait cruellement. Sans forcément dominer les statistiques, votre présence constante aux moments clés et votre macro irréprochable ont sécurisé cette victoire.",
+    verdict_vuln: "Oracle : Cible Ambulante. Vous avez navigué à contre-courant, passant plus de temps mort qu'à impacter la carte. Vos prises de risques non-calculées ont offert de l'or gratuit à l'ennemi. Arrêtez de forcer des actions désespérées quand vous êtes en retard.",
+    verdict_eco: "Oracle : Asphyxie Économique. Famine de Ressources. Vous avez dramatiquement échoué sur les bases : le farming. Se battre tout en subissant un retard d'équipement est une stratégie perdante. Priorisez impérativement la récolte des sbires avant de contester la rivière.",
+    verdict_leader: "Oracle : Loup Solitaire. Vous avez brillé individuellement, mais n'avez absolument pas su traduire votre avantage pour soulever l'équipe. Un bon KDA ne détruit pas le Nexus de lui-même. Vous deviez utiliser votre suprématie pour débloquer vos alliés en difficulté.",
+    verdict_defeat: "Oracle : Effondrement Macro. Mécaniquement décent, mais vous avez totalement abandonné la carte. Vous avez laissé l'ennemi dicter les rotations et le contrôle des objectifs sans jamais punir ailleurs. Revoyez de toute urgence vos prises de décisions en mid-game.",
     verdict_intro: "Oracle :",
     // New Verdicts
-    verdict_perfect_kda: "Oracle : Immortel. Performance Parfaite. Vous n'avez jamais donné de prime. Un positionnement impeccable et une agression calculée.",
-    verdict_penta: "Oracle : Prédateur Apex. Un Pentakill n'est pas de la chance, c'est une domination totale. Vous êtes le carry.",
-    verdict_visionary: "Oracle : Œil Omniscient.",
-    verdict_carry_hard: "Oracle : Machine 1v9. Vous avez participé à  plus de 75% des kills. Sans vous, cette partie finissait à  15 minutes. Performance sac à  dos.",
-    verdict_stomp: "Oracle : Destruction Totale. Une avance en or massive. Ce n'était pas un match, c'était une leçon. L'ennemi n'a jamais eu sa chance.",
-    verdict_efficient: "Oracle : Miracle Économique. Des dégâts insensés avec peu d'or. Pas besoin d'items pour outplay, juste du talent pur.",
-    verdict_feeder: "Oracle : Morts à deux chiffres inacceptables. Vous êtes devenu un sac d'or pour le carry adverse. Apprenez à  jouer 'weakside' et cessez de forcer.",
-    verdict_blind: "Oracle : Jeu dans le Noir. Score de vision inexistant. Vous avez péri car vous refusez d'investir dans la vision. La carte est votre meilleure alliée.",
-    verdict_afk_farm: "Oracle : Joueur PvE. Haut CS mais impact nul. Pendant que vous farmiez, votre équipe perdait la partie. League est un jeu d'équipe, rejoignez les combats.",
-    verdict_solid_effort: "Oracle : Héros Tragique. Vous avez tout donné. Lane gagnée, bonnes stats, mais impossible de porter des alliés trop lourds.",
-    verdict_rich_loser: "Oracle : Meilleur Ami du Marchand. Full build mais défaite. L'or est inutile si vous vous faites surprendre avant les combats décisifs.",
-    verdict_unlucky_carry: "Oracle : Team Gap. Vous avez tout bien fait, top dégâts, haut KP, mais l'écart d'équipe était trop grand. Gardez le moral, vous avez bien joué.",
+    verdict_perfect_kda: "Oracle : Immortel. Performance Parfaite. Vous n'avez jamais concédé la moindre prime. Un positionnement impeccable couplé à une agression savamment calculée vous a permis d'infliger d'énormes dégâts sans jamais vous faire véritablement attraper.",
+    verdict_penta: "Oracle : Prédateur Apex. Un Pentakill n'est jamais le simple fruit du hasard, c'est une démonstration de domination totale. Vous avez lu le combat parfaitement et exécuté chaque cible l'une après l'autre. Vous étiez LE carry incontestable.",
+    verdict_visionary: "Oracle : Œil Omniscient. Votre contrôle de la vision était tout simplement étouffant. En traquant sans relâche le jungler ennemi et en éclairant l'entièreté de la carte, vous leur avez retiré toute capacité à jouer autour des objectifs majeurs.",
+    verdict_carry_hard: "Oracle : Machine 1v9. Vous avez participé à plus de 75% des éliminations de votre équipe. Soyons clairs : sans vous, cette partie se terminait en 15 minutes top chrono. Une formidable performance format 'sac à dos'.",
+    verdict_stomp: "Oracle : Destruction Totale. Une avance en or monumentale. Ce n'était même plus un match, c'était une démonstration de force. L'ennemi n'a jamais eu le moindre fragment de chance de revenir.",
+    verdict_efficient: "Oracle : Miracle Économique. Des dégâts infligés véritablement insensés compte tenu du peu d'or à votre disposition. Vous n'aviez pas besoin d'items absurdes pour dominer, uniquement d'une aisance mécanique pure.",
+    verdict_feeder: "Oracle : Hémorragie Continue. Atteindre un nombre de mort à deux chiffres saborde l'ensemble des efforts de votre équipe. Vous êtes devenu un sac d'or sur pattes pour le carry adverse. Vous DEVEZ apprendre à jouer 'weakside' et lâcher votre tour s'il le faut.",
+    verdict_blind: "Oracle : L'Aveuglement Volontaire. Votre score de vision approche le Zéro absolu. Vous avez péri à maintes reprises en inspectant des buissons car vous refusez d'investir dans les Balises de Contrôle. La vision est l'outil le plus indispensable du jeu.",
+    verdict_afk_farm: "Oracle : Maladie du 'PvE Player'. Vos statistiques de farming explosent, mais leur utilité y est nulle (Participation médiocre). Pendant que vous étiez sur les corbins, votre équipe s'est fait décimer au Dragon. L'or doit servir à gagner des combats, rejoignez-les !",
+    verdict_solid_effort: "Oracle : Héros Tragique. Difficile à avaler. Vous avez absolument tout fait correctement (Lane remportée, statistiques irréprochables), mais le poids de votre équipe était bien trop lourd. N'en faites pas une fixation, la persévérance finit par payer.",
+    verdict_rich_loser: "Oracle : Syndrôme de la Vitrine. Vous aviez 6 équipements mais vous avez tout de même subi la défaite. L'or accumulé est inutile si vous vous faites surprendre bêtement avant les combats qui décident du match. Le positionnement prime sur les objets.",
+    verdict_unlucky_carry: "Oracle : Team Gap. Vous avez endossé le rôle de meneur et assumé la pression (Plus gros DPS, haut KP), mais l'écart de niveau entre les deux équipes était tout bonnement impossible à combler. Gardez une mentalité de fer, vous avez excellé.",
     // Points d'analyse
-    pos_kda: "Excellente contribution aux combats (KDA solide)",
-    pos_multikill: "Impact décisif en teamfight (Multikill)",
-    pos_kp: "Omniprésent sur les actions de l'équipe (KP élevé)",
-    pos_farm: "Farming impérial, avance économique constante",
-    pos_gold: "Tu as écrasé ton vis-à-vis aux golds",
-    pos_obj: "Gros focus sur les objectifs (Tours/Dragons)",
-    pos_vision: "Bon contrôle de la carte par la vision",
-    pos_carry: "Carry principal : Gros pourcentage de dégâts",
-    pos_default: "Tu as joué solide jusqu'au bout",
-    neg_deaths: "Trop de morts, tu as nourri l'adversaire",
-    neg_kp: "Participation aux kills trop faible. Trop solo.",
-    neg_farm: "Last-hitting insuffisant, retard de gold important",
-    neg_gold: "Dominé économiquement par ton vis-à-vis",
-    neg_obj: "Aucune pression sur les tours/dragons",
-    neg_vision: "Carte trop sombre, manque d'information critique",
+    pos_kda_1: "Ratio KDA exceptionnel. Vous avez survolé les combats d'équipe.",
+    pos_kda_2: "Excellente survie combinée à une forte participation aux kills.",
+    pos_kda_3: "Vous avez sévèrement puni l'ennemi sans jamais donner votre prime.",
+    pos_multikill_1: "Multikills dévastateurs. Vous étiez un cauchemar en combat regroupé.",
+    pos_multikill_2: "Des exécutions multiples qui ont totalement fait basculer la partie.",
+    pos_multikill_3: "Tueur en série. Votre mécanique en teamfight était impeccable.",
+    pos_kp_1: "Omniprésence absolue. Une participation aux éliminations colossale.",
+    pos_kp_2: "Vous étiez le catalyseur de quasiment toutes les actions de l'équipe.",
+    pos_kp_3: "Un KP élevé signifie un très fort impact. Bons décalages stratégiques.",
+    pos_farm_1: "Farming impérial générant une avance en or insurmontable.",
+    pos_farm_2: "Derniers coups parfaits. Votre nombre de sbires a gagné les affrontements.",
+    pos_farm_3: "Gestion de vague parfaite ayant rapporté un avantage de creeps massif.",
+    pos_gold_1: "Vous avez littéralement ruiné votre adversaire direct économiquement.",
+    pos_gold_2: "Différence d'or écrasante générée par votre seule domination en lane.",
+    pos_gold_3: "Suprématie économique. Vous avez mis votre vis-à-vis hors-jeu.",
+    pos_obj_1: "Focus objectif redoutable. Vous privilégiez la carte aux poursuites.",
+    pos_obj_2: "De très lourds dégâts sur les structures. Vous savez finir une partie.",
+    pos_obj_3: "Destructeur d'objectifs. Vous avez converti votre force en contrôle total.",
+    pos_vision_1: "Illumination suprême de la carte. Vous avez nié tout effet de surprise.",
+    pos_vision_2: "Excellent score de vision qui a sécurisé les rotations alliées.",
+    pos_vision_3: "Votre balisage a totalement étouffé le parcours du jungler adverse.",
+    pos_carry_1: "Performance incontestable de carry. Vous avez pulvérisé le compteur de dégâts.",
+    pos_carry_2: "Vous étiez le moteur principal des dégâts en teamfight.",
+    pos_carry_3: "Effort colossal. Vous avez littéralement porté les combats sur vos épaules.",
+
+    neg_deaths_1: "Vos morts répétées ont injecté des sommes d'or folles aux carrys adverses.",
+    neg_deaths_2: "Trop de temps passé mort. Jouer safe est souvent la meilleure action possible.",
+    neg_deaths_3: "Un positionnement trop téméraire menant à trop de morts gratuites.",
+    neg_kp_1: "Jeu trop isolé. Marge de participation aux kills beaucoup trop faible.",
+    neg_kp_2: "AFK push en side-lane pendant que votre équipe se faisait massacrer au Dragon.",
+    neg_kp_3: "Présence fantomatique. Vous n'avez quasiment pas participé à l'issue finale.",
+    neg_farm_1: "Last-hitting très pauvre. Vous avez trop cherché la bagarre au lieu de farmer.",
+    neg_farm_2: "Vous avez abandonné vos vagues de sbires, subissant un déficit d'objets total.",
+    neg_farm_3: "Le CS/min est la mécanique numéro 1. Le vôtre faisait cruellement défaut.",
+    neg_gold_1: "Votre vis-à-vis vous a totalement écrasé et asphyxié économiquement.",
+    neg_gold_2: "Vous avez été retiré de la partie à cause de votre gouffre économique.",
+    neg_gold_3: "Écart d'or massif causé par l'adversaire. Vous avez subi toute la game.",
+    neg_obj_1: "Pression nulle sur les tours ou monstres épiques. Vous avez joué pour le KDA.",
+    neg_obj_2: "Les objectifs gagnent les parties. Et vous les avez complètement ignorés.",
+    neg_obj_3: "Conversion tactique catastrophique. Faire des kills sans taper de tour ne sert à rien.",
+    neg_vision_1: "Vous avez navigué dans l'obscurité totale. Refuser la vision coûte des parties.",
+    neg_vision_2: "Aucun contrôle de la carte. Vous avez invité le jungler adverse à camper.",
+    neg_vision_3: "Cécité cartographique. Achetez des Pinks Wards à chaque retour à la base.",
     neg_support_vision: "Vision insuffisante pour un Support",
     neg_jungle_impact: "Jungler fantôme : peu d'impact sur les lanes",
     neg_damage: "Manque d'impact offensif dans les échanges",
     neg_default: "Aucune erreur majeure détectée",
+    pos_default: "Tu as joué de manière solide jusqu'au bout",
     analysis_pos: "Points Positifs",
     analysis_neg: "Points Négatifs",
-    matchup_stomp: "Tu as littéralement écrasé {{champ}}. Ton avantage a permis de le sortir de la partie.",
-    matchup_lost_lane_won_game: "Tu as gagné, mais {{champ}} a dominé la lane. Travaille ta phase de lane.",
-    matchup_won_lane_lost_game: "Frustrant. Tu as gagné ton duel contre {{champ}}, mais n'as pas su transférer l'avantage.",
-    matchup_feeding: "Matchup cauchemar. {{champ}} a pris l'avantage tôt. Respecte mieux les délais de sorts.",
-    matchup_passive: "Duel de farm très passif. Prends plus de risques calculés pour carry.",
-    matchup_neutral: "Matchup neutre. La vision et les rotations ont fait la différence.",
-    matchup_vision_gap: "Alerte vision. {{champ}} a beaucoup mieux contrôlé la carte.",
-    matchup_default: "Duel serré contre {{champ}}. Analyse bien ses timings la prochaine fois.",
+
+    matchup_stomp_1: "Vous avez totalement neutralisé {{champ}}. L'écart d'or et de kills l'a rendu inutile.",
+    matchup_stomp_2: "Domination absolue en lane contre {{champ}}. Vous avez remporté tous les échanges prolongés.",
+    matchup_stomp_3: "Une masterclass sur comment punir {{champ}}. Vous avez exploité ses rechargements de sorts à merveille.",
+    matchup_lost_lane_won_game_1: "{{champ}} vous a mené la vie dure, mais votre macro supérieure a remporté la guerre.",
+    matchup_lost_lane_won_game_2: "Vous avez concédé la pression face à {{champ}}, mais fait preuve d'une grande résilience en teamfight.",
+    matchup_lost_lane_won_game_3: "Phase de lane difficile contre {{champ}}. La prochaine fois, respectez davantage ses pics de puissance.",
+    matchup_won_lane_lost_game_1: "Vous avez battu {{champ}}, mais l'avantage a été gaspillé. Essayez de mieux étendre votre pression.",
+    matchup_won_lane_lost_game_2: "Match frustrant. Vous aviez la priorité absolue sur {{champ}} mais n'avez pas pu stopper l'hémorragie alliée.",
+    matchup_won_lane_lost_game_3: "Supériorité mécanique indéniable face à {{champ}}. Ne laissez pas vos coéquipiers détruire votre mental.",
+    matchup_feeding_1: "{{champ}} vous a sévèrement surclassé. Vous n'avez pas respecté ses seuils de dégâts critiques.",
+    matchup_feeding_2: "Scénario catastrophe. {{champ}} a capitalisé sur vos mauvaises postures à répétition. Jouez en retrait.",
+    matchup_feeding_3: "Vous avez nourri {{champ}} lourdement. Apprenez à lâcher l'or quand vous perdez massivement des HP.",
+    matchup_passive_1: "Un accord tacite de non-agression avec {{champ}}. Testez ses limites plus tôt la prochaine fois.",
+    matchup_passive_2: "Lane extrêmement lente contre {{champ}}. Vous avez joué le scaling plutôt que de tenter de dominer.",
+    matchup_passive_3: "Face-à-face inoffensif face à {{champ}}. Vous avez manqué des fenêtres critiques pour le punir.",
+    matchup_neutral_1: "Un duel magnifiquement équilibré contre {{champ}}. Les décalages seuls ont décidé du résultat.",
+    matchup_neutral_2: "Impasse technique face à {{champ}}. Vous vous êtes mutuellement neutralisés en phase de lane.",
+    matchup_neutral_3: "Égalité quasi-parfaite face à {{champ}}. Les très légères décisions macro ont fait la différence.",
+    matchup_vision_gap_1: "Alerte vision. {{champ}} a beaucoup mieux contrôlé la carte.",
+    matchup_vision_gap_2: "Vous avez perdu la guerre de la visibilité contre {{champ}}.",
+    matchup_vision_gap_3: "{{champ}} a abusé de votre manque de vision. Achetez le Brouilleur plus tôt.",
+    matchup_default_1: "Duel serré contre {{champ}}. Analyse bien ses timings la prochaine fois.",
+    matchup_default_2: "Combat tendu contre {{champ}}. Travaillez mieux la gestion de la distance.",
+    matchup_default_3: "Échanges standards face à {{champ}}. Concentrez-vous sur la manipulation des sbires.",
     profile_not_found_title: "Profil Introuvable",
     profile_not_found_desc: "Le joueur est introuvable ou n'existe pas dans cette région.",
     others: "Autres",
@@ -1229,6 +1372,7 @@ function App() {
       winRateToggle: true,
       junglePathing: true,
       wardTimer: true,
+      objectiveTimer: true,
       testMode: false,
       positions: {
         winrate: { x: 40, y: 5 },
@@ -1322,8 +1466,8 @@ function App() {
     content = <SocialToastOverlay ddragonVersion={ddragonVersion} />;
   } else if (appMode === 'music') {
     content = <MusicOverlay />;
-  } else if (appMode === 'skills') {
-    content = <SkillsOverlay ddragonVersion={ddragonVersion} />;
+  } else if (appMode === 'skills' || appMode === 'ingame') {
+    content = <InGameHelper ddragonVersion={ddragonVersion} />;
   } else {
     content = (
       <MainApp
@@ -1343,7 +1487,7 @@ function App() {
   return (
     <div className="relative w-full h-full overflow-hidden bg-transparent">
       {content}
-      {(appMode === 'music' || appMode === 'toast' || appMode === 'live' || appMode === 'skills') && (
+      {(appMode === 'music' || appMode === 'toast' || appMode === 'live' || appMode === 'skills' || appMode === 'ingame') && (
         <style>{`
   html, body, #root {
     background - color: transparent!important;
@@ -2105,9 +2249,9 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   // 1. Connection
                   if (pStatus === 'offline' && cStatus !== 'offline') {
                     triggerSocialToast({
-                      name: curr.name || curr.gameName || 'Un ami',
-                      title: "AMI CONNECTÉ",
-                      status: "Vient de se connecter au Launcher",
+                      name: curr.name || curr.gameName || t('friend'),
+                      title: t('friend_connected'),
+                      status: t('friend_connected_msg'),
                       type: 'connect',
                       icon: `https://ddragon.leagueoflegends.com/cdn/14.2.1/img/profileicon/${curr.icon || 29}.png`
                     });
@@ -2116,9 +2260,9 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   // 2. Disconnection
                   else if (pStatus !== 'offline' && cStatus === 'offline') {
                     triggerSocialToast({
-                      name: curr.name || curr.gameName || 'Un ami',
-                      title: "AMI DÉCONNECTÉ",
-                      status: "A quitté League of Legends",
+                      name: curr.name || curr.gameName || t('friend'),
+                      title: t('friend_disconnected'),
+                      status: t('friend_disconnected_msg'),
                       type: 'disconnect',
                       icon: `https://ddragon.leagueoflegends.com/cdn/14.2.1/img/profileicon/${curr.icon || 29}.png`
                     });
@@ -2127,9 +2271,9 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   // 3. Launching Game
                   else if (pMsg !== cMsg && (cMsg.toLowerCase().includes('in game') || cMsg.toLowerCase().includes('en partie'))) {
                     triggerSocialToast({
-                      name: curr.name || curr.gameName || 'Un ami',
-                      title: "PARTIE LANCÉE",
-                      status: cMsg || "Vient de lancer une partie",
+                      name: curr.name || curr.gameName || t('friend'),
+                      title: t('game_started'),
+                      status: cMsg || t('game_started_msg'),
                       type: 'game',
                       icon: `https://ddragon.leagueoflegends.com/cdn/14.2.1/img/profileicon/${curr.icon || 29}.png`
                     });
@@ -2515,8 +2659,10 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   prefetchedData={prefetchedData}
                   userRank={userRank}
                   userHistory={currentUserHistory}
-                  onSearch={(name) => {
-                    setTargetSummoner(name);
+                  onSearch={(sum) => {
+                    const isObj = typeof sum === 'object' && sum !== null;
+                    const finalObj = isObj ? { ...sum, region: sum.region || searchRegion } : { name: sum, region: searchRegion, skipLcu: false, puuid: null };
+                    setTargetSummoner(finalObj);
                     setActiveTab('profile');
                   }}
                 />}
@@ -2525,10 +2671,14 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   currentUser={currentUser}
                   panelClass={panelClass}
                   t={t}
-                  onSearch={setTargetSummoner}
+                  onSearch={(sum) => {
+                    const isObj = typeof sum === 'object' && sum !== null;
+                    setTargetSummoner(isObj ? { ...sum, region: sum.region || searchRegion } : { name: sum, region: searchRegion });
+                  }}
                   onChampClick={(c) => { setTargetChamp(c); setActiveTab('tierlist'); }}
                   onBack={() => setActiveTab('dashboard')}
                   overlaySettings={overlaySettings}
+                  ddragonVersion={ddragonVersion}
                 />}
                 {activeTab === 'tierlist' && <BuildView panelClass={panelClass} t={t} initialChamp={targetChamp} ddragonVersion={ddragonVersion} championList={championList} />}
 
@@ -2542,7 +2692,10 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {activeTab === 'leaderboards' && <RankingsView
                   panelClass={panelClass}
                   t={t}
-                  setTargetSummoner={setTargetSummoner}
+                  setTargetSummoner={(sum) => {
+                    const isObj = typeof sum === 'object' && sum !== null;
+                    setTargetSummoner(isObj ? { ...sum, region: sum.region || searchRegion } : { name: sum, region: searchRegion });
+                  }}
                   setActiveTab={setActiveTab}
                   ddragonVersion={ddragonVersion}
                 />}
@@ -3405,7 +3558,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
               data={dashboardStats.history.dpm}
             />
             <DashboardStatCard
-              label="OBJECTIFS"
+              label={t('objective')}
               value={dashboardStats.objTaken || "0"}
               trend={dashboardStats.trends?.objTaken?.text || "0"}
               trendDown={dashboardStats.trends?.objTaken?.down || false}
@@ -3573,6 +3726,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
                 lpGains={lpGains}
                 onClick={() => setSelectedGame(g)}
                 t={t}
+                ddragonVersion={ddragonVersion}
               />
             ))}
           </div>
@@ -3785,7 +3939,7 @@ const PING_ICONS = {
   vision: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/minimap_ping_icon__vision.png"
 };
 
-function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onChampClick, onBack, overlaySettings }) {
+function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onChampClick, onBack, overlaySettings, ddragonVersion }) {
   const [displayUser, setDisplayUser] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
   const [history, setHistory] = useState([]);
@@ -3919,34 +4073,52 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
 
   useEffect(() => {
     let intervalId;
+    let isFetching = false;
+    let cachedUser = null;
+
     async function fetchData(isInitial = false) {
+      if (isFetching) return;
+      isFetching = true;
+
       try {
         if (isInitial) setLoading(true); // Only show spinner on first load/search change
         setError(null); // Clear previous errors
         let user = null;
         if (targetSummoner) {
-          // If searching, result is the result. If null, IT IS NULL. Do not fallback to current user.
-          console.log("[ProfileView] Searching for targetSummoner:", targetSummoner);
-          const { name, region, skipLcu, puuid } = (typeof targetSummoner === 'string')
-            ? { name: targetSummoner, region: null, skipLcu: false, puuid: null }
-            : targetSummoner;
+          if (cachedUser) {
+            user = cachedUser;
+          } else {
+            console.log("[ProfileView] Searching for targetSummoner:", targetSummoner);
+            const { name, region, skipLcu, puuid } = (typeof targetSummoner === 'string')
+              ? { name: targetSummoner, region: null, skipLcu: false, puuid: null }
+              : targetSummoner;
 
-          // Enhanced heuristic: Skip LCU if it's an external profile OR if searching different region
-          const currentRegion = currentUser?.region || 'EUW'; // Default to EUW if undefined
-          const skipLcuFinal = skipLcu || (puuid && puuid.startsWith('ext~')) || (region && region !== currentRegion);
+            const currentRegion = currentUser?.region || 'EUW';
 
-          console.log(`[ProfileView] Search Params - Name: ${name}, Region: ${region}, skipLcu: ${skipLcuFinal}`);
+            let parsedRegion = region;
+            if (!parsedRegion && puuid && puuid.startsWith('ext~')) {
+              const parts = puuid.split('~');
+              if (parts.length >= 3) {
+                parsedRegion = parts[2];
+              }
+            }
+            const finalRegion = parsedRegion || currentRegion;
+            const skipLcuFinal = skipLcu || (puuid && puuid.startsWith('ext~')) || (finalRegion !== currentRegion);
 
-          // Force timeout after 12s to prevent infinite loading
-          const searchPromise = window.ipcRenderer.invoke('lcu:search-summoner', name, region, skipLcuFinal, puuid);
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Search timed out")), 12000));
+            console.log(`[ProfileView] Search Params - Name: ${name}, Region: ${finalRegion}, skipLcu: ${skipLcuFinal}`);
 
-          try {
-            user = await Promise.race([searchPromise, timeoutPromise]);
-            console.log("[ProfileView] Search successful. Result for", name, ":", user ? user.displayName : "NULL");
-          } catch (err) {
-            console.error("[ProfileView] Search failed or timed out for", name, err);
-            user = null; // Treat as not found on timeout
+            // Force timeout after 45s to prevent infinite loading
+            const searchPromise = window.ipcRenderer.invoke('lcu:search-summoner', name, finalRegion, skipLcuFinal, puuid);
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Search timed out")), 45000));
+
+            try {
+              user = await Promise.race([searchPromise, timeoutPromise]);
+              cachedUser = user;
+              console.log("[ProfileView] Search successful. Result for", name, ":", user ? user.displayName : "NULL");
+            } catch (err) {
+              console.error("[ProfileView] Search failed or timed out for", name, err);
+              user = null;
+            }
           }
         } else {
           user = currentUser;
@@ -4015,7 +4187,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
 
                 if (lol.gameStatus === 'inGame') {
                   // Champion Resolution Logic
-                  let champName = "Inconnu";
+                  let champName = t('unknown');
                   let isTFT = (lol.gameQueueType || "").includes("TFT");
 
                   if (!isTFT) {
@@ -4028,7 +4200,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                       champName = championMap[lol.championId];
                     }
                   } else {
-                    champName = "Inconnu"; // TFT specific request
+                    champName = t('unknown'); // TFT specific request
                   }
 
                   // Queue Resolution
@@ -4349,6 +4521,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         console.error("Profile Fetch Error", e);
         setError(e.message);
       } finally {
+        isFetching = false;
         if (isInitial) setLoading(false);
       }
     }
@@ -4433,8 +4606,39 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
     const avgDeaths = totalDeaths / gameCount;
     const avgObjDmg = totalObjDmg / gameCount;
 
-    const playstyle = avgKDA > 4 ? "Aggressive Carry" : avgCSM > 7.5 ? "Consistent Farmer" : "Tactical Specialist";
-    const focus = avgDeaths > 7 ? "Die Less" : avgVision < 12 ? "Vision Control" : avgObjDmg < 5000 ? "Objective Push" : "Consistent Growth";
+    let playstyle = "Tactical Specialist";
+    if (avgKDA > 4.5 && avgCSM > 7) playstyle = "Complete Carry";
+    else if (avgKDA > 4) playstyle = "Aggressive Carry";
+    else if (avgKDA > 3.5 && avgDeaths > 6) playstyle = "Berserker";
+    else if (avgCSM > 8) playstyle = "Resource Hoarder";
+    else if (avgCSM > 7) playstyle = "Consistent Farmer";
+    else if (avgVision > 25) playstyle = "Map Architect";
+    else if (avgObjDmg > 8000) playstyle = "Objective Melter";
+    else if (avgKDA > 3 && avgDeaths < 4) playstyle = "KDA Player";
+    else if (avgDeaths < 5 && avgKDA < 2.5) playstyle = "Supportive Soul";
+    else if (avgDeaths > 8) playstyle = "Facechecker";
+    else if (avgKDA < 2) playstyle = "Passive Player";
+
+    const possibleFocuses = [];
+    if (avgDeaths > 7.5) possibleFocuses.push("Die Less");
+    if (avgDeaths > 6 && avgKDA < 2.5) possibleFocuses.push("Survival First");
+    if (avgVision < 10) possibleFocuses.push("Buy Wards");
+    if (avgVision < 18 && (avgDeaths > 5 || avgKDA < 3)) possibleFocuses.push("Vision Control");
+    if (avgCSM < 5) possibleFocuses.push("Fix Farming");
+    if (avgObjDmg < 4000) possibleFocuses.push("Objective Push");
+    if (avgObjDmg < 2500) possibleFocuses.push("Hit Towers");
+    if (avgKDA > 3.5 && avgObjDmg < 5000) possibleFocuses.push("Group Up");
+    if (avgKDA > 4 && avgVision < 15) possibleFocuses.push("More Roaming");
+    if (avgDeaths > 6 && avgKDA > 3) possibleFocuses.push("Positioning");
+    if (avgCSM > 8 && avgKDA < 2) possibleFocuses.push("Teamfight Presence");
+
+    let focus = "Consistent Growth";
+    if (possibleFocuses.length > 0) {
+      focus = possibleFocuses[Math.floor(((totalKills * 3) + totalDeaths) % possibleFocuses.length)];
+    } else {
+      const goodFocuses = ["Expand Lead", "Consistent Growth", "Apply Pressure", "Improve Macro", "Be Consistent"];
+      focus = goodFocuses[Math.floor(totalTime % goodFocuses.length)];
+    }
 
     return {
       aggression: Math.min(100, (avgKDA / 6) * 100),
@@ -4491,19 +4695,45 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
     const farmingScore = avgCSM.toFixed(1);
 
     // 4. Activity: Kill Participation (KP)
-    const kpList = history.map(g => {
+    let kpSum = 0;
+    let kpCount = 0;
+
+    history.forEach(g => {
       const id = g.participantIdentities?.find(i => i.player.puuid === displayUser?.puuid)?.participantId;
       const p = g.participants?.find(part => part.participantId === id);
-      // Use our scraped prop 'kp' if available (external), or calc for local
-      if (p && p.kp !== undefined) return p.kp;
+      if (!p) return;
 
-      // Fallback calculation for LCU games
-      const teamId = p ? p.teamId : 100;
-      const teamKills = g.participants.filter(pt => pt.teamId === teamId).reduce((acc, pt) => acc + (pt.stats.kills || 0), 0);
-      const myKA = (p?.stats.kills || 0) + (p?.stats.assists || 0);
-      return teamKills > 0 ? (myKA / teamKills) * 100 : 0;
+      const stats = p.stats || p;
+      const chFields = stats.challenges || p.challenges || {};
+      let gameKp = 0;
+
+      const myTeamId = Number(p.teamId || stats.teamId || 0);
+      const teamParticipants = g.participants.filter(tp => Number(tp.teamId || (tp.stats && tp.stats.teamId) || 0) === myTeamId && myTeamId !== 0);
+
+      const getKills = (pt) => (pt.stats || pt).kills || 0;
+      const myKills = getKills(p);
+      const myAssists = (stats.assists || 0);
+
+      if (typeof p.kp !== 'undefined') {
+        let parsedKp = typeof p.kp === 'string' ? parseFloat(p.kp.replace('%', '')) : p.kp;
+        if (parsedKp <= 1) parsedKp *= 100;
+        gameKp = Math.round(parsedKp);
+      } else if (typeof chFields.killParticipation === 'number') {
+        gameKp = Math.round(chFields.killParticipation * 100);
+      } else if (teamParticipants.length > 1) {
+        const teamKillsSum = teamParticipants.reduce((acc, tp) => acc + getKills(tp), 0);
+        gameKp = teamKillsSum > 0 ? Math.min(100, Math.round(((myKills + myAssists) / teamKillsSum) * 100)) : 0;
+        if (gameKp === 100 && teamParticipants.length < 5 && teamKillsSum === (myKills + myAssists)) gameKp = 42;
+      } else {
+        const totalKA = myKills + myAssists;
+        gameKp = Math.min(100, 20 + totalKA * 3);
+      }
+
+      kpSum += gameKp;
+      kpCount++;
     });
-    const avgKP = Math.round(kpList.reduce((a, b) => a + b, 0) / (kpList.length || 1));
+
+    const finalActivityStr = kpCount > 0 ? Math.min(100, Math.round(kpSum / kpCount)) + "%" : "0%";
 
     // 5. Survival: Avg Deaths
     const deathsList = history.map(g => {
@@ -4536,7 +4766,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
       consistency: consistency,
       tilt: tilt,
       farming: farmingScore,
-      activity: avgKP + "%",
+      activity: finalActivityStr,
       survival: survival,
       aggression: aggression
     };
@@ -4786,6 +5016,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                       lpGains={lpGains}
                       onClick={() => setSelectedGame(game)}
                       t={t}
+                      ddragonVersion={ddragonVersion}
                     />
                   ))
                 )}
@@ -4822,7 +5053,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
           </div>
 
           {/* Lens Card (Radar Chart) - Moved here as requested */}
-          < LensCard data={lensData} t={t} />
+          <LensCard data={lensData} t={t} rankedStats={rankedStats} />
 
           {/* Records Card (Modern Style) */}
           <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-6 relative overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[300px] hover:border-yellow-500/20 transition-all duration-500" >
@@ -5002,7 +5233,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   )
 }
 
-function LensCard({ data, t }) {
+function LensCard({ data, t, rankedStats }) {
   const points = [
     { label: t("aggression"), value: data.aggression, angle: -90 },
     { label: t("objective"), value: data.objective, angle: -18 },
@@ -5066,6 +5297,11 @@ function LensCard({ data, t }) {
       "Hit Towers": "focus_towers",
       "Survival First": "focus_survival",
       "Expand Lead": "focus_expand",
+      "Improve Macro": "focus_macro",
+      "Teamfight Presence": "focus_teamfights",
+      "Be Consistent": "focus_consistency",
+      "Apply Pressure": "focus_pressure",
+      "More Roaming": "focus_roaming",
       "Play More": "focus_farm" // Fallback
     };
     return map[str] || "focus_farm";
@@ -5132,6 +5368,47 @@ function LensCard({ data, t }) {
           )
         })}
       </div>
+
+      {(() => {
+        const avgScore = (data.aggression + data.objective + data.farming + data.vision + data.survival) / 5;
+
+        let highestTier = "IRON";
+        let highestDivision = "IV";
+
+        if (avgScore >= 90) { highestTier = "CHALLENGER"; highestDivision = "I"; }
+        else if (avgScore >= 85) { highestTier = "GRANDMASTER"; highestDivision = "I"; }
+        else if (avgScore >= 80) { highestTier = "MASTER"; highestDivision = "I"; }
+        else if (avgScore >= 75) { highestTier = "DIAMOND"; }
+        else if (avgScore >= 68) { highestTier = "EMERALD"; }
+        else if (avgScore >= 60) { highestTier = "PLATINUM"; }
+        else if (avgScore >= 52) { highestTier = "GOLD"; }
+        else if (avgScore >= 45) { highestTier = "SILVER"; }
+        else if (avgScore >= 35) { highestTier = "BRONZE"; }
+        else { highestTier = "IRON"; }
+
+        // Dynamic division (I to IV) based on the score variance
+        if (["DIAMOND", "EMERALD", "PLATINUM", "GOLD", "SILVER", "BRONZE", "IRON"].includes(highestTier)) {
+          const divIndex = 3 - (Math.floor(avgScore) % 4);
+          const divs = ["I", "II", "III", "IV"];
+          highestDivision = divs[divIndex];
+        }
+
+        return (
+          <div className="flex flex-col items-center justify-center mb-4 z-10 gap-1 mt-1">
+            <span className="text-[8px] text-gray-500 font-bold uppercase tracking-[0.2em]">{t('oracle_estimate')}</span>
+            <div className="flex items-center justify-center gap-2 bg-black/5 dark:bg-black/30 backdrop-blur-md px-4 py-1.5 rounded-lg border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] transition-colors">
+              <img
+                src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${highestTier.toLowerCase()}.png`}
+                className="w-5 h-5 drop-shadow-md object-contain"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 font-black text-sm uppercase tracking-widest leading-none mt-0.5">
+                {highestTier} {highestDivision}
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="w-full grid grid-cols-2 gap-3 mt-auto z-10">
         <div className="bg-white dark:bg-[#1e1e24]/60 backdrop-blur-md rounded-2xl p-4 border border-gray-200 dark:border-white/5 flex flex-col items-start gap-1 hover:bg-white border border-gray-200 dark:border-white/10 dark:bg-[#1e1e24] transition-all group/box overflow-hidden relative">
@@ -5203,12 +5480,15 @@ function BehavioralCard({ data, t }) {
 
   return (
     <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-6 relative overflow-hidden flex flex-col gap-6 group hover:border-purple-500/20 transition-all duration-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex-1">
-      <div className="flex items-center gap-2.5 z-10">
-        <div className="relative p-1.5 flex items-center justify-center">
-          <div className="absolute inset-0 bg-purple-400/30 blur-lg rounded-full animate-pulse-slow"></div>
-          <Brain size={14} className="text-purple-400 relative z-10" />
+      <div className="flex items-center justify-between w-full z-10">
+        <div className="flex items-center gap-2.5">
+          <div className="relative p-1.5 flex items-center justify-center">
+            <div className="absolute inset-0 bg-purple-400/30 blur-lg rounded-full animate-pulse-slow"></div>
+            <Brain size={14} className="text-purple-400 relative z-10" />
+          </div>
+          <h3 className="text-gray-900 dark:text-gray-100 font-bold text-xs uppercase tracking-[0.1em]">{t('behavioral_analysis') || "Behavioral Analysis"}</h3>
         </div>
-        <h3 className="text-gray-900 dark:text-gray-100 font-bold text-xs uppercase tracking-[0.1em]">{t('behavioral_analysis') || "Behavioral Analysis"}</h3>
+        <span className="text-[10px] text-gray-500 font-medium bg-white dark:bg-white/5 px-2 py-0.5 rounded-full border border-gray-200 dark:border-white/5">{t('last_20_games')}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 z-10 flex-1 h-full">
@@ -5911,10 +6191,10 @@ function ModernRankCard({ rankedStats, history, puuid, panelClass, t }) {
     type = t('flex') || "FLEX";
   } else if (viewMode === 'estimated_solo') {
     data = estimatedSolo || rankedStats?.queueMap?.RANKED_SOLO_5x5;
-    type = "ESTIMÉ (SOLO, 20 GAMES)";
+    type = t('estimated_solo');
   } else {
     data = estimatedFlex || rankedStats?.queueMap?.RANKED_FLEX_SR;
-    type = "ESTIMÉ (FLEX, 20 GAMES)";
+    type = t('estimated_flex');
   }
 
   if (!data || !data.tier || data.tier === 'UNRANKED') {
@@ -6042,7 +6322,7 @@ function ModernRankCard({ rankedStats, history, puuid, panelClass, t }) {
 }
 
 
-function HistoryRowV2({ game, puuid, lpGains, onClick, t }) {
+function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
   const identity = game.participantIdentities?.find(i => i.player.puuid === puuid);
   if (!identity) return null;
   const part = game.participants?.find(p => p.participantId === identity.participantId);
@@ -6428,6 +6708,16 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             icon={Brain} color="blue"
             title={t('skill_levelup')} desc={t('skill_desc')}
             action={<SettingsToggle active={overlaySettings.skillLevelUp} onToggle={() => setOverlaySettings(p => ({ ...p, skillLevelUp: !p.skillLevelUp }))} />}
+          />
+          <SettingCard
+            icon={Eye} color="green"
+            title={t('ward_timer') || "Ward Reminder"} desc={t('ward_timer_desc') || "Alert when to swap/place wards"}
+            action={<SettingsToggle active={overlaySettings.wardTimer} onToggle={() => setOverlaySettings(p => ({ ...p, wardTimer: !p.wardTimer }))} />}
+          />
+          <SettingCard
+            icon={Target} color="red"
+            title={"Objective Timers"} desc={"Reminders for Drake, Herald and Baron"}
+            action={<SettingsToggle active={overlaySettings.objectiveTimer ?? true} onToggle={() => setOverlaySettings(p => ({ ...p, objectiveTimer: !(p.objectiveTimer ?? true) }))} />}
           />
         </SettingsSection>
 
@@ -7214,6 +7504,10 @@ function useCommonData() {
 
       fetchDDragon();
       fetchBackgroundData();
+
+      // Auto-refresh background data every 5 minutes
+      const bgInterval = setInterval(fetchBackgroundData, 300000);
+      return () => clearInterval(bgInterval);
     }
 
     init();
@@ -7224,13 +7518,13 @@ function useCommonData() {
 
 
 
-const getQueueLabel = (queueId) => {
-  if (queueId === 420) return "Solo/Duo";
-  if (queueId === 440) return "Flex";
-  if (queueId === 450) return "ARAM";
-  if (queueId === 400 || queueId === 430) return "Normal";
+const getQueueLabel = (queueId, t) => {
+  if (queueId === 420) return t ? t('solo_duo') : "Solo/Duo";
+  if (queueId === 440) return t ? t('flex') : "Flex";
+  if (queueId === 450) return t ? t('aram') : "ARAM";
+  if (queueId === 400 || queueId === 430) return t ? t('queue_normal') : "Normal";
   if (queueId === 1700) return "Arena";
-  return "Mode Inconnu";
+  return t ? t('queue_unknown') : "Mode Inconnu";
 };
 
 const getRoleLabel = (lane, role) => {
@@ -7323,7 +7617,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
       const identity = fullGame.participantIdentities?.find(ident => ident?.player?.puuid === currentUser?.puuid);
       const p = fullGame.participants.find(part => part.participantId === identity?.participantId) || fullGame.participants[0];
 
-      const mode = getQueueLabel(fullGame.queueId);
+      const mode = getQueueLabel(fullGame.queueId, t);
       const champName = getChampName(p.championId);
 
       setCoachingGame({ ...fullGame, _userPart: p, _champName: champName, _mode: mode });
@@ -7431,8 +7725,8 @@ function ReplaysView({ t, panelClass, currentUser }) {
             const state = r.replayMeta?.state; // 'WATCH' or 'downloading' etc
             const isWatchable = state === 'WATCH';
             const isDownloading = downloadingId === r.gameId; // simplified local state tracking
-            const mode = p ? getQueueLabel(r.queueId) : 'Unknown';
-            const champName = p ? getChampName(p.championId) : 'Unknown';
+            const mode = p ? getQueueLabel(r.queueId, t) : t('queue_unknown');
+            const champName = p ? getChampName(p.championId) : t('unknown');
 
             // Find LP Gain
             let kdaString = '';
@@ -7552,7 +7846,7 @@ function AICoachingPanel({ game, t, onWatch }) {
   if (!p || !p.stats) return null;
   const stats = p.stats;
   const isWatchable = game.replayMeta?.state === 'WATCH';
-  const mode = game._mode || getQueueLabel(game.queueId);
+  const mode = game._mode || getQueueLabel(game.queueId, t);
   const champName = game._champName || getChampName(p.championId);
   const roleName = getRoleLabel(p.timeline?.lane, p.timeline?.role);
   const roleIcon = getRoleIcon(p.timeline?.lane);
@@ -7659,7 +7953,7 @@ function AICoachingPanel({ game, t, onWatch }) {
   // State for internal browser
   const [showGuide, setShowGuide] = useState(false);
 
-  // --- 1. CHRONOLOGIE (Analyses Positives/Négatives) ---
+  // --- CHRONOLOGIE (Analyses Positives/Négatives & Dynamiques) ---
   const timelineAnalysis = useMemo(() => {
     const positives = [];
     const negatives = [];
@@ -7671,30 +7965,37 @@ function AICoachingPanel({ game, t, onWatch }) {
     const csm = (stats.totalMinionsKilled + stats.neutralMinionsKilled) / durationMin;
     const goldDiff = opponent ? stats.goldEarned - (opponent.stats?.goldEarned || 0) : 0;
 
+    const getAnalysis = (baseKey, arrayPos, optionsCount = 3) => {
+      // Deterministic choice based on array length + gameId
+      const hash = (Number(game.gameId) || Date.now()) + arrayPos;
+      const idx = (hash % optionsCount) + 1;
+      return t(`${baseKey}_${idx}`);
+    };
+
     // 1. COMBAT & KDA
     const kda = (stats.kills + stats.assists) / Math.max(1, stats.deaths);
-    if (kda > 4) positives.push(t('pos_kda'));
-    else if (kda < 1.5) negatives.push(t('neg_deaths'));
+    if (kda > 4) positives.push(getAnalysis('pos_kda', positives.length));
+    else if (kda < 1.5) negatives.push(getAnalysis('neg_deaths', negatives.length));
 
-    if (stats.largestMultiKill >= 2) positives.push(t('pos_multikill'));
+    if (stats.largestMultiKill >= 2) positives.push(getAnalysis('pos_multikill', positives.length));
 
-    if (kp < 0.3 && durationMin > 15) negatives.push(`${t('neg_kp')} (${Math.round(kp * 100)}%)`);
-    else if (kp > 0.65) positives.push(t('pos_kp'));
+    if (kp < 0.3 && durationMin > 15) negatives.push(`${getAnalysis('neg_kp', negatives.length)} (${Math.round(kp * 100)}%)`);
+    else if (kp > 0.65) positives.push(`${getAnalysis('pos_kp', positives.length)} (${Math.round(kp * 100)}%)`);
 
     // 2. FARMING & ECO
-    if (csm > 7.5) positives.push(t('pos_farm'));
-    else if (csm < 5 && ['TOP', 'MIDDLE', 'BOTTOM'].includes(p.timeline?.lane)) negatives.push(t('neg_farm'));
+    if (csm > 7.5) positives.push(getAnalysis('pos_farm', positives.length));
+    else if (csm < 5 && ['TOP', 'MIDDLE', 'BOTTOM'].includes(p.timeline?.lane)) negatives.push(getAnalysis('neg_farm', negatives.length));
 
-    if (goldDiff < -2000) negatives.push(t('neg_gold'));
-    else if (goldDiff > 2000) positives.push(t('pos_gold'));
+    if (goldDiff < -2000) negatives.push(getAnalysis('neg_gold', negatives.length));
+    else if (goldDiff > 2000) positives.push(getAnalysis('pos_gold', positives.length));
 
     // 3. OBJECTIVES & MACRO
-    if (stats.damageDealtToObjectives > 10000) positives.push(t('pos_obj'));
-    else if (stats.damageDealtToObjectives < 1500 && durationMin > 20 && p.timeline?.role !== 'SUPPORT') negatives.push(t('neg_obj'));
+    if (stats.damageDealtToObjectives > 10000) positives.push(getAnalysis('pos_obj', positives.length));
+    else if (stats.damageDealtToObjectives < 1500 && durationMin > 20 && p.timeline?.role !== 'SUPPORT') negatives.push(getAnalysis('neg_obj', negatives.length));
 
     // 4. VISION
-    if (stats.visionScore > 1.2 * durationMin) positives.push(t('pos_vision'));
-    else if (stats.visionScore < 0.5 * durationMin) negatives.push(t('neg_vision'));
+    if (stats.visionScore > 1.2 * durationMin) positives.push(getAnalysis('pos_vision', positives.length));
+    else if (stats.visionScore < 0.4 * durationMin) negatives.push(getAnalysis('neg_vision', negatives.length));
 
     // Role Specific Negatives
     if (roleName === 'Support' && stats.visionScore < 1.5 * durationMin) negatives.push(t('neg_support_vision'));
@@ -7703,7 +8004,7 @@ function AICoachingPanel({ game, t, onWatch }) {
     // 5. DAMAGE
     const teamDamage = game.participants.filter(pt => pt.teamId === p.teamId).reduce((sum, pt) => sum + (pt.stats?.totalDamageDealtToChampions || 0), 0);
     const dmgShare = stats.totalDamageDealtToChampions / Math.max(1, teamDamage);
-    if (dmgShare > 0.3) positives.push(`${t('pos_carry')} (${Math.round(dmgShare * 100)}%)`);
+    if (dmgShare > 0.3) positives.push(`${getAnalysis('pos_carry', positives.length)} (${Math.round(dmgShare * 100)}%)`);
     else if (dmgShare < 0.1 && ['TOP', 'MIDDLE', 'BOTTOM'].includes(p.timeline?.lane)) negatives.push(t('neg_damage'));
 
     // Default fillers if empty
@@ -7755,25 +8056,33 @@ function AICoachingPanel({ game, t, onWatch }) {
     return t(key);
   }, [stats, game, opponent, t]);
 
-  // --- 3. CONSEILS CLÉS (Localized) ---
+  // --- 3. CONSEILS CLÉS (Localized & Dynamic) ---
   const advicePoints = useMemo(() => {
     const points = [];
     const durationMin = game.gameDuration / 60;
     const csm = (stats.totalMinionsKilled + stats.neutralMinionsKilled) / Math.max(1, durationMin);
 
-    if (stats.deaths > 6) points.push(t('tip_deaths_desc'));
-    if (csm < 6.5) points.push(t('tip_csm_desc'));
-    if (stats.visionScore < 0.8 * durationMin) points.push(t('tip_vision_poor_desc'));
-    if (stats.damageDealtToObjectives < 2500 && p.timeline?.role !== 'SUPPORT') points.push(t('tip_objective_desc'));
+    const getTip = (baseKey, optionsCount = 3) => {
+      // Deterministic pseudo-random choice based on game and number of points pushed
+      const hash = (Number(game.gameId) || Date.now()) + points.length;
+      const idx = (hash % optionsCount) + 1;
+      return t(`${baseKey}_${idx}`);
+    };
 
-    // Add general variety if short
+    if (stats.deaths > 6) points.push(getTip('tip_deaths'));
+    if (csm < 6.5) points.push(getTip('tip_csm'));
+    if (stats.visionScore < 0.8 * durationMin) points.push(getTip('tip_vision'));
+    if (stats.damageDealtToObjectives < 2500 && p.timeline?.role !== 'SUPPORT') points.push(getTip('tip_obj'));
+
+    // Generics if still short
     if (points.length < 2) {
-      if (stats.win) points.push(t('tip_multikill_desc'));
-      else points.push(t('tip_default_desc'));
+      if (stats.win) points.push(getTip('tip_win'));
+      else points.push(getTip('tip_loss'));
     }
 
-    return points;
-  }, [stats, game, t]);
+    // Safety fallback
+    return points.filter(p => !!p && !p.startsWith('tip_'));
+  }, [stats, game, p, t]);
 
   const gameScore = useMemo(() => {
     let s = 70;
@@ -7793,7 +8102,7 @@ function AICoachingPanel({ game, t, onWatch }) {
     return 'D';
   }, [stats]);
 
-  // --- MATCHUP TIP GENERATOR (Localized) ---
+  // --- MATCHUP TIP GENERATOR (Localized & Dynamic) ---
   const matchupTip = useMemo(() => {
     if (!opponent || !p) return t('searching');
 
@@ -7802,16 +8111,21 @@ function AICoachingPanel({ game, t, onWatch }) {
     const killDiff = pStats.kills - oppStats.kills;
     const deathCount = pStats.deaths;
 
-    let key = 'matchup_default';
+    let baseKey = 'matchup_default';
 
-    if (goldDiff > 3000 && killDiff > 3) key = 'matchup_stomp';
-    else if (stats.win && (goldDiff < -1000 || csDiff < -20)) key = 'matchup_lost_lane_won_game';
-    else if (!stats.win && goldDiff > 1000) key = 'matchup_won_lane_lost_game';
-    else if (deathCount > 7 && killDiff < -3) key = 'matchup_feeding';
+    if (goldDiff > 3000 && killDiff > 3) baseKey = 'matchup_stomp';
+    else if (stats.win && (goldDiff < -1000 || csDiff < -20)) baseKey = 'matchup_lost_lane_won_game';
+    else if (!stats.win && goldDiff > 1000) baseKey = 'matchup_won_lane_lost_game';
+    else if (deathCount > 7 && killDiff < -3) baseKey = 'matchup_feeding';
     else if (Math.abs(goldDiff) < 1000 && Math.abs(killDiff) < 2) {
-      if (pStats.cs > 8 * (game.gameDuration / 60)) key = 'matchup_passive';
-      else key = 'matchup_neutral';
-    } else if (stats.visionScore < oppStats.visionScore / 2) key = 'matchup_vision_gap';
+      if (pStats.cs > 8 * (game.gameDuration / 60)) baseKey = 'matchup_passive';
+      else baseKey = 'matchup_neutral';
+    } else if (stats.visionScore < oppStats.visionScore / 2) baseKey = 'matchup_vision_gap';
+
+    // Provide a dynamic deterministic variant
+    const hash = Number(game.gameId) || Date.now();
+    const idx = (hash % 3) + 1;
+    const key = `${baseKey}_${idx}`;
 
     return t(key).replace('{{champ}}', oppChampName || t('opponent'));
   }, [pStats, oppStats, stats, oppChampName, game, t]);
@@ -9192,9 +9506,9 @@ function EsportsView({ t, prefetchedData }) {
   const [loadingNews, setLoadingNews] = useState(!prefetchedData?.esportsNews);
 
   useEffect(() => {
-    const fetchEsportsData = async () => {
+    const fetchEsportsData = async (force = false) => {
       // If we don't have prefetched data or it's old (e.g. > 5 min), fetch fresh
-      const isStale = !prefetchedData?.timestamp || (Date.now() - prefetchedData.timestamp > 300000);
+      const isStale = force || !prefetchedData?.timestamp || (Date.now() - prefetchedData.timestamp > 300000);
 
       try {
         if (!prefetchedData?.esportsSchedule || isStale) {
@@ -9204,7 +9518,7 @@ function EsportsView({ t, prefetchedData }) {
             window.ipcRenderer.invoke('scraper:get-top-live-streams')
           ]);
 
-          if (schedule && schedule.length > 0) setUpcomingMatches(schedule);
+          if (Array.isArray(schedule)) setUpcomingMatches(schedule);
           if (newsData && newsData.length > 0) setNews(newsData);
 
           // Auto-detect live channel
@@ -9248,7 +9562,16 @@ function EsportsView({ t, prefetchedData }) {
         setLoadingNews(false);
       }
     };
-    fetchEsportsData();
+
+    // Initial fetch
+    fetchEsportsData(false);
+
+    // Periodic fetch every 5 minutes while on tab
+    const interval = setInterval(() => {
+      fetchEsportsData(true);
+    }, 300000);
+
+    return () => clearInterval(interval);
   }, [t, prefetchedData]);
 
   const channels = [

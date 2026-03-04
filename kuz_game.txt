@@ -1,0 +1,288 @@
+
+    
+<td class="championCellLight">
+    <a href="/match/euw/7752782663#participant1">
+        <div>
+            <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Sett" title="Sett" height="48" width="48" class="champion-875-48 ">        </div>
+                   
+            <div class="spells">
+                <div class="spell">
+                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" tooltip-var="perksdetails-3548171608" tooltip-class="perkTooltip" height="16" width="16" class="perk-8010-16 requireTooltip">                </div>
+                <div class="spell">
+                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Ignite" tooltip-var="spell-14" height="16" width="16" class="requireTooltip spell-14-16 ">                </div>
+                <div class="spell">
+                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Flash" tooltip-var="spell-4" height="16" width="16" class="requireTooltip spell-4-16 ">                </div>
+            </div>
+            </a>
+</td>
+
+<td class="championCellDark">
+    <div class="winIndicator defeat"></div>
+            <a href="/match/euw/7752782663#participant1">
+                <div class="championContainer">
+            <div>
+                <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Sett" title="Sett" height="36" width="36" class="champion-875-36 ">            </div>
+                            <div class="spells">
+                    <div class="spell">
+                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" tooltip-var="perksdetails-3548171608" tooltip-class="perkTooltip" height="12" width="12" class="perk-8010-12 requireTooltip">                    </div>
+                    <div class="spell">
+                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Ignite" tooltip-var="spell-14" height="12" width="12" class="requireTooltip spell-14-12 ">                    </div>
+                    <div class="spell">
+                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Flash" tooltip-var="spell-4" height="12" width="12" class="requireTooltip spell-4-12 ">                    </div>
+                </div>
+                    </div>
+                </a>
+    </td>
+    <script type="text/javascript">
+    var newTooltipData = {"match-7752782663": (new Date(1772062515959).toLocaleDateString() + " " + new Date(1772062515959).toLocaleTimeString()) + " - 24min 44s"};
+    if (window.tooltipData) {
+        window.tooltipData = Object.assign(window.tooltipData, newTooltipData);
+    } else {
+        window.tooltipData = newTooltipData;
+    }
+</script>
+
+<td class="resultCellLight text-center">
+    <a class="display-block" href="/match/euw/7752782663#participant1">
+        <div class="victoryDefeatText defeat">Defeat</div>
+        <div class="gameMode requireTooltip" tooltip-vertical-offset="0" tooltip="Normal (Draft Pick)">
+            Normal (Draft Pick)        </div>
+
+        <div class="gameDate requireTooltip" tooltip-vertical-offset="0" tooltip-var="match-7752782663">
+            6 days ago        </div>
+
+        <div class="gameDuration">
+            24min 44s        </div>
+
+        <div class="lpChange">
+                    </div>
+    </a>
+</td>
+
+<td class="resultCellDark nopadding">
+    <a class="full-cell" href="/match/euw/7752782663#participant1">
+        <div class="display-block">
+            <div class="victoryDefeatText defeat">Defeat</div>
+            <div class="gameMode  requireTooltip" tooltip-vertical-offset="0" tooltip="Normal (Draft Pick)">
+                
+                Normal (Draft Pick)            </div>
+
+        </div>
+    </a>
+</td>
+
+    
+
+<td class="text-center nopadding kdaColumn ">
+            <a class="full-cell" href="/match/euw/7752782663#participant1">
+                <div class="display-block requireTooltip" tooltip-vertical-offset="0" tooltip="<itemname>Farming</itemname>Minions: 84<br/>CS / min: 3.4<br/><br/><itemname>Fighting</itemname>Kill participation: 14%<br/><br/><itemname>Vision</itemname>Vision Score: 15<br/>Vision Score / minute: 0.6">
+            <div class="kdaContainer ">
+                <div class="kda">
+                    <span class="kills">2</span>
+                    <span class="kdaSeparator">/</span>
+                    <span class="deaths">10</span>
+                    <span class="kdaSeparator">/</span>
+                    <span class="assists">1</span>
+                </div>
+
+                                    <div class="cs">
+                                                    <span class="number">84</span> CS                        
+                                                    -          
+                            <span class="killParticipation">
+                                <span class="number">14%</span> Kills P.                            </span>
+                                            </div>
+                            </div>
+
+                    </div>
+                </a>
+    </td>
+    <td class="itemsColumnLight">
+    <a class="full-cell" href="/match/euw/7752782663#participant1">
+        <div class="display-block">
+            <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Doran's Blade" tooltip-var="item-1055" tooltip-class="itemTooltip" height="24" width="24" class="requireTooltip item-1055-24 "><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Stridebreaker" tooltip-var="item-6631" tooltip-class="itemTooltip" height="24" width="24" class="requireTooltip item-6631-24 "><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Plated Steelcaps" tooltip-var="item-3047" tooltip-class="itemTooltip" height="24" width="24" class="requireTooltip item-3047-24 "><br><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Thornmail" tooltip-var="item-3075" tooltip-class="itemTooltip" height="24" width="24" class="requireTooltip item-3075-24 "><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Stealth Ward" tooltip-var="item-3340" tooltip-class="itemTooltip" height="24" width="24" class="requireTooltip item-3340-24 ">        </div>
+    </a>
+</td>
+
+<td class="itemsColumnDark">
+            <a class="full-cell" href="/match/euw/7752782663#participant1">
+                <div class="display-block">
+            
+            <div class="itemsBlock">
+                <div>
+                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Doran's Blade" tooltip-var="item-1055" tooltip-class="itemTooltip" height="20" width="20" class="requireTooltip item-1055-20 "><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Stridebreaker" tooltip-var="item-6631" tooltip-class="itemTooltip" height="20" width="20" class="requireTooltip item-6631-20 "><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Plated Steelcaps" tooltip-var="item-3047" tooltip-class="itemTooltip" height="20" width="20" class="requireTooltip item-3047-20 "><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Thornmail" tooltip-var="item-3075" tooltip-class="itemTooltip" height="20" width="20" class="requireTooltip item-3075-20 "></div><div><img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Stealth Ward" tooltip-var="item-3340" tooltip-class="itemTooltip" height="20" width="20" class="requireTooltip item-3340-20 "><div class="emptyItem"></div><div class="emptyItem"></div>                </div>
+            </div>
+        </div>
+
+                </a>
+    
+</td>
+    <td class="summonersTdLight">
+    <div class="summoners">
+                    <div class="summonerColumn">
+                                            <div class="img-align-block-right selected ">
+                                <div>
+                                    <a href="/summoner/euw/kuzkuz45-EUW">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Sett" title="Sett" height="20" width="20" class="champion-875-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/kuzkuz45-EUW">
+                                        kuzkuz45#EUW                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block-right  ">
+                                <div>
+                                    <a href="/summoner/euw/Lukawaii-1950">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Nunu &amp; Willump" title="Nunu &amp; Willump" height="20" width="20" class="champion-20-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/Lukawaii-1950">
+                                        Lukawaii#1950                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block-right  ">
+                                <div>
+                                    <a href="/summoner/euw/berken-4450">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Veigar" title="Veigar" height="20" width="20" class="champion-45-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/berken-4450">
+                                        berken#4450                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block-right  ">
+                                <div>
+                                    <a href="/summoner/euw/ghostlightboy-ghost">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Swain" title="Swain" height="20" width="20" class="champion-50-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/ghostlightboy-ghost">
+                                        ghostlightboy#ghost                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block-right  ">
+                                <div>
+                                    <a href="/summoner/euw/Carovel-EUW">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Nidalee" title="Nidalee" height="20" width="20" class="champion-76-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/Carovel-EUW">
+                                        Carovel#EUW                                    </a>
+                                </div>
+                            </div>
+                                        </div>
+                    <div class="summonerColumn">
+                                            <div class="img-align-block  ">
+                                <div>
+                                    <a href="/summoner/euw/GiveMeYourStacks-0000">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Illaoi" title="Illaoi" height="20" width="20" class="champion-420-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/GiveMeYourStacks-0000">
+                                        GiveMeYourStacks#0000                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block  ">
+                                <div>
+                                    <a href="/summoner/euw/wardrake-EUW">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Volibear" title="Volibear" height="20" width="20" class="champion-106-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/wardrake-EUW">
+                                        wardrake#EUW                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block  ">
+                                <div>
+                                    <a href="/summoner/euw/hackzor-1337">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Vel'Koz" title="Vel'Koz" height="20" width="20" class="champion-161-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/hackzor-1337">
+                                        hackzor#1337                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block  ">
+                                <div>
+                                    <a href="/summoner/euw/Merida-80085">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Jinx" title="Jinx" height="20" width="20" class="champion-222-20 ">                                    </a>
+                                </div>
+                                <div class="txt ">
+                                    <a href="/summoner/euw/Merida-80085">
+                                        Merida#80085                                    </a>
+                                </div>
+                            </div>
+                                                        <div class="img-align-block  ">
+                                <div>
+                                    <a href="/summoner/euw/LittleWaffle-IKEA">
+                                        <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Mel" title="Mel" height="20" width="20" class="champion-800-20 ">                                    </a>
+                                </div>
+                                <div class="txt last">
+                                    <a href="/summoner/euw/LittleWaffle-IKEA">
+                                        LittleWaffle#IKEA                                    </a>
+                                </div>
+                            </div>
+                                        </div>
+        
+        <a class="seeMatchButton" href="/match/euw/7752782663#participant1">
+            <i class="fa fa-chart-area"></i>
+        </a>
+    </div>
+</td>
+
+<td class="summonersTdDark">
+    <div class="matchData requireTooltip" tooltip-vertical-offset="0" tooltip-var="match-7752782663">
+    6 days ago    - 
+    24min 44s</div>
+    <div class="summoners">
+                    <div class="summonerLine">
+                                            <a href="/summoner/euw/kuzkuz45-EUW">
+                                <div class="championIcon selected requireTooltip " tooltip="kuzkuz45#EUW">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Sett" title="Sett" height="20" width="20" class="champion-875-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/Lukawaii-1950">
+                                <div class="championIcon  requireTooltip " tooltip="Lukawaii#1950">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Nunu &amp; Willump" title="Nunu &amp; Willump" height="20" width="20" class="champion-20-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/berken-4450">
+                                <div class="championIcon  requireTooltip " tooltip="berken#4450">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Veigar" title="Veigar" height="20" width="20" class="champion-45-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/ghostlightboy-ghost">
+                                <div class="championIcon  requireTooltip " tooltip="ghostlightboy#ghost">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Swain" title="Swain" height="20" width="20" class="champion-50-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/Carovel-EUW">
+                                <div class="championIcon  requireTooltip " tooltip="Carovel#EUW">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Nidalee" title="Nidalee" height="20" width="20" class="champion-76-20 ">                                </div>
+                            </a>
+                                                                        </div>
+                    <div class="summonerLine">
+                                            <a href="/summoner/euw/GiveMeYourStacks-0000">
+                                <div class="championIcon  requireTooltip " tooltip="GiveMeYourStacks#0000">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Illaoi" title="Illaoi" height="20" width="20" class="champion-420-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/wardrake-EUW">
+                                <div class="championIcon  requireTooltip " tooltip="wardrake#EUW">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Volibear" title="Volibear" height="20" width="20" class="champion-106-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/hackzor-1337">
+                                <div class="championIcon  requireTooltip " tooltip="hackzor#1337">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Vel'Koz" title="Vel'Koz" height="20" width="20" class="champion-161-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/Merida-80085">
+                                <div class="championIcon  requireTooltip " tooltip="Merida#80085">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Jinx" title="Jinx" height="20" width="20" class="champion-222-20 ">                                </div>
+                            </a>
+                                                                                        <a href="/summoner/euw/LittleWaffle-IKEA">
+                                <div class="championIcon  requireTooltip " tooltip="LittleWaffle#IKEA">
+                                    <img src="//lolg-cdn.porofessor.gg/img/s/fond_sprite.png?v=1772220047" alt="Mel" title="Mel" height="20" width="20" class="champion-800-20 ">                                </div>
+                            </a>
+                                                                        </div>
+            </div>
+
+    <div class="seeMatchButton">
+        <a href="/match/euw/7752782663#participant1">
+            <i class="fa fa-chart-area"></i>
+        </a>
+    </div>
+</td>

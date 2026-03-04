@@ -37,6 +37,7 @@
     "dotenv": "^17.2.3",
     "electron-updater": "^6.7.3",
     "framer-motion": "^12.23.26",
+    "jsdom": "^28.1.0",
     "league-connect": "^6.0.0-rc13",
     "lucide-react": "^0.562.0",
     "python-shell": "^5.0.0",

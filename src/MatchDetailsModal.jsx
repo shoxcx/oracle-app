@@ -74,6 +74,25 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
             String(initialGame.gameId).startsWith('ext~');
     }, [initialGame]);
 
+    const matchRegion = useMemo(() => {
+        if (!initialGame) return undefined;
+        if (initialGame.region) return initialGame.region;
+        if (initialGame.platformId) {
+            const p = initialGame.platformId.toUpperCase();
+            if (p.startsWith('EUW')) return 'EUW';
+            if (p.startsWith('NA')) return 'NA';
+            if (p.startsWith('KR')) return 'KR';
+            if (p.startsWith('EUN')) return 'EUNE';
+            if (p.startsWith('LA1')) return 'LAN';
+            if (p.startsWith('LA2')) return 'LAS';
+            if (p.startsWith('BR')) return 'BR';
+            if (p.startsWith('TR')) return 'TR';
+            if (p.startsWith('JP')) return 'JP';
+            if (p.startsWith('OC')) return 'OCE';
+        }
+        return undefined;
+    }, [initialGame]);
+
     useEffect(() => {
         if (!isOpen || !initialGame?.gameId) {
             setFullGame(null);
@@ -232,12 +251,12 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
                                 <ScoreboardTeamSection
                                     title={t('victory')} side={t('blue_side')} players={team100} isWin={team100Win} objectives={displayData?.teams?.find(t => t.teamId === 100)}
                                     mvpId={mvpId} aceId={aceId} rankMap={rankMap} runeMap={runeMap} ver={ddragonVersion} maxDmg={maxDamage} dur={durationMin}
-                                    getScore={getPlayerScore} selfPuuid={selfPuuid} selfRank={userRank} onSearch={onSearch} playerRanks={playerRanks}
+                                    getScore={getPlayerScore} selfPuuid={selfPuuid} selfRank={userRank} onSearch={onSearch} playerRanks={playerRanks} matchRegion={matchRegion}
                                 />
                                 <ScoreboardTeamSection
                                     title={t('defeat')} side={t('red_side')} players={team200} isWin={team200Win} objectives={displayData?.teams?.find(t => t.teamId === 200)}
                                     mvpId={mvpId} aceId={aceId} rankMap={rankMap} runeMap={runeMap} ver={ddragonVersion} maxDmg={maxDamage} dur={durationMin}
-                                    getScore={getPlayerScore} selfPuuid={selfPuuid} selfRank={userRank} onSearch={onSearch} playerRanks={playerRanks}
+                                    getScore={getPlayerScore} selfPuuid={selfPuuid} selfRank={userRank} onSearch={onSearch} playerRanks={playerRanks} matchRegion={matchRegion}
                                 />
                             </div>
                         )}
@@ -810,7 +829,7 @@ function PingMiniItem({ icon, val, color }) {
     );
 }
 
-function ScoreboardTeamSection({ title, side, players, isWin, objectives, mvpId, aceId, rankMap, runeMap, ver, maxDmg, dur, getScore, selfPuuid, selfRank, onSearch, playerRanks }) {
+function ScoreboardTeamSection({ title, side, players, isWin, objectives, mvpId, aceId, rankMap, runeMap, ver, maxDmg, dur, getScore, selfPuuid, selfRank, onSearch, playerRanks, matchRegion }) {
     const isBlue = side.includes("bleu");
     const teamId = isBlue ? "100" : "200";
 
@@ -883,7 +902,7 @@ function ScoreboardTeamSection({ title, side, players, isWin, objectives, mvpId,
                         key={p.participantId} p={p} isMVP={p.participantId === mvpId} isACE={p.participantId === aceId}
                         rank={rankMap[p.participantId]} runeMap={runeMap} ver={ver} maxDmg={maxDmg} dur={dur}
                         score={getScore(p)} isMe={p.puuid === selfPuuid} selfRank={selfRank} isWin={isWin}
-                        players={players} onSearch={onSearch} playerRanks={playerRanks}
+                        players={players} onSearch={onSearch} playerRanks={playerRanks} matchRegion={matchRegion}
                     />
                 ))}
             </div>
@@ -891,7 +910,7 @@ function ScoreboardTeamSection({ title, side, players, isWin, objectives, mvpId,
     );
 }
 
-function ScoreboardRow({ p, isMVP, isACE, rank, runeMap, ver, maxDmg, dur, score, isMe, selfRank, isWin, players, onSearch, playerRanks }) {
+function ScoreboardRow({ p, isMVP, isACE, rank, runeMap, ver, maxDmg, dur, score, isMe, selfRank, isWin, players, onSearch, playerRanks, matchRegion }) {
     if (!p.stats) return <div className="h-20 bg-white/[0.02] border border-white/5 rounded-[2rem] animate-pulse" />;
     const stats = p.stats;
     const cs = (stats.totalMinionsKilled || 0) + (stats.neutralMinionsKilled || 0);
@@ -929,7 +948,7 @@ function ScoreboardRow({ p, isMVP, isACE, rank, runeMap, ver, maxDmg, dur, score
             {/* Champ Icon */}
             <div
                 className="relative w-12 h-12 shrink-0 cursor-pointer group/icon"
-                onClick={() => onSearch && onSearch({ name: searchName, puuid: p.puuid })}
+                onClick={() => onSearch && onSearch({ name: searchName, puuid: p.puuid, region: matchRegion })}
             >
                 <img
                     src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.championId}.png`}
@@ -942,7 +961,7 @@ function ScoreboardRow({ p, isMVP, isACE, rank, runeMap, ver, maxDmg, dur, score
 
             {/* Identity & Rank */}
             <div
-                onClick={() => onSearch && onSearch({ name: searchName, puuid: p.puuid })}
+                onClick={() => onSearch && onSearch({ name: searchName, puuid: p.puuid, region: matchRegion })}
                 className="flex flex-col min-w-0 cursor-pointer group/name"
             >
                 <div className="font-medium text-[16px] text-gray-900 dark:text-white truncate group-hover/name:text-blue-400 transition-colors tracking-tight leading-none mb-2">{name}</div>
