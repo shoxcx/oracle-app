@@ -91,7 +91,7 @@ export function LiveGameRow({ activeGame, panelClass, puuid, summonerId, gameId,
     const champIcon = (champId && champId !== 0)
         ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${champId}.png`
         : (champName && champName !== "Inconnu"
-            ? `https://ddragon.leagueoflegends.com/cdn/14.1.1/img/champion/${normalizeName(champName)}.png`
+            ? `https://cdn.communitydragon.org/latest/champion/${normalizeName(champName)}/square`
             : `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png`);
 
 

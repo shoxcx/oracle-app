@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Target, Eye, AlertCircle, Sparkles, Map, Skull } from 'lucide-react';
+import { Target, Eye, AlertCircle, Sparkles, Map, Skull, Activity } from 'lucide-react';
+import MainLogo from '../assets/oracle_logo.png';
 
 export function InGameHelper({ ddragonVersion }) {
     const [toasts, setToasts] = useState([]);
     const [champName, setChampName] = useState("");
+    const [buildData, setBuildData] = useState(null);
 
-    const [overlaySettings, setOverlaySettings] = useState({ skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false });
+    const [overlaySettings, setOverlaySettings] = useState({ skillLevelUp: true, wardTimer: true, objectiveTimer: true, inGameStats: true, testMode: false });
+    const [liveData, setLiveData] = useState(null);
 
     // Using refs for properties that are accessed within the setInterval closure
     const stateRefs = useRef({
@@ -17,13 +20,25 @@ export function InGameHelper({ ddragonVersion }) {
         testModeFired: false,
         objCamp1: false, // Jungle Buffs
         objCamp2: false, // Scuttle Crab
-        objDrake: false,
+        notifiedSpawns: { drake: -1, baron: -1 },
         objVoidgrubs: false,
-        objHerald: false,
-        objBaron: false,
         isInitializingChamp: false,
-        settings: { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false }
+        itemState: { notifiedStarting: false, toastScheduledFor: 0 },
+        lastItemsStr: '',
+        settings: { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false },
+        ddVersion: ddragonVersion || "14.2.1",
+        champ: "",
+        hasFetchedBuildForRole: false,
+        acquiredItems: new Set(),
+        liveData: null,
+        lastWinrateTime: 0,
+        winrateSpamTriggered: false,
+        processedEventsCount: 0
     });
+
+    useEffect(() => {
+        if (ddragonVersion) stateRefs.current.ddVersion = ddragonVersion;
+    }, [ddragonVersion]);
 
     const pushToast = (toast) => {
         const id = Date.now() + Math.random();
@@ -38,14 +53,21 @@ export function InGameHelper({ ddragonVersion }) {
         document.documentElement.style.backgroundColor = 'transparent';
         if (!window.ipcRenderer) return;
 
-        window.ipcRenderer.invoke('app:get-settings').then(s => {
-            const parsed = s?.overlaySettings || { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false };
-            setOverlaySettings(parsed);
-            stateRefs.current.settings = parsed;
-        });
+        // Load correct settings directly from shared localStorage if possible
+        try {
+            const saved = localStorage.getItem('oracle_overlay_settings');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                setOverlaySettings(parsed);
+                stateRefs.current.settings = parsed;
+            }
+        } catch (e) {
+            console.error("Failed to parse settings", e);
+        }
 
         const handleSync = (_, s) => {
-            const parsed = s?.overlaySettings || { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false };
+            // "s" is the overlaySettings object sent by App.jsx
+            const parsed = s || { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false };
             setOverlaySettings(parsed);
             stateRefs.current.settings = parsed;
         };
@@ -56,48 +78,178 @@ export function InGameHelper({ ddragonVersion }) {
             if (typeof data === 'string') {
                 champ = data;
                 setChampName(data);
+                stateRefs.current.champ = data;
             } else if (data) {
                 champ = data.champName || data.championName || "";
                 setChampName(champ);
+                stateRefs.current.champ = champ;
                 if (data.spells) {
                     const isJng = data.spells.spell1Id === 11 || data.spells.spell2Id === 11;
                     stateRefs.current.isJungle = isJng;
                 }
             }
 
-            if (champ && ddragonVersion) {
+            if (champ) {
                 try {
-                    // Normalize id (e.g. Wukong -> MonkeyKing)
-                    let ddId = champ.replace(/[^a-zA-Z0-9]/g, '');
-                    if (champ.toLowerCase() === 'wukong') ddId = 'MonkeyKing';
-                    if (champ.toLowerCase() === 'renata glasc') ddId = 'Renata';
+                    let v = stateRefs.current.ddVersion;
+                    if (!v || v.startsWith("14.")) {
+                        try {
+                            const vp = await fetch('https://ddragon.leagueoflegends.com/api/versions.json').then(r=>r.json());
+                            v = vp[0];
+                            stateRefs.current.ddVersion = v;
+                        } catch(e) {}
+                    }
 
-                    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/en_US/champion/${ddId}.json`);
+                    // Normalize id (e.g. Wukong -> MonkeyKing, LeBlanc -> Leblanc)
+                    const normalizeChampName = (name) => {
+                        if (!name) return "Yasuo";
+                        let clean = name.replace(/['\s.&]/g, '');
+                        if (clean.length > 1) {
+                            clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+                        }
+                        const mapping = {
+                            'KhaZix': 'Khazix', 'KaiSa': 'Kaisa', 'BelVeth': 'Belveth', 'ChoGath': 'Chogath',
+                            'VelKoz': 'Velkoz', 'RekSai': 'RekSai', 'KSante': 'KSante', 'Wukong': 'MonkeyKing',
+                            'NunuWillump': 'Nunu', 'Nunu': 'Nunu', 'NunuandWillump': 'Nunu', 'RenataGlasc': 'Renata', 'LeBlanc': 'Leblanc',
+                            'DrMundo': 'DrMundo', 'Mundo': 'DrMundo', 'MasterYi': 'MasterYi', 'TahmKench': 'TahmKench',
+                            'JarvanIV': 'JarvanIV', 'FiddleSticks': 'Fiddlesticks', 'MonkeyKing': 'MonkeyKing',
+                            'KogMaw': 'KogMaw', 'XinZhao': 'XinZhao', 'LeeSin': 'LeeSin', 'Seraphine': 'Seraphine'
+                        };
+                        return mapping[clean] || clean;
+                    };
+                    
+                    let ddId = normalizeChampName(champ);
+
+                    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/champion/${ddId}.json`);
                     const json = await res.json();
                     if (json.data && json.data[ddId]) {
                         const spells = json.data[ddId].spells;
                         stateRefs.current.spellIcons = {
-                            'Q': `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/spell/${spells[0].image.full}`,
-                            'W': `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/spell/${spells[1].image.full}`,
-                            'E': `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/spell/${spells[2].image.full}`,
-                            'R': `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/spell/${spells[3].image.full}`,
+                            'Q': `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${spells[0].image.full}`,
+                            'W': `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${spells[1].image.full}`,
+                            'E': `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${spells[2].image.full}`,
+                            'R': `https://ddragon.leagueoflegends.com/cdn/${v}/img/spell/${spells[3].image.full}`,
                         };
                     }
                 } catch (e) { console.error("Error fetching spells for", champ, e); }
             }
 
             try {
-                const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, 'mid');
-                if (build && build.skillOrder) {
-                    stateRefs.current.skillOrder = build.skillOrder;
+                const requestedRole = stateRefs.current.isJungle ? 'jungle' : '';
+                const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, requestedRole);
+                if (build) {
+                    setBuildData(build);
+                    if (build.skillOrder) {
+                        let order = build.skillOrder;
+                        // If U.GG gives a 3-item priority list (e.g., ["Q", "W", "E"]), expand it into an 18-level standard progression
+                        if (order.length === 3 && typeof order[0] === 'string') {
+                            const [first, second, third] = order;
+                            order = [
+                                first, second, third,
+                                first, first, "R", first, second,
+                                first, second, "R", second, second,
+                                third, third, "R", third, third
+                            ];
+                        }
+                        while (order.length < 18) order.push('P'); // pad remainder to avoid undefined index
+                        stateRefs.current.skillOrder = order;
+                    }
+                }
+
+                // Fallback for Practice Tool etc if scraper fails
+                if (!stateRefs.current.skillOrder) {
+                    stateRefs.current.skillOrder = ["Q", "W", "E", "Q", "Q", "R", "Q", "E", "Q", "E", "R", "E", "E", "W", "W", "R", "W", "W"];
                 }
             } catch (e) {
                 console.error(e);
+                if (!stateRefs.current.skillOrder) {
+                    stateRefs.current.skillOrder = ["Q", "W", "E", "Q", "Q", "R", "Q", "E", "Q", "E", "R", "E", "E", "W", "W", "R", "W", "W"];
+                }
             }
         };
 
         window.ipcRenderer.on('ingame:update', handleUpdate);
         window.ipcRenderer.on('skills:update', handleUpdate);
+
+        const calculateWinProbability = (data) => {
+            if (!data || !data.allPlayers || !data.activePlayer) return 50;
+            const activeName = (data.activePlayer.summonerName || data.activePlayer.riotIdGameName || data.activePlayer.rawPlayerName || "").split('#')[0].toLowerCase();
+            let me = data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName));
+            if (!me && data.allPlayers.length > 0) me = data.allPlayers[0];
+            if (!me) return 50;
+
+            const myTeam = me.team;
+            let myTeamScore = 0;
+            let enemyTeamScore = 0;
+
+            data.allPlayers.forEach(p => {
+                const kills = p.scores?.kills || 0;
+                const cs = p.scores?.creepScore || 0;
+                const assists = p.scores?.assists || 0;
+                const score = (kills * 2) + Math.floor(cs / 10) + assists;
+                if (p.team === myTeam) myTeamScore += score;
+                else enemyTeamScore += score;
+            });
+
+            if (data.events && data.events.Events) {
+                data.events.Events.forEach(e => {
+                    const killer = data.allPlayers.find(p => p.summonerName === e.KillerName || p.riotIdGameName === e.KillerName);
+                    if (killer) {
+                        const pts = e.EventName === 'DragonKill' ? 10 : e.EventName === 'BaronKill' ? 25 : e.EventName === 'TurretKilled' ? 15 : e.EventName === 'InhibKilled' ? 20 : 0;
+                        if (killer.team === myTeam) myTeamScore += pts;
+                        else enemyTeamScore += pts;
+                    }
+                });
+            }
+
+            if (myTeamScore === 0 && enemyTeamScore === 0) return 50;
+            let probability = 50 + ((myTeamScore - enemyTeamScore) / Math.max(10, myTeamScore + enemyTeamScore)) * 40;
+            return Math.min(Math.max(probability, 10), 90).toFixed(1);
+        };
+
+        const triggerWinrateOverlay = (isForced = false) => {
+            const now = Date.now();
+            if (now - stateRefs.current.lastWinrateTime < 20000) {
+                if (isForced && !stateRefs.current.winrateSpamTriggered) {
+                    stateRefs.current.winrateSpamTriggered = true;
+                    pushToast({
+                        type: 'warning',
+                        title: 'SYSTEM PROTECT',
+                        name: 'Cooldown Actif',
+                        status: 'Vous ne pouvez afficher la probabilité de victoire que toutes les 20 secondes.',
+                        iconColor: 'bg-rose-500',
+                        icon: AlertCircle,
+                        duration: 5000
+                    });
+                    setTimeout(() => { stateRefs.current.winrateSpamTriggered = false; }, 20000);
+                }
+                return;
+            }
+
+            const prob = calculateWinProbability(stateRefs.current.liveData);
+            stateRefs.current.lastWinrateTime = now;
+
+            const isWinning = prob >= 50;
+            pushToast({
+                type: 'winrate',
+                title: 'ORACLE PREDICTION',
+                name: `Probabilité : ${prob}%`,
+                status: isWinning ? 'Votre équipe mène la danse ! Maintenez la pression.' : 'Avantage ennemi. Concentrez-vous sur les objectifs.',
+                iconColor: isWinning ? 'bg-cyan-500' : 'bg-rose-500',
+                icon: Activity,
+                duration: 12000,
+                prob: prob
+            });
+        };
+
+        const handleShortcut = () => {
+            if (stateRefs.current.settings?.winProbability !== false) {
+                triggerWinrateOverlay(true);
+            }
+        };
+        // Nuke any ghost listeners from hot reloads without a previous cleanup
+        window.ipcRenderer.removeAllListeners('shortcut:force-winrate');
+        window.ipcRenderer.on('shortcut:force-winrate', handleShortcut);
 
         // Initial Test Mode Trigger
         const testInterval = setInterval(() => {
@@ -117,45 +269,84 @@ export function InGameHelper({ ddragonVersion }) {
 
         // Live API loop
         const interval = setInterval(async () => {
+            if (stateRefs.current.isFetching) return;
+            stateRefs.current.isFetching = true;
             try {
                 const data = await window.ipcRenderer.invoke('live:get-all-data');
                 if (!data) return;
 
+                setLiveData(data);
+                stateRefs.current.liveData = data;
+
                 const gameTime = data.gameData?.gameTime || 0; // en secondes
                 const refs = stateRefs.current;
 
-                // --- 0. INITIALISATION (If bypassed Champ Select) ---
-                if (data.activePlayer && !champName && !refs.isInitializingChamp) {
-                    refs.isInitializingChamp = true;
-                    // activePlayer.summonerSpells could contain smite (11)
-                    let isJungle = false;
+                // --- 0. INITIALISATION CONTINUE (Update isJungle live) ---
+                if (data.activePlayer) {
+                    let isJungleLive = false;
                     const allP = data.allPlayers || [];
-                    const me = allP.find(p => p.summonerName === data.activePlayer.summonerName);
+                    const rawActiveName = data.activePlayer.summonerName || data.activePlayer.riotIdGameName || data.activePlayer.rawPlayerName || "";
+                    const activeName = rawActiveName.split('#')[0].toLowerCase();
+
+                    let me = activeName ? allP.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName)) : null;
+                    if (!me && allP.length > 0) me = allP[0];
 
                     if (me && me.summonerSpells) {
                         const s1 = (me.summonerSpells.summonerSpellOne?.displayName || '').toLowerCase();
                         const s2 = (me.summonerSpells.summonerSpellTwo?.displayName || '').toLowerCase();
                         if (s1.includes('smite') || s2.includes('smite') || s1.includes('châtiment') || s2.includes('châtiment')) {
-                            isJungle = true;
+                            isJungleLive = true;
                         }
                     }
 
-                    let resolvedChampName = me ? me.championName : undefined;
-                    // Provide fallback if data is totally empty
-                    if (!resolvedChampName && data.activePlayer.abilities) {
-                        resolvedChampName = Object.keys(data.activePlayer.abilities)[0];
+                    if (isJungleLive) refs.isJungle = true;
+
+                    if (!champName && !refs.isInitializingChamp) {
+                        let resolvedChampName = me ? me.championName : undefined;
+                        if (!resolvedChampName && data.activePlayer.abilities) {
+                            resolvedChampName = Object.keys(data.activePlayer.abilities)[0];
+                        }
+
+                        if (resolvedChampName) {
+                            refs.isInitializingChamp = true;
+                            handleUpdate(null, {
+                                champName: resolvedChampName,
+                                spells: { spell1Id: isJungleLive ? 11 : 0, spell2Id: 0 }
+                            });
+                        }
                     }
 
-                    handleUpdate(null, {
-                        champName: resolvedChampName || 'Unknown',
-                        spells: { spell1Id: isJungle ? 11 : 0, spell2Id: 0 }
-                    });
+                    // Dynamic Build Fetching when Position is known
+                    if (me && me.position && me.position !== 'UNKNOWN' && me.position !== '' && !refs.hasFetchedBuildForRole && refs.champ) {
+                        refs.hasFetchedBuildForRole = true;
+                        let posStr = me.position.toLowerCase();
+                        if (posStr === 'middle') posStr = 'mid';
+                        if (posStr === 'bottom') posStr = 'adc';
+                        if (posStr === 'utility') posStr = 'support';
+
+                        window.ipcRenderer.invoke('scraper:get-champion-build', refs.champ, posStr).then(build => {
+                            if (build) {
+                                setBuildData(build);
+                                if (build.skillOrder && !refs.skillOrder) {
+                                    let order = build.skillOrder;
+                                    if (order.length === 3 && typeof order[0] === 'string') {
+                                        const [first, second, third] = order;
+                                        order = [first, second, third, first, first, "R", first, second, first, second, "R", second, second, third, third, "R", third, third];
+                                    }
+                                    while (order.length < 18) order.push('P');
+                                    refs.skillOrder = order;
+                                }
+                            }
+                        }).catch(e => console.error("Error fetching build for role:", e));
+                    }
                 }
 
                 // --- 1. OBJECTIFS (Timings : 30s avant spawn) ---
-                if (refs.settings.objectiveTimer !== false) {
-                    // Buffs Jungle (Spawn à 1:30 -> Notif à 1:15 = 75s)
-                    if (gameTime >= 75 && gameTime < 85 && !refs.objCamp1) {
+                // We use jungleTimers or objectiveTimer depending on settings structure
+                const showObjectives = refs.settings.objectiveTimer !== false && refs.settings.jungleTimers !== false;
+                if (showObjectives) {
+                    // Buffs Jungle (Spawn à 0:55 -> Notif à 0:40 = 40s)
+                    if (gameTime >= 40 && gameTime < 120 && !refs.objCamp1) {
                         refs.objCamp1 = true;
                         if (refs.isJungle) {
                             pushToast({
@@ -171,8 +362,8 @@ export function InGameHelper({ ddragonVersion }) {
                         }
                     }
 
-                    // Carapateur (Spawn à 3:30 -> Notif à 3:15 = 195s)
-                    if (gameTime >= 195 && gameTime < 205 && !refs.objCamp2) {
+                    // Carapateur (Spawn à 2:55 -> Notif à 2:40 = 160s)
+                    if (gameTime >= 160 && gameTime < 300 && !refs.objCamp2) {
                         refs.objCamp2 = true;
                         if (refs.isJungle) {
                             pushToast({
@@ -187,9 +378,21 @@ export function InGameHelper({ ddragonVersion }) {
                             });
                         }
                     }
-                    // Drake (Spawn à 5:00 -> Notif à 4:30 = 270s)
-                    if (gameTime >= 270 && !refs.objDrake) {
-                        refs.objDrake = true;
+                    // --- DRAGONS ET BARONS DYNAMIQUES (Respawns inclus) ---
+                    let drakeSpawnTime = 300; // 5:00 par défaut
+                    let baronSpawnTime = 1200; // 20:00 par défaut
+
+                    if (data.events && data.events.Events) {
+                        const dragons = data.events.Events.filter(e => e.EventName === 'DragonKill');
+                        if (dragons.length > 0) drakeSpawnTime = dragons[dragons.length - 1].EventTime + 300;
+
+                        const barons = data.events.Events.filter(e => e.EventName === 'BaronKill');
+                        if (barons.length > 0) baronSpawnTime = barons[barons.length - 1].EventTime + 360; // 6 mins S15+
+                    }
+
+                    // Drake (Notif à Spawn - 30s)
+                    if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 90 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
+                        refs.notifiedSpawns.drake = drakeSpawnTime;
                         pushToast({
                             type: 'objective',
                             title: 'OBJECTIF (30s)',
@@ -202,8 +405,8 @@ export function InGameHelper({ ddragonVersion }) {
                         });
                     }
 
-                    // Larves du néant (Spawn à 6:00 en S14 Split 2 / S15 -> Notif à 5:30 = 330s)
-                    if (gameTime >= 330 && !refs.objVoidgrubs) {
+                    // Larves du néant (Spawn à 8:00 S16 -> Notif à 7:30 = 450s)
+                    if (gameTime >= 450 && gameTime < 550 && !refs.objVoidgrubs) {
                         refs.objVoidgrubs = true;
                         pushToast({
                             type: 'objective',
@@ -217,24 +420,9 @@ export function InGameHelper({ ddragonVersion }) {
                         });
                     }
 
-                    // Héraut de la faille (Spawn à 14:00 -> Notif à 13:30 = 810s)
-                    // Il n'y a pas d'icone héraut 100x100 propre, on fallback sur une icone
-                    if (gameTime >= 810 && gameTime < 820 && !refs.objHerald) {
-                        refs.objHerald = true;
-                        pushToast({
-                            type: 'objective',
-                            title: 'OBJECTIF (30s)',
-                            name: 'Le Héraut de la Faille arrive',
-                            status: 'Idéal pour détruire la première tour.',
-                            borderColor: 'bg-purple-500 shadow-purple-500/50',
-                            imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/tower-100.png',
-                            duration: 12000
-                        });
-                    }
-
-                    // Baron Nashor (Spawn à 20:00 -> Notif à 19:30 = 1170s)
-                    if (gameTime >= 1170 && gameTime < 1180 && !refs.objBaron) {
-                        refs.objBaron = true;
+                    // Baron Nashor (Notif à Spawn - 30s)
+                    if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 90 && refs.notifiedSpawns.baron !== baronSpawnTime) {
+                        refs.notifiedSpawns.baron = baronSpawnTime;
                         pushToast({
                             type: 'objective',
                             title: 'OBJECTIF MAJEUR (30s)',
@@ -251,8 +439,13 @@ export function InGameHelper({ ddragonVersion }) {
                 // --- 2. JOUEUR (Skills & Wards) ---
                 if (data.activePlayer && data.allPlayers) {
                     const active = data.activePlayer;
-                    const current = data.allPlayers.find(p => p.summonerName === active.summonerName);
-                    const level = current?.level || active.level || 1;
+                    const rawActiveName = active.summonerName || active.riotIdGameName || active.rawPlayerName || "";
+                    const activeName = rawActiveName.split('#')[0].toLowerCase();
+
+                    let current = activeName ? data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName)) : null;
+                    if (!current && data.allPlayers.length > 0) current = data.allPlayers[0];
+
+                    const level = current?.level || Math.max(refs.knownLevel, 1);
 
                     // A) SKILLS UPGRADE
                     if (refs.settings.skillLevelUp !== false) {
@@ -317,6 +510,9 @@ export function InGameHelper({ ddragonVersion }) {
                     // B) WARDING REMINDER (Niveau 6 => Souvent le moment du premier gros back)
                     if (refs.settings.wardTimer !== false && level === 6 && !refs.wardNotified) {
                         refs.wardNotified = true;
+
+                        const wardId = refs.isJungle ? '3364' : '2055'; // Oracle Lens or Control Ward
+
                         pushToast({
                             type: 'ward',
                             title: 'VISION MAP',
@@ -324,13 +520,31 @@ export function InGameHelper({ ddragonVersion }) {
                             status: refs.isJungle ? 'Prenez le Brouilleur Oracle pour gank.' : 'Achetez des Wards de Contrôle au prochain back.',
                             iconColor: 'bg-emerald-500',
                             borderColor: 'bg-emerald-500 shadow-emerald-500/50',
-                            icon: Eye,
+                            imageUrl: `https://ddragon.leagueoflegends.com/cdn/${refs.ddVersion}/img/item/${wardId}.png`,
                             duration: 10000
                         });
                     }
+
+                    // C) OBJECTIVE WINRATE TRIGGER
+                    if (data.events && data.events.Events && refs.settings.winProbability !== false) {
+                        const evtCount = data.events.Events.length;
+                        if (refs.processedEventsCount > 0 && evtCount > refs.processedEventsCount) {
+                            const newEvents = data.events.Events.slice(refs.processedEventsCount);
+                            const hasObjective = newEvents.some(e => ['DragonKill', 'BaronKill', 'TurretKilled', 'InhibKilled'].includes(e.EventName));
+                            if (hasObjective) {
+                                // Trigger WinProbability naturally behind other notifications
+                                triggerWinrateOverlay(false);
+                            }
+                        }
+                        refs.processedEventsCount = evtCount;
+                    }
+
+                    // D) ITEM RECOMMENDATIONS REMOVED FROM TOASTS - NOW PERSISTENT
                 }
             } catch (e) {
                 // Ignore API errors gracefully
+            } finally {
+                stateRefs.current.isFetching = false;
             }
         }, 1000);
 
@@ -340,69 +554,452 @@ export function InGameHelper({ ddragonVersion }) {
             window.ipcRenderer.removeListener('settings:sync', handleSync);
             window.ipcRenderer.removeListener('ingame:update', handleUpdate);
             window.ipcRenderer.removeListener('skills:update', handleUpdate);
+            window.ipcRenderer.removeListener('shortcut:force-winrate', handleShortcut);
         };
     }, []);
 
-    if (!toasts || toasts.length === 0) return null;
+    const computeStats = () => {
+        if (!liveData || !liveData.gameData || liveData.gameData.gameTime < 5) {
+            return null;
+        }
+        if (!liveData.activePlayer || !liveData.allPlayers) return null;
+
+        const activeName = (liveData.activePlayer.summonerName || liveData.activePlayer.riotIdGameName || liveData.activePlayer.rawPlayerName || "").split('#')[0].toLowerCase();
+
+        let me = liveData.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
+
+        // Fallback for practice tool if name logic fails totally
+        if (!me && liveData.allPlayers.length > 0) me = liveData.allPlayers[0];
+
+        if (!me || !me.scores) {
+            return null;
+        }
+
+        const myTeam = me.team;
+        let opp = null;
+        if (me.position && me.position !== 'UNKNOWN' && me.position !== '') {
+            opp = liveData.allPlayers.find(p => p.team !== myTeam && p.position === me.position);
+        }
+        if (!opp) {
+            opp = liveData.allPlayers.filter(p => p.team !== myTeam).sort((a, b) => (b.scores?.creepScore || 0) - (a.scores?.creepScore || 0))[0];
+        }
+
+        const gameTimeMin = Math.max(1, liveData.gameData.gameTime / 60);
+
+        // Calculate user stats
+        const myCSM = (me.scores.creepScore / gameTimeMin).toFixed(1);
+        const myTeamKills = liveData.allPlayers.filter(p => p.team === myTeam).reduce((sum, p) => sum + (p.scores?.kills || 0), 0);
+        const myKP = myTeamKills === 0 ? 0 : Math.round(((me.scores.kills + me.scores.assists) / myTeamKills) * 100);
+        const myVision = ((me.scores.wardScore || 0) / gameTimeMin).toFixed(1);
+        const myGPM = Math.round((me.scores.creepScore * 20 + me.scores.kills * 300 + me.scores.assists * 150) / gameTimeMin);
+
+        // Calculate opp stats
+        let refCSM = '7.0';
+        let refKP = 50;
+        let refVision = '1.5';
+        let refGPM = 400;
+        let refLvl = me.level;
+
+        if (opp && opp.scores) {
+            const oppTeamKills = liveData.allPlayers.filter(p => p.team === opp.team).reduce((sum, p) => sum + (p.scores?.kills || 0), 0);
+            refCSM = (opp.scores.creepScore / gameTimeMin).toFixed(1);
+            refKP = oppTeamKills === 0 ? 0 : Math.round(((opp.scores.kills + opp.scores.assists) / oppTeamKills) * 100);
+            refVision = ((opp.scores.wardScore || 0) / gameTimeMin).toFixed(1);
+            refGPM = Math.round((opp.scores.creepScore * 20 + opp.scores.kills * 300 + opp.scores.assists * 150) / gameTimeMin);
+            refLvl = opp.level;
+        }
+
+        return {
+            me: { gpm: myGPM, csm: myCSM, kp: `${myKP}%`, vision: myVision, lvl: me.level },
+            ref: { gpm: refGPM, csm: refCSM, kp: `${refKP}%`, vision: refVision, lvl: refLvl }
+        };
+    };
+
+    const computeNextItem = () => {
+        if (stateRefs.current.settings.itemBuild === false || !buildData || !buildData.items || !liveData || !liveData.activePlayer || !liveData.allPlayers) return null;
+
+        const activeName = (liveData.activePlayer.summonerName || liveData.activePlayer.riotIdGameName || liveData.activePlayer.rawPlayerName || "").split('#')[0].toLowerCase();
+        let me = liveData.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
+
+        if (!me && liveData.allPlayers.length > 0) me = liveData.allPlayers[0];
+        if (!me) return null;
+
+        const playerItems = me.items || [];
+        const validItems = playerItems.filter(i => i.itemID !== 0);
+
+        if (!stateRefs.current.acquiredItems) stateRefs.current.acquiredItems = new Set();
+        const acquired = stateRefs.current.acquiredItems;
+        validItems.forEach(pi => acquired.add(String(pi.itemID)));
+
+        const coreItems = buildData.items.core || [];
+        const bootsRec = buildData.items.boots?.[0];
+        const starting = buildData.items.starting || [];
+        const situational = buildData.items.situational || [];
+
+        const gameTime = liveData.gameData?.gameTime || 0; // en secondes
+        const bootIds = ["1001", "3006", "3047", "3111", "3158", "3020", "3117", "3009", "3119", "2422", "4401"];
+        const upgradedBootsIds = ["3006", "3047", "3111", "3158", "3020", "3117", "3009", "3119", "4401"];
+
+        const hasUpgradedBoots = Array.from(acquired).some(id => upgradedBootsIds.includes(String(id)));
+
+        // Remove boots from the normal item progression so buying boots doesn't skip a core item
+        const mainItems = [...coreItems, ...situational].filter(id => id && !bootIds.includes(String(id)));
+
+        let highestMainAcquiredIndex = -1;
+        for (let i = 0; i < mainItems.length; i++) {
+            if (acquired.has(String(mainItems[i]))) {
+                highestMainAcquiredIndex = Math.max(highestMainAcquiredIndex, i);
+            }
+        }
+
+        // Auto-progress based on game time if the player deviates from the recommended build (buys other items)
+        if (highestMainAcquiredIndex < 0 && gameTime > 840) highestMainAcquiredIndex = 0; // 14 min -> skips 1st item
+        if (highestMainAcquiredIndex < 1 && gameTime > 1440) highestMainAcquiredIndex = 1; // 24 min -> skips 2nd item
+        if (highestMainAcquiredIndex < 2 && gameTime > 1920) highestMainAcquiredIndex = 2; // 32 min -> skips 3rd item
+        if (highestMainAcquiredIndex < 3 && gameTime > 2280) highestMainAcquiredIndex = 3; // 38 min -> skips 4th item
+
+        const targetMainItemIndex = highestMainAcquiredIndex + 1;
+        const nextMainItem = targetMainItemIndex < mainItems.length ? mainItems[targetMainItemIndex] : null;
+
+        // 1. Starting Items (Only early game, if no main item is finished)
+        // Check if player has ANY standard starting item (Doran's, Jungle Pet, Support Item, Dark Seal, Cull, Tear)
+        const starterItemIds = ["1054", "1055", "1056", "1082", "1083", "3070", "3865", "1101", "1102", "1103", "1190", "1540", "2003"];
+        const hasAStarter = Array.from(acquired).some(id => starterItemIds.includes(String(id)));
+
+        // Propose starting items if it's early, no core items built, and no starter item detected yet
+        if (gameTime < 420 && highestMainAcquiredIndex === -1 && !hasAStarter) {
+            let robustStarting = starting;
+            if (!robustStarting || robustStarting.length === 0) {
+                // Determine generic lane starter fallback if missing
+                if (stateRefs.current.isJungle) robustStarting = ["1102"]; // Mosstomper
+                else if (me.position === 'UTILITY' || me.position === 'support') robustStarting = ["3865"]; // World atlas
+                else robustStarting = ["1055"]; // DBlade by default
+            }
+            for (const id of robustStarting) {
+                if (!acquired.has(String(id))) return id;
+            }
+        }
+
+        // 2. First Core Item Priority
+        // Players usually build their first core item before finishing boots
+        if (targetMainItemIndex === 0 && nextMainItem) {
+            return nextMainItem;
+        }
+
+        // 3. Upgraded Boots Priority
+        // After starting items/1st core, recommend boots if not fully upgraded yet
+        if (!hasUpgradedBoots) {
+            const bootToSuggest = bootsRec || "1001"; // Fallback to basic boots if none scraped
+            if (!acquired.has(String(bootToSuggest))) return bootToSuggest;
+        }
+
+        // 4. Remaining Main Items
+        if (nextMainItem) {
+            return nextMainItem;
+        }
+
+        return null; // Full build or no suggestion available
+    };
+
+    const showBuild = buildData && buildData.items && stateRefs.current.settings.itemBuild !== false;
+    const stats = computeStats();
+
+    if ((!toasts || toasts.length === 0) && stats === null && !showBuild) return null;
 
     return (
         <div style={{
             position: 'fixed',
             inset: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center', // Centered vertically in the available window,
-            alignItems: 'flex-start',
-            padding: '24px',
-            gap: '12px',
             pointerEvents: 'none'
         }}>
-            <div className="flex flex-col gap-3 w-full h-full justify-center">
-                {toasts.map(toast => {
-                    const Icon = toast.icon || AlertCircle;
+            <div className="absolute left-[24px] top-[24px] flex flex-col gap-4 items-start">
+                {showBuild && (
+                    <div className="w-[360px] bg-white/[0.02] backdrop-blur-[40px] border border-white/[0.08] rounded-[32px] p-6 flex flex-col gap-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] relative overflow-hidden pointer-events-none animate-in slide-in-from-left-8 fade-in duration-500">
+                        {/* Light Reflections */}
+                        <div className="absolute top-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-                    return (
-                        <div
-                            key={toast.id}
-                            className={`w-[320px] bg-black/80 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-2xl`}
-                        >
-                            {/* Accent Line (Left edge highlight) */}
-                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${toast.borderColor || 'bg-accent-primary'}`} />
+                        {/* Premium Glow */}
+                        <div className="absolute -top-20 -left-20 w-48 h-48 rounded-full blur-[50px] opacity-20 bg-amber-500 pointer-events-none" />
 
-                            {/* Avatar / Icon Container */}
-                            <div className={`relative shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg border border-white/20 ${toast.imageUrl ? 'bg-transparent overflow-hidden' : toast.iconColor}`}>
-                                {toast.imageUrl ? (
-                                    <img src={toast.imageUrl} alt="" className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} />
-                                ) : toast.letter ? (
-                                    <span className="text-white font-black text-xl drop-shadow-md">{toast.letter}</span>
-                                ) : (
-                                    <Icon className="w-6 h-6 text-white drop-shadow-md" />
-                                )}
+                        <div className="flex flex-col gap-3 relative z-10">
+                            <div className="text-[11px] font-black text-amber-50/70 uppercase tracking-[0.3em] flex items-center gap-2 drop-shadow-md">
+                                <Sparkles className="w-3 h-3 text-amber-400" />
+                                Build ({champName})
                             </div>
 
-                            {/* Text Content */}
-                            <div className="flex-1 min-w-0 pr-2">
-                                <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">
-                                    {toast.title || "SYSTEM"}
+                            {buildData.items.starting && buildData.items.core && (
+                                <div className="flex flex-col gap-2.5 bg-black/20 p-3 rounded-[20px] shadow-inner ring-1 ring-white/5">
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                        {buildData.items.starting.map((id, idx) => (
+                                            <div key={'start-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shadow-[0_4px_8px_rgba(0,0,0,0.4)]">
+                                                <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            </div>
+                                        ))}
+                                        {buildData.items.core.length > 0 && <span className="text-white/30 text-[10px] font-black mx-1 drop-shadow-md">►</span>}
+                                        {buildData.items.core.map((id, idx) => (
+                                            <div key={'core-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-amber-500/60 overflow-hidden shadow-[0_0_12px_rgba(245,158,11,0.4)] relative">
+                                                <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-xl" />
+                                                <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="text-[14px] font-black text-white truncate leading-tight mb-0.5">
-                                    {toast.name}
-                                </div>
-                                <div className="text-[11px] text-gray-300 font-medium leading-snug">
-                                    {toast.status}
-                                </div>
-                            </div>
+                            )}
 
-                            {/* Progress / Lifetime Bar */}
-                            <div className="absolute bottom-0 left-0 h-1 bg-white/5 w-full">
+                            {buildData.items.situational && buildData.items.situational.length > 0 && (
+                                <div className="flex flex-col gap-1.5 mt-1 px-1">
+                                    <div className="text-[9px] font-bold text-white/40 uppercase tracking-widest drop-shadow-sm">Situations / Late Game</div>
+                                    <div className="flex flex-wrap gap-2 opacity-90">
+                                        {buildData.items.situational.slice(0, 5).map((id, idx) => (
+                                            <div key={'sit-' + id + '-' + idx} className="w-7 h-7 rounded-[10px] border border-white/10 overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+                                                <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {stateRefs.current.skillOrder && stateRefs.current.skillOrder.length > 0 && (
+                                <div className="flex flex-col gap-2 mt-2">
+                                    <div className="flex gap-1 opacity-90 overflow-hidden bg-black/20 p-2 rounded-[16px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] ring-1 ring-white/5 w-full">
+                                        {stateRefs.current.skillOrder.slice(0, 18).map((skill, idx) => {
+                                            const colors = {
+                                                'Q': 'text-blue-300 bg-blue-500/10 border-blue-400/20',
+                                                'W': 'text-teal-300 bg-teal-500/10 border-teal-400/20',
+                                                'E': 'text-amber-300 bg-amber-500/10 border-amber-400/20',
+                                                'R': 'text-purple-300 bg-purple-500/20 border-purple-400/50 shadow-[0_0_8px_rgba(168,85,247,0.4)]',
+                                            };
+                                            const isUltimate = skill === 'R';
+                                            const colorClass = colors[skill] || 'text-gray-400 bg-white/5 border-white/10';
+                                            return (
+                                                <div key={'skill-' + idx} className={`flex-1 flex flex-col items-center justify-center rounded-[6px] border ${colorClass} ${isUltimate ? 'ring-1 ring-purple-400/50' : ''} overflow-hidden bg-gradient-to-b from-white/[0.05] to-transparent`}>
+                                                    <span className="text-[11px] font-black leading-none py-1.5 drop-shadow-md">{skill}</span>
+                                                    <div className="h-px w-full bg-white/10 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
+                                                    <span className="text-[8px] font-bold text-white/40 py-1 bg-black/40 w-full text-center">{idx + 1}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {toasts && toasts.some(t => t.type !== 'skill' && t.type !== 'ward') && (
+                    <div className="flex flex-col gap-4 items-start pb-4">
+                        {toasts.filter(toast => toast.type !== 'skill' && toast.type !== 'ward').map(toast => {
+                            const Icon = toast.icon || AlertCircle;
+
+                            if (toast.type === 'winrate') {
+                                const isWinning = toast.prob >= 50;
+                                return (
+                                    <div
+                                        key={toast.id}
+                                        className="w-[380px] bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] rounded-[36px] p-7 flex flex-col gap-6 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)]"
+                                    >
+                                        {/* Intense Light Reflections for Liquid Glass */}
+                                        <div className="absolute top-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                                        <div className="absolute bottom-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                                        {/* Premium Glow Without Orange */}
+                                        <div className={`absolute -top-24 -right-24 w-56 h-56 rounded-full blur-[60px] opacity-30 ${isWinning ? 'bg-cyan-400' : 'bg-rose-500'} pointer-events-none`} />
+                                        <div className={`absolute -bottom-24 -left-24 w-56 h-56 rounded-full blur-[60px] opacity-20 ${isWinning ? 'bg-blue-600' : 'bg-rose-600'} pointer-events-none`} />
+
+                                        {/* Big semi-transparent top-left watermark logo instead of Graph */}
+                                        <img src={MainLogo} alt="Background Logo" className="absolute -top-6 -left-6 w-52 h-52 object-contain opacity-25 drop-shadow-2xl pointer-events-none" />
+
+                                        <div className="flex items-center relative z-10 pl-6">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-[11px] font-black text-white/50 uppercase tracking-[0.3em] mb-1.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                                                    {toast.title}
+                                                </div>
+                                                <div className="flex items-baseline gap-2 mb-1">
+                                                    <div className="text-[17px] font-black text-white truncate leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                                                        Chance de Victoire
+                                                    </div>
+                                                </div>
+                                                <div className="text-[13px] text-white/70 font-medium leading-snug drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                                    {toast.status}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="w-full relative z-10 flex flex-col gap-2">
+                                            <div className="flex justify-between items-end px-1">
+                                                <div className="flex flex-col">
+                                                    <span className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-80 ${isWinning ? 'text-cyan-300' : 'text-white'}`}>Alliés</span>
+                                                    <span className={`text-[20px] font-black leading-none drop-shadow-[0_0_12px_rgba(34,211,238,0.6)] ${isWinning ? 'text-cyan-400' : 'text-white/90'}`}>{toast.prob}%</span>
+                                                </div>
+                                                <div className="flex flex-col items-end">
+                                                    <span className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-80 ${!isWinning ? 'text-rose-300' : 'text-white'}`}>Ennemis</span>
+                                                    <span className={`text-[20px] font-black leading-none drop-shadow-[0_0_12px_rgba(244,63,94,0.6)] ${!isWinning ? 'text-rose-400' : 'text-white/90'}`}>{(100 - parseFloat(toast.prob)).toFixed(1)}%</span>
+                                                </div>
+                                            </div>
+                                            <div className="w-full h-5 bg-black/50 rounded-full overflow-hidden shadow-[inset_0_2px_6px_rgba(0,0,0,0.6),0_1px_1px_rgba(255,255,255,0.1)] ring-1 ring-white/10 relative backdrop-blur-xl">
+                                                {/* Beautiful fluid gradient bar */}
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-[1500ms] ease-out relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] ${isWinning ? 'bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-700 via-orange-500 to-rose-400'}`}
+                                                    style={{ width: `${toast.prob}%` }}
+                                                >
+                                                    {/* Liquid shimmer inside the bar */}
+                                                    <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white/60 to-transparent mix-blend-overlay rounded-r-full" />
+                                                </div>
+                                                {/* Midline marker */}
+                                                <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-white/40 -translate-x-1/2 shadow-[0_0_8px_rgba(255,255,255,0.9)] z-10" />
+                                            </div>
+                                        </div>
+
+                                        {/* Subtle progress lifetime line below the main container */}
+                                        <div className="absolute bottom-0 left-0 h-[3px] bg-white/10 w-full">
+                                            <div
+                                                className={`h-full shadow-[0_0_12px_rgba(255,255,255,0.8)] ${isWinning ? 'bg-cyan-400' : 'bg-rose-400'}`}
+                                                style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards` }}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            // Standard Premium Toast
+                            return (
                                 <div
-                                    className={`h-full opacity-50 shadow-[0_0_10px_rgba(255,255,255,0.5)] bg-current ${toast.iconColor ? toast.iconColor.replace('bg-', 'text-') : 'text-white'}`}
-                                    style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards` }}
-                                />
+                                    key={toast.id}
+                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)]`}
+                                >
+                                    {/* Accent Glow instead of line */}
+                                    <div className={`absolute -left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
+
+                                    {/* Avatar / Icon Container */}
+                                    <div className={`relative shrink-0 w-12 h-12 rounded-[18px] flex items-center justify-center shadow-inner ring-1 ring-white/10 overflow-hidden ${toast.imageUrl ? 'bg-transparent' : toast.iconColor}`}>
+                                        {toast.imageUrl ? (
+                                            <img src={toast.imageUrl} alt="" className="w-[115%] h-[115%] object-cover absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ) : toast.letter ? (
+                                            <span className="text-white font-black text-xl drop-shadow-md">{toast.letter}</span>
+                                        ) : (
+                                            <Icon className="w-6 h-6 text-white drop-shadow-md" />
+                                        )}
+                                    </div>
+
+                                    {/* Text Content */}
+                                    <div className="flex-1 min-w-0 pr-2 z-10">
+                                        <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mb-1">
+                                            {toast.title || "SYSTEM"}
+                                        </div>
+                                        <div className="text-[14px] font-bold text-white/95 truncate leading-tight mb-0.5 drop-shadow-sm">
+                                            {toast.name}
+                                        </div>
+                                        <div className="text-[11px] text-white/60 font-medium leading-snug">
+                                            {toast.status}
+                                        </div>
+                                    </div>
+
+                                    {/* Progress / Lifetime Bar (subtle) */}
+                                    <div className="absolute bottom-0 left-0 h-[3px] bg-transparent w-full">
+                                        <div
+                                            className={`h-full opacity-40 rounded-full ${toast.iconColor ? toast.iconColor.replace('bg-', 'text-') : 'text-white'}`}
+                                            style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards`, backgroundColor: 'currentColor' }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Liquid Glass Dynamic Stats and Recommended Item Container */}
+            <div className="absolute right-[460px] bottom-[15px] flex flex-col items-end gap-5 pointer-events-none">
+
+                {toasts && toasts.some(t => t.type === 'skill' || t.type === 'ward') && (
+                    <div className="flex flex-col gap-3 items-end mb-2">
+                        {toasts.filter(toast => toast.type === 'skill' || toast.type === 'ward').map(toast => {
+                            const Icon = toast.icon || AlertCircle;
+                            return (
+                                <div
+                                    key={toast.id}
+                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] flex-row-reverse`}
+                                >
+                                    {/* Accent Glow */}
+                                    <div className={`absolute -right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
+
+                                    {/* Avatar / Icon Container */}
+                                    <div className={`relative shrink-0 w-12 h-12 rounded-[18px] flex items-center justify-center shadow-inner ring-1 ring-white/10 overflow-hidden ${toast.imageUrl ? 'bg-transparent' : toast.iconColor}`}>
+                                        {toast.imageUrl ? (
+                                            <img src={toast.imageUrl} alt="" className="w-[115%] h-[115%] object-cover absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ) : toast.letter ? (
+                                            <span className="text-white font-black text-xl drop-shadow-md">{toast.letter}</span>
+                                        ) : (
+                                            <Icon className="w-6 h-6 text-white drop-shadow-md" />
+                                        )}
+                                    </div>
+
+                                    {/* Text Content */}
+                                    <div className="flex-1 min-w-0 pl-2 z-10 text-right">
+                                        <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mb-1">
+                                            {toast.title || "SYSTEM"}
+                                        </div>
+                                        <div className="text-[14px] font-bold text-white/95 truncate leading-tight mb-0.5 drop-shadow-sm">
+                                            {toast.name}
+                                        </div>
+                                        <div className="text-[11px] text-white/60 font-medium leading-snug break-words whitespace-normal text-right">
+                                            {toast.status}
+                                        </div>
+                                    </div>
+
+                                    {/* Progress / Lifetime Bar */}
+                                    <div className="absolute bottom-0 right-0 h-[3px] bg-transparent w-full">
+                                        <div
+                                            className={`h-full opacity-40 rounded-full ${toast.iconColor ? toast.iconColor.replace('bg-', 'text-') : 'text-white'}`}
+                                            style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards`, backgroundColor: 'currentColor', float: 'right' }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {stats && (
+                    <div className="bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[32px] p-6 flex flex-col gap-4 select-none relative overflow-hidden w-[220px]">
+                        {/* Light Reflections */}
+                        <div className="absolute top-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                        <div className="absolute bottom-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                        <div className="absolute -top-20 -right-20 w-48 h-48 bg-indigo-500/20 rounded-full blur-[50px] pointer-events-none" />
+
+                        {[
+                            { label: 'GPM', me: stats.me.gpm, ref: stats.ref.gpm, isHigherBetter: true },
+                            { label: 'CSM', me: stats.me.csm, ref: stats.ref.csm, isHigherBetter: true },
+                            { label: 'KP', me: stats.me.kp, ref: stats.ref.kp, isHigherBetter: true },
+                            { label: 'VISION', me: stats.me.vision, ref: stats.ref.vision, isHigherBetter: true }
+                        ].map(stat => {
+                            const meVal = parseFloat(stat.me);
+                            const refVal = parseFloat(stat.ref);
+                            const isWinning = stat.isHigherBetter ? meVal >= refVal : meVal <= refVal;
+                            return (
+                                <div key={stat.label} className="flex justify-between items-center w-full relative z-10 px-1">
+                                    <span className="font-black text-white/50 text-[13px] tracking-widest uppercase">{stat.label}</span>
+                                    <div className="text-[16px] tabular-nums text-right ml-4 font-black">
+                                        <span className={isWinning ? 'text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.4)]'}>{stat.me}</span>
+                                    </div>
+                                </div>
+                            )
+                        })}
+
+                        {/* Liquid Separator */}
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent my-1" />
+
+                        {/* LVL */}
+                        <div className="flex justify-between items-center w-full relative z-10 px-1">
+                            <div className="absolute -left-6 top-1/2 -translate-y-1/2 w-[5px] h-6 bg-indigo-500 rounded-r-full shadow-[0_0_12px_rgba(99,102,241,0.9)]" />
+                            <span className="font-black text-indigo-300 text-[13px] tracking-widest leading-none drop-shadow-md">LVL</span>
+                            <div className="text-[18px] tabular-nums text-right ml-4 font-black leading-none">
+                                <span className={stats.me.lvl >= stats.ref.lvl ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.6)]' : 'text-rose-400 drop-shadow-[0_0_10px_rgba(244,63,94,0.6)]'}>{stats.me.lvl}</span>
                             </div>
                         </div>
-                    );
-                })}
+                    </div>
+                )}
+
             </div>
         </div>
     );

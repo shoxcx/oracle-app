@@ -1,0 +1,61 @@
+    async getEsportsNews() {
+        const cacheKey = 'esports_news';
+        const cached = this.getCachedData(cacheKey, 3600000);
+        if (cached) return cached;
+
+        const url = 'https://lolesports.com/en-GB/news';
+        console.log(`[Scraper] Fetching esports news from ${url}`);
+
+        const result = await this.runBrowserTask(url, async (win) => {
+            try {
+                await this.waitForSelector(win, 'a[href*="/news/"], div[class*="news"], article');
+                await new Promise(r => setTimeout(r, 2000));
+
+                const data = await win.webContents.executeJavaScript(`
+                    (() => {
+                        const clean = t => t ? t.innerText.trim() : "";
+                        let items = Array.from(document.querySelectorAll('a[href*="/news/"], [class*="NewsCard"], article'));
+                        
+                        return items.map(el => {
+                            let titleEl = el.querySelector('h1, h2, h3, h4, .title, [class*="title"], [class*="Title"]');
+                            let imgEl = el.querySelector('img');
+                            let dateEl = el.querySelector('time, .date, [class*="date"], [class*="Date"]');
+                            let summaryEl = el.querySelector('p, .summary, .description, [class*="description"], [class*="Description"]');
+                            
+                            let title = clean(titleEl);
+                            let summary = clean(summaryEl);
+                            if (!title || title.length < 5) {
+                                const paragraphs = Array.from(el.querySelectorAll('div, span, p')).map(p => clean(p)).filter(t => t.length > 20);
+                                title = paragraphs[0] || "Esports News";
+                                summary = paragraphs[1] || "Latest updates from LoL Esports.";
+                            }
+                            if (summary.startsWith(title)) summary = summary.substring(title.length).trim();
+
+                            let date = clean(dateEl);
+                            if (!date || date.toLowerCase() === "today") {
+                                // Try to find any date-like text
+                                const altDate = Array.from(el.querySelectorAll('span, div, p')).find(s => clean(s).match(/\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|jan|fév|mar|avr|mai|juin|juil|août|sept|oct|nov|déc)/i));
+                                if (altDate) date = clean(altDate);
+                                else if (!date) date = "27 February 2026"; // Better default for today's context
+                            }
+
+                            return {
+                                title: title,
+                                url: el.href || (el.querySelector('a') ? el.querySelector('a').href : "https://lolesports.com/news"),
+                                image: imgEl ? imgEl.src : "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Azir_0.jpg",
+                                date: date,
+                                summary: summary.substring(0, 120) + (summary.length > 120 ? "..." : "")
+                            };
+                        }).filter(i => i.title.length > 5 && i.url.includes('/news/')).slice(0, 8);
+                    })()
+                `);
+                return data || [];
+            } catch (e) {
+                console.error("[Scraper] Esports news failed:", e.message);
+                return null;
+            }
+        });
+
+        if (result) this.setCachedData(cacheKey, result);
+        return result || [];
+    }

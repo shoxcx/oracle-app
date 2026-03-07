@@ -1,22 +1,30 @@
-const { BrowserWindow, app } = require('electron');
-const path = require('path');
 const fs = require('fs');
+const html = fs.readFileSync('gpr.html', 'utf8');
 
-app.whenReady().then(() => {
-    fs.writeFileSync('test_index.html', `<html><body><script>
-        const fs = require('fs');
-        fs.writeFileSync('test_output2.txt', 'mediaDevices is: ' + typeof navigator.mediaDevices);
-        window.close();
-    </script></body></html>`);
-
-    const win = new BrowserWindow({
-        show: false,
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+const sIdx = html.indexOf('id="__NEXT_DATA__"');
+if (sIdx !== -1) {
+    const dataStart = html.indexOf('>', sIdx) + 1;
+    const endIdx = html.indexOf('</script>', dataStart);
+    const jsonStr = html.substring(dataStart, endIdx);
+    const data = JSON.parse(jsonStr);
+    const state = data.props?.pageProps?.apolloState || data.props?.pageProps?.initialApolloState;
+    if (state) {
+        let teams = null;
+        for (const k of Object.keys(state)) {
+             if (state[k] && state[k].teamGPR) {
+                  teams = state[k].teamGPR;
+                  break;
+             }
         }
-    });
-    // load file html
-    win.loadURL('file://' + path.join(__dirname, 'test_index.html'));
-});
-app.on('window-all-closed', () => app.quit());
+        if (teams) {
+             console.log('Found teams length:', teams.length);
+             const firstData = state[teams[0].__ref];
+             console.log('first team:', firstData.team);
+        } else {
+             console.log('No teamGPR found in state keys');
+        }
+    } else {
+       console.log('no state');
+       console.log(Object.keys(data.props.pageProps));
+    }
+}

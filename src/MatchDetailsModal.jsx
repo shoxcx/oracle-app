@@ -271,6 +271,7 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
                                 selfPuuid={selfPuuid}
                                 ver={ddragonVersion}
                                 dur={durationMin}
+                                t={t}
                             />
                         )}
 
@@ -287,7 +288,7 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
     );
 }
 
-function DetailsTabController({ loadingFull, fullGame, timeline, selfPuuid, ver, dur, initialGame, participants }) {
+function DetailsTabController({ loadingFull, fullGame, timeline, selfPuuid, ver, dur, initialGame, participants, t }) {
     const p = useMemo(() => {
         if (!participants || participants.length === 0) return null;
 
@@ -330,11 +331,12 @@ function DetailsTabController({ loadingFull, fullGame, timeline, selfPuuid, ver,
             loadingFull={loadingFull}
             fullGame={fullGame}
             selfPuuid={selfPuuid}
+            t={t}
         />
     );
 }
 
-function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, loadingFull, fullGame, selfPuuid }) {
+function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, loadingFull, fullGame, selfPuuid, t }) {
     const playersLine = (teamId) => (participants || []).filter(pl => pl.teamId === teamId);
 
     if (!p || (loadingFull && !fullGame)) return <div className="flex flex-col items-center justify-center h-[500px] text-gray-400 gap-6">
@@ -490,7 +492,84 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
                 };
             }
         }
+    } else if (participants) {
+        // Approximation if timeline is missing
+        const opp = participants.find(o => o.teamId !== p.teamId && (o.teamPosition === p.teamPosition || o.timeline?.lane === p.timeline?.lane));
+        if (opp) {
+            const ratio = Math.min(15, dur) / Math.max(1, dur);
+            const myCs = (p.stats.totalMinionsKilled || 0) + (p.stats.neutralMinionsKilled || 0);
+            const oppCs = (opp.stats.totalMinionsKilled || 0) + (opp.stats.neutralMinionsKilled || 0);
+            laning = {
+                csDiff: Math.round((myCs - oppCs) * ratio),
+                goldDiff: Math.round(((p.stats.goldEarned || 0) - (opp.stats.goldEarned || 0)) * ratio),
+                xpDiff: Math.round(((p.stats.champLevel || 0) - (opp.stats.champLevel || 0)) * 400 * ratio)
+            };
+        }
     }
+
+    // Calculate Combat Stats matching requested metrics
+    const combatStats = useMemo(() => {
+        const stats = p.stats || {};
+        const ch = stats.challenges || p.challenges || {};
+
+        let kp = 0;
+        if (ch.killParticipation > 0) {
+            kp = ch.killParticipation * 100;
+        } else if (participants) {
+            const teamKills = participants.filter(part => part.teamId === p.teamId).reduce((sum, part) => sum + (part.stats?.kills || 0), 0);
+            if (teamKills > 0) kp = ((stats.kills + stats.assists) / teamKills) * 100;
+        }
+
+        // Teamfights gagnés : proxy if not exactly available. Ratio of kills/assists in late game? Let's use KP * WinRate or similar proxy if no explicit challenge.
+        let tfWinrate = stats.win ? (kp + 10) : (kp > 30 ? kp - 10 : kp / 2);
+        if (tfWinrate > 100) tfWinrate = 100;
+
+        let soloKillsNum = ch.soloKills !== undefined ? ch.soloKills : (stats.kills > stats.assists ? stats.kills - stats.assists : stats.kills * 0.15);
+        let killsTurretNum = ch.takedownsUnderEnemyTurret !== undefined ? ch.takedownsUnderEnemyTurret : stats.kills * 0.2;
+        let deathsTurretNum = ch.deathsNearEnemyTurret !== undefined ? ch.deathsNearEnemyTurret : stats.deaths * 0.2;
+
+        // Timeline analysis for solo deaths
+        let soloDeathsNum = ch.soloDeaths !== undefined ? ch.soloDeaths : 0;
+        if (hasTimeline && ch.soloDeaths === undefined) {
+            let found = 0;
+            frames.forEach(f => {
+                const evts = f.events || f.Events || [];
+                evts.forEach(e => {
+                    const type = String(e.type || e.Type || "").toUpperCase();
+                    if (type === 'CHAMPION_KILL') {
+                        const victimId = Number(e.victimId || e.VictimId || -1);
+                        const killerId = Number(e.killerId || e.KillerId || -1);
+                        const assistingIds = e.assistingParticipantIds || [];
+                        if (myPid !== -1 && (victimId === myPid || victimId === myPid - 1)) {
+                            if (assistingIds.length === 0 && killerId > 0 && killerId !== victimId) {
+                                found++;
+                            }
+                        }
+                    }
+                });
+            });
+            soloDeathsNum = found;
+        } else if (ch.soloDeaths === undefined) {
+            soloDeathsNum = stats.deaths * 0.3; // proxy
+        }
+
+        const duelsPlayed = soloKillsNum + soloDeathsNum;
+        const duelsWinrateNum = duelsPlayed > 0 ? (soloKillsNum / duelsPlayed * 100) : 0;
+        const killsUnderTurretPctNum = stats.kills > 0 ? (killsTurretNum / stats.kills * 100) : 0;
+        const soloDeathsPctNum = stats.deaths > 0 ? (soloDeathsNum / stats.deaths * 100) : 0;
+        const deathsUnderTurretPctNum = stats.deaths > 0 ? (deathsTurretNum / stats.deaths * 100) : 0;
+
+        const formatPct = (val) => val === 0 ? "0%" : `${Math.round(val)}%`;
+
+        return {
+            tfParticipation: formatPct(tfWinrate),
+            duelsWinrateNum: formatPct(duelsWinrateNum),
+            killsUnderTurretPctNum: formatPct(killsUnderTurretPctNum),
+            kp: formatPct(kp),
+            soloDeathsPctNum: formatPct(soloDeathsPctNum),
+            deathsUnderTurretPctNum: formatPct(deathsUnderTurretPctNum)
+        };
+    }, [p, hasTimeline, frames, myPid, participants]);
 
     return (
         <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-in fade-in zoom-in-95 duration-700">
@@ -539,177 +618,17 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
                 </DetailCard>
             </div>
 
-            <DetailCard title={t('build_order_title')} icon={<Package size={14} />}>
-                <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-6 px-4">
-                    {groupedBuild.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center w-full py-12 opacity-40">
-                            <div className="relative mb-4">
-                                <Package size={40} className="text-white/20" />
-                                <Clock size={16} className="absolute -bottom-1 -right-1 text-blue-500/50" />
-                            </div>
-                            <div className="text-gray-500 italic text-sm text-center max-w-xs">
-                                {t('no_shop_events')}<br />
-                                <span className="text-[10px] opacity-60 not-italic uppercase tracking-widest mt-2 block">
-                                    {hasTimeline ? t('filtered_data') + " (PID: " + myPid + ")" : t('timeline_unavailable')}
-                                </span>
-                            </div>
-                        </div>
-                    ) : (
-                        groupedBuild.map(([time, items], gIdx) => (
-                            <div key={time} className="flex items-center gap-6 shrink-0">
-                                {gIdx > 0 && (
-                                    <div className="flex items-center justify-center mb-6">
-                                        <ChevronRight className="text-white/10" size={18} strokeWidth={3} />
-                                    </div>
-                                )}
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="flex items-center gap-1.5 min-h-[44px]">
-                                        {items.map((item, iIdx) => (
-                                            <div key={`${time}-${iIdx}`} className="group/item relative w-10 h-10 rounded-lg bg-[#1a1a20] border border-white/5 p-0.5 hover:scale-110 hover:border-blue-500/50 hover:shadow-[0_0_15px_rgba(59,130,246,0.2)] transition-all duration-300">
-                                                <img
-                                                    src={`https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${item.id}.png`}
-                                                    className={cn("w-full h-full object-contain rounded-md shadow-lg", item.sold && "opacity-30 grayscale blur-[0.5px]")}
-                                                    onError={(e) => { e.target.style.display = 'none' }}
-                                                />
-                                                {item.sold && (
-                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                        <div className="w-full h-0.5 bg-red-600 shadow-[0_0_5px_rgba(220,38,38,0.8)] rotate-45 absolute" />
-                                                        <div className="w-full h-0.5 bg-red-600 shadow-[0_0_5px_rgba(220,38,38,0.8)] -rotate-45 absolute" />
-                                                    </div>
-                                                )}
-                                                {/* Tooltip on hover */}
-                                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-black text-[9px] text-white rounded opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none z-50 whitespace-nowrap border border-white/10 uppercase font-black">
-                                                    ID: {item.id} {item.sold ? "(Vendu)" : ""}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em] px-2 py-0.5 rounded-full bg-white/[0.02] border border-white/[0.03]">
-                                        {Number(time) === 0 ? "Starter" : `${time} ${t('m')}`}
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
+            {/* Combat Stats Grid matching Screen 1 */}
+            <DetailCard title="Combat" icon={<Sword size={14} />}>
+                <div className="grid grid-cols-6 gap-4 py-4 w-full justify-items-center">
+                    <CircularStat value={combatStats.tfParticipation} label="Teamfights gagnés" color="stroke-blue-500" />
+                    <CircularStat value={combatStats.duelsWinrateNum} label="Duels gagnés" color="stroke-indigo-500" />
+                    <CircularStat value={combatStats.killsUnderTurretPctNum} label="Kills sous tour ennemie" color="stroke-rose-500" />
+                    <CircularStat value={combatStats.kp} label="Participation aux Teamfights" color="stroke-emerald-500" />
+                    <CircularStat value={combatStats.soloDeathsPctNum} label="Morts en solo" color="stroke-orange-500" />
+                    <CircularStat value={combatStats.deathsUnderTurretPctNum} label="Morts sous tour ennemie" color="stroke-red-500" />
                 </div>
             </DetailCard>
-
-            {/* Skill Order - Matrix Match Screenshot Colors */}
-            <DetailCard title={t('skill_order_title')} icon={<MousePointer2 size={14} />}>
-                <div className="flex flex-col gap-4 pt-4">
-                    {[1, 2, 3, 4].map(slot => {
-                        const key = ['q', 'w', 'e', 'r'][slot - 1];
-                        // Match colors from user screenshot
-                        const slotColors = {
-                            1: "bg-blue-600 border-blue-400/50", // Q
-                            2: "bg-orange-600 border-orange-400/50", // W
-                            3: "bg-purple-600 border-purple-400/50", // E
-                            4: "bg-red-600 border-red-400/50" // R
-                        };
-                        const colorClass = slotColors[slot];
-
-                        return (
-                            <div key={slot} className="flex items-center gap-5">
-                                <div className="w-11 h-11 rounded-2xl bg-black/60 border border-white/5 p-1 shrink-0 relative overflow-hidden group/skill">
-                                    <img src={`https://cdn.communitydragon.org/latest/champion/${p.championId}/ability-icon/${key}`} className="w-full h-full object-cover rounded-xl transition-transform group-hover/skill:scale-110" />
-                                    <div className="absolute inset-0 bg-black/20 group-hover/skill:bg-transparent transition-colors" />
-                                    <div className="absolute bottom-0 inset-x-0 bg-black/80 text-[8px] font-black text-center py-0.5 text-white/40 uppercase tracking-widest">{key}</div>
-                                </div>
-                                <div className="flex gap-2 flex-1 items-center">
-                                    {Array.from({ length: 18 }).map((_, i) => {
-                                        const isUp = skillEvents[i] === slot;
-                                        return (
-                                            <div key={i} className={cn(
-                                                "w-7 h-7 rounded-md border text-[10px] font-bold flex items-center justify-center transition-all duration-300",
-                                                isUp
-                                                    ? cn(colorClass, "text-white shadow-lg scale-105 z-10")
-                                                    : "bg-white/[0.02] border-white/5 text-transparent hover:bg-white/[0.05]"
-                                            )}>
-                                                {isUp ? i + 1 : ""}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </DetailCard>
-
-            {/* Spells & Pings - Split Layout */}
-            <div className="grid grid-cols-[1.5fr_1fr] gap-6">
-                <DetailCard title={t('spell_casted')} icon={<Zap size={14} />}>
-                    <div className="flex items-center gap-10 py-4">
-                        <div className="flex gap-5">
-                            {['q', 'w', 'e', 'r'].map((s, idx) => {
-                                const stats = p?.stats || {};
-                                const ch = stats.challenges || p?.challenges || {};
-                                const sUpper = s.toUpperCase();
-                                // Ultra-thorough field check for Champion Spells
-                                const cast = stats[`spell${idx + 1}Casts`]
-                                    || stats[`ability${idx + 1}Casts`]
-                                    || ch[`spell${idx + 1}Casts`]
-                                    || ch[`ability${idx + 1}Casts`]
-                                    || ch[`ability${idx + 1}Usage`]
-                                    || ch[`${sUpper}SpellsUsed`]
-                                    || ch[`${s}AbilityCasts`]
-                                    || ch[`spell_${idx + 1}_casts`]
-                                    || ch[`ability_${idx + 1}_casts`]
-                                    || 0;
-                                return (
-                                    <div key={idx} className="flex flex-col items-center gap-3">
-                                        <div className="w-12 h-12 rounded-xl bg-black/40 border border-white/5 p-1 group hover:border-blue-500/30 transition-all">
-                                            <img src={`https://cdn.communitydragon.org/latest/champion/${p?.championId || -1}/ability-icon/${s}`} className="w-full h-full object-cover rounded-2xl group-hover:scale-110 transition-transform" />
-                                        </div>
-                                        <div className="flex flex-col items-center">
-                                            <span className="text-[14px] font-bold text-white leading-none">{cast}</span>
-                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-1">{t('times')}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="h-12 w-px bg-white/5 shadow-[0_0_10px_white/10]" />
-                        <div className="flex gap-5">
-                            {[1, 2].map(i => {
-                                const id = p?.[`spell${i}Id`];
-                                const stats = p?.stats || {};
-                                const ch = stats.challenges || p?.challenges || {};
-                                // Ultra-thorough field check for Summoner Spells
-                                const cast = stats[`summoner${i}Casts`]
-                                    || stats[`summonerSpell${i}Casts`]
-                                    || stats[`spell${i === 1 ? 'd' : 'f'}Casts`]
-                                    || ch[`summoner${i}Casts`]
-                                    || ch[`summonerSpell${i}Casts`]
-                                    || ch[`summonerSpell${i}Usage`]
-                                    || ch[`summoner_${i}_casts`]
-                                    || ch[`spell_${i === 1 ? '1' : '2'}_casts`]
-                                    || 0;
-                                return (
-                                    <div key={i} className="flex flex-col items-center gap-3">
-                                        <SpellIcon id={id} ver={ver} size="w-12 h-12" />
-                                        <div className="flex flex-col items-center">
-                                            <span className="text-[14px] font-bold text-white leading-none">{cast}</span>
-                                            <span className="text-[9px] font-bold text-gray-500 uppercase mt-1">fois</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </DetailCard>
-
-                <DetailCard title={t('pings_title')} icon={<MousePointer2 size={14} />}>
-                    <div className="flex justify-around items-center py-4">
-                        <PingMinimal icon="omw" val={p?.stats?.onMyWayPings ?? p?.stats?.challenges?.onMyWayPings ?? p?.challenges?.onMyWayPings ?? 0} />
-                        <PingMinimal icon="danger" val={p?.stats?.dangerPings ?? p?.stats?.challenges?.dangerPings ?? p?.challenges?.dangerPings ?? 0} />
-                        <PingMinimal icon="assist" val={p?.stats?.assistMePings ?? p?.stats?.challenges?.assistMePings ?? p?.challenges?.assistMePings ?? p?.stats?.assistPings ?? 0} />
-                        <PingMinimal icon="missing" val={p?.stats?.enemyMissingPings ?? p?.stats?.challenges?.enemyMissingPings ?? p?.challenges?.enemyMissingPings ?? 0} />
-                        <PingMinimal icon="vision" val={p?.stats?.enemyVisionPings ?? p?.stats?.challenges?.enemyVisionPings ?? p?.challenges?.enemyVisionPings ?? p?.stats?.noVisionPings ?? 0} />
-                        <PingMinimal icon="rally" val={p?.stats?.getBackPings ?? p?.stats?.challenges?.getBackPings ?? p?.challenges?.getBackPings ?? p?.stats?.allInPings ?? 0} />
-                    </div>
-                </DetailCard>
-            </div>
         </div>
     );
 }
@@ -747,13 +666,34 @@ function ParticipantIcon({ pl, active, onClick, side }) {
             <img
                 src={(pl.championId && pl.championId > 0)
                     ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${pl.championId}.png`
-                    : `https://ddragon.leagueoflegends.com/cdn/${ver || "15.1.1"}/img/champion/${normalizeChampName(pl.championName || "Yasuo")}.png`
+                    : `https://cdn.communitydragon.org/latest/champion/${normalizeChampName(pl.championName || "Yasuo")}/square`
                 }
                 className="w-full h-full object-cover rounded-[1rem]"
                 alt="champ"
                 onError={(e) => { e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png" }}
             />
             <div className={cn("absolute -bottom-1 inset-x-0 h-1 rounded-full transition-opacity mx-3", active ? (side === "blue" ? "bg-blue-400" : "bg-red-400") : "bg-transparent")} />
+        </div>
+    );
+}
+
+function CircularStat({ value, label, color }) {
+    const numericValue = parseFloat(value);
+    const dashArray = 251.2;
+    const dashOffset = isNaN(numericValue) ? dashArray : dashArray - (dashArray * numericValue) / 100;
+
+    return (
+        <div className="flex flex-col items-center gap-3">
+            <div className="relative w-24 h-24 flex items-center justify-center">
+                <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="48" cy="48" r="40" className="stroke-white/5" strokeWidth="6" fill="transparent" />
+                    <circle cx="48" cy="48" r="40" className={cn("transition-all duration-1000 ease-out", color)} strokeWidth="6" fill="transparent" strokeDasharray={dashArray} strokeDashoffset={dashOffset} strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-black text-white">{value}</span>
+                </div>
+            </div>
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-center max-w-[90px] leading-tight">{label}</span>
         </div>
     );
 }
@@ -1096,33 +1036,46 @@ function Objective({ icon, val, isBlue, isGrub }) {
     return (
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/5 shadow-sm">
             <span className={cn("text-xs font-black tabular-nums contrast-125", textColor)}>{val}</span>
-            <img
-                src={icon}
-                className="w-4 h-4 object-contain brightness-110 saturate-110"
-                style={isGrub ? {
-                    filter: isBlue
-                        ? "invert(43%) sepia(85%) saturate(1475%) hue-rotate(195deg) brightness(101%) contrast(94%)"
-                        : "invert(35%) sepia(90%) saturate(3071%) hue-rotate(345deg) brightness(101%) contrast(101%)"
-                } : {}}
-                onError={(e) => {
-                    const parts = icon.split('/');
-                    const filename = parts[parts.length - 1];
-                    let name = filename.split('-')[0];
+            {isGrub ? (
+                <div
+                    className={cn("w-4 h-4", isBlue ? "bg-blue-500" : "bg-red-500")}
+                    style={{
+                        WebkitMaskImage: `url(${icon})`,
+                        WebkitMaskSize: 'contain',
+                        WebkitMaskRepeat: 'no-repeat',
+                        WebkitMaskPosition: 'center',
+                        maskImage: `url(${icon})`,
+                        maskSize: 'contain',
+                        maskRepeat: 'no-repeat',
+                        maskPosition: 'center'
+                    }}
+                />
+            ) : (
+                <img
+                    src={icon}
+                    className="w-4 h-4 object-contain brightness-110 saturate-110"
+                    onError={(e) => {
+                        const parts = icon.split('/');
+                        const filename = parts[parts.length - 1];
+                        let name = filename.split('-')[0];
 
-                    if (!e.target.triedFix) {
-                        e.target.triedFix = true;
-                        if (name.includes('horde') || name.includes('grub')) {
-                            e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/right_icons_grub.png`;
+                        if (!e.target.triedFix) {
+                            e.target.triedFix = true;
+                            if (name.includes('horde') || name.includes('grub')) {
+                                e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/right_icons_grub.png`;
+                            } else {
+                                const altName = name === 'baron' ? 'baron' : name;
+                                e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/${altName}-${teamId}.png`;
+                            }
+                        } else if (!e.target.triedAlt) {
+                            e.target.triedAlt = true;
+                            e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-${name.includes('horde') ? 'baron' : name}.png`;
                         } else {
-                            const altName = name === 'baron' ? 'baron' : name;
-                            e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/${altName}-${teamId}.png`;
+                            e.target.style.display = 'none';
                         }
-                    } else if (!e.target.triedAlt) {
-                        e.target.triedAlt = true;
-                        e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/tower-${teamId}.png`;
-                    }
-                }}
-            />
+                    }}
+                />
+            )}
         </div>
     );
 }

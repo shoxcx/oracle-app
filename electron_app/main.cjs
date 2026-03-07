@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, screen, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, screen, shell, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -22,6 +22,9 @@ if (process.stderr && process.stderr.on) {
     });
 }
 
+// Set AppUserModelId to ensure correct taskbar icon in Windows (even in dev)
+app.setAppUserModelId("com.oracle.app");
+
 // Allow self-signed certs for LCU
 app.commandLine.appendSwitch('ignore-certificate-errors');
 // Add local relative imports
@@ -30,6 +33,9 @@ const liveApi = require('./live_api.cjs');
 const scraper = require('./scraper.cjs');
 const riotApi = require('./riot_api.cjs');
 
+let tray = null;
+let isAppQuitting = false;
+
 let mainWindow;
 let liveWindow;
 let draftWindow;
@@ -37,8 +43,33 @@ let toastWindow;
 let voiceWindow; // New Voice Assistant Window
 let musicWindow; // Music Overlay
 let ingameWindow; // InGame Helper Overlay
-
 const media = require('./media.cjs');
+
+async function fadeOutAndHide(win) {
+    if (!win || win.isDestroyed()) return;
+    for (let i = 1; i >= 0; i -= 0.1) {
+        if (win.isDestroyed()) return;
+        win.setOpacity(Math.max(0, i));
+        await new Promise(r => setTimeout(r, 15));
+    }
+    if (!win.isDestroyed()) {
+        win.hide();
+        win.setOpacity(1);
+    }
+}
+
+async function fadeOutAndMinimize(win) {
+    if (!win || win.isDestroyed()) return;
+    for (let i = 1; i >= 0; i -= 0.1) {
+        if (win.isDestroyed()) return;
+        win.setOpacity(Math.max(0, i));
+        await new Promise(r => setTimeout(r, 15));
+    }
+    if (!win.isDestroyed()) {
+        win.minimize();
+        setTimeout(() => { if (!win.isDestroyed()) win.setOpacity(1); }, 500);
+    }
+}
 
 function createMainWindow() {
     mainWindow = new BrowserWindow({
@@ -53,6 +84,7 @@ function createMainWindow() {
             webviewTag: true
         },
         title: 'Oracle',
+        icon: path.join(__dirname, '../public/oracle-logo.png'),
         backgroundColor: '#1C1C21',
         show: false,
         frame: false,
@@ -66,6 +98,32 @@ function createMainWindow() {
     mainWindow.loadURL(url);
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
+    });
+
+    mainWindow.on('close', (event) => {
+        if (!isAppQuitting) {
+            event.preventDefault();
+            
+            let settings = {};
+            let SETTINGS_PATH = '';
+            try {
+                const path = require('path');
+                const fs = require('fs');
+                SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
+                if (fs.existsSync(SETTINGS_PATH)) settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'));
+            } catch(e) {}
+
+            const behavior = settings.closeBehavior || 'ask';
+
+            if (behavior === 'close') {
+                isAppQuitting = true;
+                app.quit();
+            } else if (behavior === 'minimize') {
+                fadeOutAndHide(mainWindow);
+            } else {
+                mainWindow.webContents.send('show-quit-modal');
+            }
+        }
     });
 }
 
@@ -230,9 +288,9 @@ ipcMain.on('social:toast-ready', () => {
     }
 });
 
-ipcMain.on('social:toast-empty', () => {
+ipcMain.handle('window:hide-toast', () => {
     if (toastWindow && !toastWindow.isDestroyed()) {
-        toastWindow.hide();
+        fadeOutAndHide(toastWindow);
     }
 });
 
@@ -257,11 +315,13 @@ ipcMain.handle('social:trigger-toast', (event, data) => {
 
 ipcMain.handle('window:minimize', () => {
     const win = BrowserWindow.getFocusedWindow();
-    if (win) win.minimize();
+    if (win) fadeOutAndMinimize(win);
 });
 
 ipcMain.handle('window:close', () => {
-    app.quit();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.close();
+    }
 });
 
 ipcMain.handle('window:show', (event) => {
@@ -271,7 +331,7 @@ ipcMain.handle('window:show', (event) => {
 
 ipcMain.handle('window:hide', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.hide();
+    if (win) fadeOutAndHide(win);
 });
 
 function createMusicWindow() {
@@ -322,7 +382,9 @@ ipcMain.handle('window:toggle-music', (e, enable) => {
         musicWindow.showInactive();
     } else {
         if (musicWindow) {
-            musicWindow.close();
+            fadeOutAndHide(musicWindow).then(() => {
+                if (musicWindow && !musicWindow.isDestroyed()) musicWindow.close();
+            });
         }
     }
 });
@@ -330,12 +392,12 @@ ipcMain.handle('window:toggle-music', (e, enable) => {
 function createInGameWindow() {
     if (ingameWindow) return;
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
+    const { width, height } = primaryDisplay.bounds;
     ingameWindow = new BrowserWindow({
-        width: 380,
-        height: 600, // taller overlay
-        x: width - 400,
-        y: (height - 600) / 2, // Middle right
+        width: width,
+        height: height,
+        x: 0,
+        y: 0,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -373,7 +435,7 @@ ipcMain.handle('window:toggle-ingame', (e, enable, data) => {
         ingameWindow.showInactive();
         if (data) ingameWindow.webContents.send('ingame:update', data);
     } else if (ingameWindow && !ingameWindow.isDestroyed()) {
-        ingameWindow.hide();
+        fadeOutAndHide(ingameWindow);
     }
 });
 
@@ -460,8 +522,9 @@ ipcMain.handle('scraper:get-champion-build', async (_, name, role) => scraper.ge
 ipcMain.handle('scraper:get-patch-notes', async () => scraper.getPatchNotes());
 ipcMain.handle('scraper:get-esports-schedule', async () => scraper.getEsportsSchedule());
 ipcMain.handle('scraper:get-esports-news', async () => scraper.getEsportsNews());
+ipcMain.handle('scraper:get-esports-rankings', async () => scraper.getEsportsRankings());
 ipcMain.handle('scraper:get-top-live-streams', async () => scraper.getTopLiveStreams());
-ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getChampionBuild(champ1, champ2, role));
+ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getMatchupAnalysis(champ1, champ2, role));
 ipcMain.handle('scraper:get-rank-history', async (_, puuid, region) => scraper.getRankHistory(puuid, region));
 ipcMain.handle('scraper:get-lp-history', async (_, name, region) => scraper.getRankedLPHistory(name, region));
 ipcMain.handle('scraper:get-recent-lp', async (_, name, region) => scraper.getRecentLPGains(name, region));
@@ -519,26 +582,86 @@ ipcMain.handle('app:set-auto-launch', (_, open) => {
     return app.getLoginItemSettings().openAtLogin;
 });
 
+ipcMain.handle('app:quit', () => {
+    isAppQuitting = true;
+    app.quit();
+});
+ipcMain.handle('app:minimize', () => {
+    if (mainWindow) fadeOutAndHide(mainWindow);
+});
+
 ipcMain.handle('app:open-url', (_, url) => {
     if (url) {
         shell.openExternal(url);
     }
 });
 
-ipcMain.handle('app:register-shortcut', () => {
+ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+Shift+O') => {
     try {
         globalShortcut.unregisterAll();
-        globalShortcut.register('Control+H', () => {
+        globalShortcut.register('CommandOrControl+H', () => {
             if (liveWindow) {
                 if (liveWindow.isVisible()) liveWindow.hide();
                 else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
             }
         });
-        globalShortcut.register('Alt+O', () => { if (liveWindow) liveWindow.webContents.send('shortcut:toggle-winrate'); });
-        globalShortcut.register('Control+X', () => { if (liveWindow) liveWindow.isVisible() ? liveWindow.hide() : liveWindow.show(); });
+        if (['CommandOrControl+C', 'CommandOrControl+V', 'CommandOrControl+X'].includes(winrateShortcut)) {
+            console.warn(`Prevented overriding standard shortcut: ${winrateShortcut}, coercing to CommandOrControl+Shift+O`);
+            winrateShortcut = 'CommandOrControl+Shift+O';
+        }
+        globalShortcut.register(winrateShortcut, () => {
+            console.log(`Shortcut ${winrateShortcut} pressed!`);
+            if (!ingameWindow || ingameWindow.isDestroyed()) {
+                createInGameWindow();
+                ingameWindow.webContents.once('did-finish-load', () => {
+                    if (!ingameWindow.isVisible()) ingameWindow.showInactive();
+                    ingameWindow.webContents.send('shortcut:force-winrate');
+                });
+            } else {
+                if (!ingameWindow.isVisible()) {
+                    ingameWindow.showInactive();
+                }
+                ingameWindow.webContents.send('shortcut:force-winrate');
+            }
+        });
         return true;
     } catch (e) {
         console.error("Shortcut registration failed", e);
+        return false;
+    }
+});
+
+ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
+    try {
+        globalShortcut.unregisterAll();
+        globalShortcut.register('CommandOrControl+H', () => {
+            if (liveWindow) {
+                if (liveWindow.isVisible()) liveWindow.hide();
+                else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
+            }
+        });
+        if (['CommandOrControl+C', 'CommandOrControl+V', 'CommandOrControl+X'].includes(keys)) {
+            console.warn(`Prevented overriding standard shortcut: ${keys}, coercing to CommandOrControl+Shift+O`);
+            keys = 'CommandOrControl+Shift+O';
+        }
+        globalShortcut.register(keys, () => {
+            console.log(`Shortcut ${keys} pressed!`);
+            if (!ingameWindow || ingameWindow.isDestroyed()) {
+                createInGameWindow();
+                ingameWindow.webContents.once('did-finish-load', () => {
+                    if (!ingameWindow.isVisible()) ingameWindow.showInactive();
+                    ingameWindow.webContents.send('shortcut:force-winrate');
+                });
+            } else {
+                if (!ingameWindow.isVisible()) {
+                    ingameWindow.showInactive();
+                }
+                ingameWindow.webContents.send('shortcut:force-winrate');
+            }
+        });
+        return true;
+    } catch (e) {
+        console.error("Shortcut update failed", e);
         return false;
     }
 });
@@ -608,21 +731,24 @@ async function monitorGameLoop() {
             if (phase === 'ChampSelect') await updateChampMap();
 
             if (phase === 'InProgress') {
+                if (!ingameWindow) createInGameWindow();
+                ingameWindow.showInactive();
+
                 if (lastLockedChampId) {
                     const champName = champMap[lastLockedChampId];
                     if (champName) {
-                        if (!ingameWindow) createInGameWindow();
-                        ingameWindow.showInactive();
                         ingameWindow.webContents.send('ingame:update', { champName, spells: lastLockedSpells });
                     }
+                } else {
+                    ingameWindow.webContents.send('ingame:update', null);
                 }
-            } else {
-                if (ingameWindow && !ingameWindow.isDestroyed()) {
-                    ingameWindow.hide();
+            } else if (!['ChampSelect', 'GameStart', 'InProgress', 'Reconnect', 'WaitingForStats'].includes(phase)) {
+                if (ingameWindow && !ingameWindow.isDestroyed() && ingameWindow.isVisible()) {
+                    fadeOutAndHide(ingameWindow);
                 }
             }
 
-            if (phase !== 'ChampSelect' && phase !== 'InProgress') {
+            if (!['ChampSelect', 'GameStart', 'InProgress', 'Reconnect', 'WaitingForStats'].includes(phase)) {
                 lastLockedChampId = 0; // Reset
                 lastLockedSpells = { spell1Id: 0, spell2Id: 0 };
             }
@@ -849,15 +975,28 @@ app.whenReady().then(() => {
 
     createMainWindow();
     createToastWindow();
-    // createVoiceWindow(); // Auto-start the voice listener window
+    createInGameWindow();
 
-    globalShortcut.register('CommandOrControl+X', () => {
-        if (!liveWindow) createLiveWindow();
-        else {
-            if (liveWindow.isVisible()) liveWindow.hide();
-            else { liveWindow.show(); liveWindow.focus(); }
+    // Create System Tray
+    const iconPath = path.join(__dirname, '../src/assets/oracle_logo.png');
+    const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    tray = new Tray(icon);
+    const contextMenu = Menu.buildFromTemplate([
+        { label: 'Ouvrir Oracle', click: () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } } },
+        { type: 'separator' },
+        { label: 'Quitter Oracle', click: () => { isAppQuitting = true; app.quit(); } }
+    ]);
+    tray.setToolTip('Oracle LoL Tracker');
+    tray.setContextMenu(contextMenu);
+    tray.on('click', () => {
+        if (mainWindow) {
+            mainWindow.isVisible() ? fadeOutAndHide(mainWindow) : (mainWindow.show() || mainWindow.focus());
         }
     });
+
+    // createVoiceWindow(); // Auto-start the voice listener window
+
+    // Start shortcut registered from App.jsx via app:register-shortcut
 
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); });
 });

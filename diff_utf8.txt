@@ -1,0 +1,738 @@
+﻿diff --git a/src/components/InGameHelper.jsx b/src/components/InGameHelper.jsx
+index fd6a78a..526a3b7 100644
+--- a/src/components/InGameHelper.jsx
++++ b/src/components/InGameHelper.jsx
+@@ -1,12 +1,13 @@
+ import React, { useState, useEffect, useRef } from 'react';
+-import { Target, Eye, AlertCircle, Sparkles, Map, Skull } from 'lucide-react';
++import { Target, Eye, AlertCircle, Sparkles, Map, Skull, Activity } from 'lucide-react';
+ 
+ export function InGameHelper({ ddragonVersion }) {
+     const [toasts, setToasts] = useState([]);
+     const [champName, setChampName] = useState("");
+     const [buildData, setBuildData] = useState(null);
+ 
+-    const [overlaySettings, setOverlaySettings] = useState({ skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false });
++    const [overlaySettings, setOverlaySettings] = useState({ skillLevelUp: true, wardTimer: true, objectiveTimer: true, inGameStats: true, testMode: false });
++    const [liveData, setLiveData] = useState(null);
+ 
+     // Using refs for properties that are accessed within the setInterval closure
+     const stateRefs = useRef({
+@@ -21,8 +22,17 @@ export function InGameHelper({ ddragonVersion }) {
+         notifiedSpawns: { drake: -1, baron: -1 },
+         objVoidgrubs: false,
+         isInitializingChamp: false,
++        itemState: { notifiedStarting: false, toastScheduledFor: 0 },
++        lastItemsStr: '',
+         settings: { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false },
+-        ddVersion: ddragonVersion || "14.2.1"
++        ddVersion: ddragonVersion || "14.2.1",
++        champ: "",
++        hasFetchedBuildForRole: false,
++        acquiredItems: new Set(),
++        liveData: null,
++        lastWinrateTime: 0,
++        winrateSpamTriggered: false,
++        processedEventsCount: 0
+     });
+ 
+     useEffect(() => {
+@@ -67,9 +77,11 @@ export function InGameHelper({ ddragonVersion }) {
+             if (typeof data === 'string') {
+                 champ = data;
+                 setChampName(data);
++                stateRefs.current.champ = data;
+             } else if (data) {
+                 champ = data.champName || data.championName || "";
+                 setChampName(champ);
++                stateRefs.current.champ = champ;
+                 if (data.spells) {
+                     const isJng = data.spells.spell1Id === 11 || data.spells.spell2Id === 11;
+                     stateRefs.current.isJungle = isJng;
+@@ -98,7 +110,8 @@ export function InGameHelper({ ddragonVersion }) {
+             }
+ 
+             try {
+-                const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, 'mid');
++                const requestedRole = stateRefs.current.isJungle ? 'jungle' : '';
++                const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, requestedRole);
+                 if (build) {
+                     setBuildData(build);
+                     if (build.skillOrder) {
+@@ -133,6 +146,86 @@ export function InGameHelper({ ddragonVersion }) {
+         window.ipcRenderer.on('ingame:update', handleUpdate);
+         window.ipcRenderer.on('skills:update', handleUpdate);
+ 
++        const calculateWinProbability = (data) => {
++            if (!data || !data.allPlayers || !data.activePlayer) return 50;
++            const activeName = (data.activePlayer.summonerName || data.activePlayer.riotIdGameName || data.activePlayer.rawPlayerName || "").split('#')[0].toLowerCase();
++            let me = data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName));
++            if (!me && data.allPlayers.length > 0) me = data.allPlayers[0];
++            if (!me) return 50;
++
++            const myTeam = me.team;
++            let myTeamScore = 0;
++            let enemyTeamScore = 0;
++
++            data.allPlayers.forEach(p => {
++                const kills = p.scores?.kills || 0;
++                const cs = p.scores?.creepScore || 0;
++                const assists = p.scores?.assists || 0;
++                const score = (kills * 2) + Math.floor(cs / 10) + assists;
++                if (p.team === myTeam) myTeamScore += score;
++                else enemyTeamScore += score;
++            });
++
++            if (data.events && data.events.Events) {
++                data.events.Events.forEach(e => {
++                    const killer = data.allPlayers.find(p => p.summonerName === e.KillerName || p.riotIdGameName === e.KillerName);
++                    if (killer) {
++                        const pts = e.EventName === 'DragonKill' ? 10 : e.EventName === 'BaronKill' ? 25 : e.EventName === 'TurretKilled' ? 15 : e.EventName === 'InhibKilled' ? 20 : 0;
++                        if (killer.team === myTeam) myTeamScore += pts;
++                        else enemyTeamScore += pts;
++                    }
++                });
++            }
++
++            if (myTeamScore === 0 && enemyTeamScore === 0) return 50;
++            let probability = 50 + ((myTeamScore - enemyTeamScore) / Math.max(10, myTeamScore + enemyTeamScore)) * 40;
++            return Math.min(Math.max(probability, 10), 90).toFixed(1);
++        };
++
++        const triggerWinrateOverlay = (isForced = false) => {
++            const now = Date.now();
++            if (now - stateRefs.current.lastWinrateTime < 20000) {
++                if (isForced && !stateRefs.current.winrateSpamTriggered) {
++                    stateRefs.current.winrateSpamTriggered = true;
++                    pushToast({
++                        type: 'warning',
++                        title: 'SYSTEM PROTECT',
++                        name: 'Cooldown Actif',
++                        status: 'Vous ne pouvez afficher la probabilit├® de victoire que toutes les 20 secondes.',
++                        iconColor: 'bg-rose-500',
++                        icon: AlertCircle,
++                        duration: 5000
++                    });
++                    setTimeout(() => { stateRefs.current.winrateSpamTriggered = false; }, 20000);
++                }
++                return;
++            }
++
++            const prob = calculateWinProbability(stateRefs.current.liveData);
++            stateRefs.current.lastWinrateTime = now;
++
++            const isWinning = prob >= 50;
++            pushToast({
++                type: 'winrate',
++                title: 'ORACLE PREDICTION',
++                name: `Probabilit├® : ${prob}%`,
++                status: isWinning ? 'Votre ├®quipe m├¿ne la danse ! Maintenez la pression.' : 'Avantage ennemi. Concentrez-vous sur les objectifs.',
++                iconColor: isWinning ? 'bg-cyan-500' : 'bg-rose-500',
++                icon: Activity,
++                duration: 12000,
++                prob: prob
++            });
++        };
++
++        const handleShortcut = () => {
++            if (stateRefs.current.settings?.winProbability !== false) {
++                triggerWinrateOverlay(true);
++            }
++        };
++        // Nuke any ghost listeners from hot reloads without a previous cleanup
++        window.ipcRenderer.removeAllListeners('shortcut:force-winrate');
++        window.ipcRenderer.on('shortcut:force-winrate', handleShortcut);
++
+         // Initial Test Mode Trigger
+         const testInterval = setInterval(() => {
+             if (stateRefs.current.settings?.testMode && !stateRefs.current.testModeFired) {
+@@ -151,10 +244,15 @@ export function InGameHelper({ ddragonVersion }) {
+ 
+         // Live API loop
+         const interval = setInterval(async () => {
++            if (stateRefs.current.isFetching) return;
++            stateRefs.current.isFetching = true;
+             try {
+                 const data = await window.ipcRenderer.invoke('live:get-all-data');
+                 if (!data) return;
+ 
++                setLiveData(data);
++                stateRefs.current.liveData = data;
++
+                 const gameTime = data.gameData?.gameTime || 0; // en secondes
+                 const refs = stateRefs.current;
+ 
+@@ -162,8 +260,11 @@ export function InGameHelper({ ddragonVersion }) {
+                 if (data.activePlayer) {
+                     let isJungleLive = false;
+                     const allP = data.allPlayers || [];
+-                    const activeName = (data.activePlayer.summonerName || "").split('#')[0].toLowerCase();
+-                    const me = allP.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
++                    const rawActiveName = data.activePlayer.summonerName || data.activePlayer.riotIdGameName || data.activePlayer.rawPlayerName || "";
++                    const activeName = rawActiveName.split('#')[0].toLowerCase();
++
++                    let me = activeName ? allP.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName)) : null;
++                    if (!me && allP.length > 0) me = allP[0];
+ 
+                     if (me && me.summonerSpells) {
+                         const s1 = (me.summonerSpells.summonerSpellOne?.displayName || '').toLowerCase();
+@@ -176,16 +277,42 @@ export function InGameHelper({ ddragonVersion }) {
+                     if (isJungleLive) refs.isJungle = true;
+ 
+                     if (!champName && !refs.isInitializingChamp) {
+-                        refs.isInitializingChamp = true;
+                         let resolvedChampName = me ? me.championName : undefined;
+                         if (!resolvedChampName && data.activePlayer.abilities) {
+                             resolvedChampName = Object.keys(data.activePlayer.abilities)[0];
+                         }
+ 
+-                        handleUpdate(null, {
+-                            champName: resolvedChampName || 'Unknown',
+-                            spells: { spell1Id: isJungleLive ? 11 : 0, spell2Id: 0 }
+-                        });
++                        if (resolvedChampName) {
++                            refs.isInitializingChamp = true;
++                            handleUpdate(null, {
++                                champName: resolvedChampName,
++                                spells: { spell1Id: isJungleLive ? 11 : 0, spell2Id: 0 }
++                            });
++                        }
++                    }
++
++                    // Dynamic Build Fetching when Position is known
++                    if (me && me.position && me.position !== 'UNKNOWN' && me.position !== '' && !refs.hasFetchedBuildForRole && refs.champ) {
++                        refs.hasFetchedBuildForRole = true;
++                        let posStr = me.position.toLowerCase();
++                        if (posStr === 'middle') posStr = 'mid';
++                        if (posStr === 'bottom') posStr = 'adc';
++                        if (posStr === 'utility') posStr = 'support';
++
++                        window.ipcRenderer.invoke('scraper:get-champion-build', refs.champ, posStr).then(build => {
++                            if (build) {
++                                setBuildData(build);
++                                if (build.skillOrder && !refs.skillOrder) {
++                                    let order = build.skillOrder;
++                                    if (order.length === 3 && typeof order[0] === 'string') {
++                                        const [first, second, third] = order;
++                                        order = [first, second, third, first, first, "R", first, second, first, second, "R", second, second, third, third, "R", third, third];
++                                    }
++                                    while (order.length < 18) order.push('P');
++                                    refs.skillOrder = order;
++                                }
++                            }
++                        }).catch(e => console.error("Error fetching build for role:", e));
+                     }
+                 }
+ 
+@@ -194,7 +321,7 @@ export function InGameHelper({ ddragonVersion }) {
+                 const showObjectives = refs.settings.objectiveTimer !== false && refs.settings.jungleTimers !== false;
+                 if (showObjectives) {
+                     // Buffs Jungle (Spawn ├á 0:55 -> Notif ├á 0:40 = 40s)
+-                    if (gameTime >= 40 && gameTime < 50 && !refs.objCamp1) {
++                    if (gameTime >= 40 && gameTime < 120 && !refs.objCamp1) {
+                         refs.objCamp1 = true;
+                         if (refs.isJungle) {
+                             pushToast({
+@@ -211,7 +338,7 @@ export function InGameHelper({ ddragonVersion }) {
+                     }
+ 
+                     // Carapateur (Spawn ├á 2:55 -> Notif ├á 2:40 = 160s)
+-                    if (gameTime >= 160 && gameTime < 170 && !refs.objCamp2) {
++                    if (gameTime >= 160 && gameTime < 300 && !refs.objCamp2) {
+                         refs.objCamp2 = true;
+                         if (refs.isJungle) {
+                             pushToast({
+@@ -239,7 +366,7 @@ export function InGameHelper({ ddragonVersion }) {
+                     }
+ 
+                     // Drake (Notif ├á Spawn - 30s)
+-                    if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 10 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
++                    if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 90 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
+                         refs.notifiedSpawns.drake = drakeSpawnTime;
+                         pushToast({
+                             type: 'objective',
+@@ -254,7 +381,7 @@ export function InGameHelper({ ddragonVersion }) {
+                     }
+ 
+                     // Larves du n├®ant (Spawn ├á 8:00 S16 -> Notif ├á 7:30 = 450s)
+-                    if (gameTime >= 450 && gameTime < 460 && !refs.objVoidgrubs) {
++                    if (gameTime >= 450 && gameTime < 550 && !refs.objVoidgrubs) {
+                         refs.objVoidgrubs = true;
+                         pushToast({
+                             type: 'objective',
+@@ -269,7 +396,7 @@ export function InGameHelper({ ddragonVersion }) {
+                     }
+ 
+                     // Baron Nashor (Notif ├á Spawn - 30s)
+-                    if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 10 && refs.notifiedSpawns.baron !== baronSpawnTime) {
++                    if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 90 && refs.notifiedSpawns.baron !== baronSpawnTime) {
+                         refs.notifiedSpawns.baron = baronSpawnTime;
+                         pushToast({
+                             type: 'objective',
+@@ -287,8 +414,12 @@ export function InGameHelper({ ddragonVersion }) {
+                 // --- 2. JOUEUR (Skills & Wards) ---
+                 if (data.activePlayer && data.allPlayers) {
+                     const active = data.activePlayer;
+-                    const activeName = (active.summonerName || "").split('#')[0].toLowerCase();
+-                    const current = data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
++                    const rawActiveName = active.summonerName || active.riotIdGameName || active.rawPlayerName || "";
++                    const activeName = rawActiveName.split('#')[0].toLowerCase();
++
++                    let current = activeName ? data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName)) : null;
++                    if (!current && data.allPlayers.length > 0) current = data.allPlayers[0];
++
+                     const level = current?.level || Math.max(refs.knownLevel, 1);
+ 
+                     // A) SKILLS UPGRADE
+@@ -354,6 +485,9 @@ export function InGameHelper({ ddragonVersion }) {
+                     // B) WARDING REMINDER (Niveau 6 => Souvent le moment du premier gros back)
+                     if (refs.settings.wardTimer !== false && level === 6 && !refs.wardNotified) {
+                         refs.wardNotified = true;
++
++                        const wardId = refs.isJungle ? '3364' : '2055'; // Oracle Lens or Control Ward
++
+                         pushToast({
+                             type: 'ward',
+                             title: 'VISION MAP',
+@@ -361,13 +495,31 @@ export function InGameHelper({ ddragonVersion }) {
+                             status: refs.isJungle ? 'Prenez le Brouilleur Oracle pour gank.' : 'Achetez des Wards de Contr├┤le au prochain back.',
+                             iconColor: 'bg-emerald-500',
+                             borderColor: 'bg-emerald-500 shadow-emerald-500/50',
+-                            icon: Eye,
++                            imageUrl: `https://ddragon.leagueoflegends.com/cdn/${refs.ddVersion}/img/item/${wardId}.png`,
+                             duration: 10000
+                         });
+                     }
++
++                    // C) OBJECTIVE WINRATE TRIGGER
++                    if (data.events && data.events.Events && refs.settings.winProbability !== false) {
++                        const evtCount = data.events.Events.length;
++                        if (refs.processedEventsCount > 0 && evtCount > refs.processedEventsCount) {
++                            const newEvents = data.events.Events.slice(refs.processedEventsCount);
++                            const hasObjective = newEvents.some(e => ['DragonKill', 'BaronKill', 'TurretKilled', 'InhibKilled'].includes(e.EventName));
++                            if (hasObjective) {
++                                // Trigger WinProbability naturally behind other notifications
++                                triggerWinrateOverlay(false);
++                            }
++                        }
++                        refs.processedEventsCount = evtCount;
++                    }
++
++                    // D) ITEM RECOMMENDATIONS REMOVED FROM TOASTS - NOW PERSISTENT
+                 }
+             } catch (e) {
+                 // Ignore API errors gracefully
++            } finally {
++                stateRefs.current.isFetching = false;
+             }
+         }, 1000);
+ 
+@@ -377,105 +529,329 @@ export function InGameHelper({ ddragonVersion }) {
+             window.ipcRenderer.removeListener('settings:sync', handleSync);
+             window.ipcRenderer.removeListener('ingame:update', handleUpdate);
+             window.ipcRenderer.removeListener('skills:update', handleUpdate);
++            window.ipcRenderer.removeListener('shortcut:force-winrate', handleShortcut);
+         };
+     }, []);
+ 
+-    const showBuild = buildData && buildData.items && overlaySettings.itemBuild !== false;
+-    if ((!toasts || toasts.length === 0) && !showBuild) return null;
++    const computeStats = () => {
++        if (!liveData || !liveData.gameData || liveData.gameData.gameTime < 5) {
++            return null;
++        }
++        if (!liveData.activePlayer || !liveData.allPlayers) return null;
++
++        const activeName = (liveData.activePlayer.summonerName || liveData.activePlayer.riotIdGameName || liveData.activePlayer.rawPlayerName || "").split('#')[0].toLowerCase();
++
++        let me = liveData.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
++
++        // Fallback for practice tool if name logic fails totally
++        if (!me && liveData.allPlayers.length > 0) me = liveData.allPlayers[0];
++
++        if (!me || !me.scores) {
++            return null;
++        }
++
++        const myTeam = me.team;
++        let opp = null;
++        if (me.position && me.position !== 'UNKNOWN' && me.position !== '') {
++            opp = liveData.allPlayers.find(p => p.team !== myTeam && p.position === me.position);
++        }
++        if (!opp) {
++            opp = liveData.allPlayers.filter(p => p.team !== myTeam).sort((a, b) => (b.scores?.creepScore || 0) - (a.scores?.creepScore || 0))[0];
++        }
++
++        const gameTimeMin = Math.max(1, liveData.gameData.gameTime / 60);
++
++        // Calculate user stats
++        const myCSM = (me.scores.creepScore / gameTimeMin).toFixed(1);
++        const myTeamKills = liveData.allPlayers.filter(p => p.team === myTeam).reduce((sum, p) => sum + (p.scores?.kills || 0), 0);
++        const myKP = myTeamKills === 0 ? 0 : Math.round(((me.scores.kills + me.scores.assists) / myTeamKills) * 100);
++        const myVision = ((me.scores.wardScore || 0) / gameTimeMin).toFixed(1);
++        const myGPM = Math.round((me.scores.creepScore * 20 + me.scores.kills * 300 + me.scores.assists * 150) / gameTimeMin);
++
++        // Calculate opp stats
++        let refCSM = '7.0';
++        let refKP = 50;
++        let refVision = '1.5';
++        let refGPM = 400;
++        let refLvl = me.level;
++
++        if (opp && opp.scores) {
++            const oppTeamKills = liveData.allPlayers.filter(p => p.team === opp.team).reduce((sum, p) => sum + (p.scores?.kills || 0), 0);
++            refCSM = (opp.scores.creepScore / gameTimeMin).toFixed(1);
++            refKP = oppTeamKills === 0 ? 0 : Math.round(((opp.scores.kills + opp.scores.assists) / oppTeamKills) * 100);
++            refVision = ((opp.scores.wardScore || 0) / gameTimeMin).toFixed(1);
++            refGPM = Math.round((opp.scores.creepScore * 20 + opp.scores.kills * 300 + opp.scores.assists * 150) / gameTimeMin);
++            refLvl = opp.level;
++        }
++
++        return {
++            me: { gpm: myGPM, csm: myCSM, kp: `${myKP}%`, vision: myVision, lvl: me.level },
++            ref: { gpm: refGPM, csm: refCSM, kp: `${refKP}%`, vision: refVision, lvl: refLvl }
++        };
++    };
++
++    const computeNextItem = () => {
++        if (stateRefs.current.settings.itemBuild === false || !buildData || !buildData.items || !liveData || !liveData.activePlayer || !liveData.allPlayers) return null;
++
++        const activeName = (liveData.activePlayer.summonerName || liveData.activePlayer.riotIdGameName || liveData.activePlayer.rawPlayerName || "").split('#')[0].toLowerCase();
++        let me = liveData.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
++
++        if (!me && liveData.allPlayers.length > 0) me = liveData.allPlayers[0];
++        if (!me) return null;
++
++        const playerItems = me.items || [];
++        const validItems = playerItems.filter(i => i.itemID !== 0);
++
++        if (!stateRefs.current.acquiredItems) stateRefs.current.acquiredItems = new Set();
++        const acquired = stateRefs.current.acquiredItems;
++        validItems.forEach(pi => acquired.add(String(pi.itemID)));
++
++        const coreItems = buildData.items.core || [];
++        const bootsRec = buildData.items.boots?.[0];
++        const starting = buildData.items.starting || [];
++        const situational = buildData.items.situational || [];
++
++        const gameTime = liveData.gameData?.gameTime || 0; // en secondes
++        const bootIds = ["1001", "3006", "3047", "3111", "3158", "3020", "3117", "3009", "3119", "2422", "4401"];
++        const upgradedBootsIds = ["3006", "3047", "3111", "3158", "3020", "3117", "3009", "3119", "4401"];
++
++        const hasUpgradedBoots = Array.from(acquired).some(id => upgradedBootsIds.includes(String(id)));
++
++        // Remove boots from the normal item progression so buying boots doesn't skip a core item
++        const mainItems = [...coreItems, ...situational].filter(id => id && !bootIds.includes(String(id)));
++
++        let highestMainAcquiredIndex = -1;
++        for (let i = 0; i < mainItems.length; i++) {
++            if (acquired.has(String(mainItems[i]))) {
++                highestMainAcquiredIndex = Math.max(highestMainAcquiredIndex, i);
++            }
++        }
++
++        // Auto-progress based on game time if the player deviates from the recommended build (buys other items)
++        if (highestMainAcquiredIndex < 0 && gameTime > 840) highestMainAcquiredIndex = 0; // 14 min -> skips 1st item
++        if (highestMainAcquiredIndex < 1 && gameTime > 1440) highestMainAcquiredIndex = 1; // 24 min -> skips 2nd item
++        if (highestMainAcquiredIndex < 2 && gameTime > 1920) highestMainAcquiredIndex = 2; // 32 min -> skips 3rd item
++        if (highestMainAcquiredIndex < 3 && gameTime > 2280) highestMainAcquiredIndex = 3; // 38 min -> skips 4th item
++
++        const targetMainItemIndex = highestMainAcquiredIndex + 1;
++        const nextMainItem = targetMainItemIndex < mainItems.length ? mainItems[targetMainItemIndex] : null;
++
++        // 1. Starting Items (Only early game, if no main item is finished)
++        // Check if player has ANY standard starting item (Doran's, Jungle Pet, Support Item, Dark Seal, Cull, Tear)
++        const starterItemIds = ["1054", "1055", "1056", "1082", "1083", "3070", "3865", "1101", "1102", "1103", "1190"];
++        const hasAStarter = Array.from(acquired).some(id => starterItemIds.includes(String(id)));
++
++        // Propose starting items if it's early, no core items built, and no starter item detected yet
++        if (gameTime < 420 && highestMainAcquiredIndex === -1 && !hasAStarter) {
++            const robustStarting = starting.length > 0 ? starting : ["1055", "2003"]; // fallback to D-blade + pot
++            for (const id of robustStarting) {
++                if (!acquired.has(String(id))) return id;
++            }
++        }
++
++        // 2. First Core Item Priority
++        // Players usually build their first core item before finishing boots
++        if (targetMainItemIndex === 0 && nextMainItem) {
++            return nextMainItem;
++        }
++
++        // 3. Upgraded Boots Priority
++        // After starting items/1st core, recommend boots if not fully upgraded yet
++        if (!hasUpgradedBoots && bootsRec && !acquired.has(String(bootsRec))) {
++            return bootsRec;
++        }
++
++        // 4. Remaining Main Items
++        if (nextMainItem) {
++            return nextMainItem;
++        }
++
++        return null; // Full build or no suggestion available
++    };
++
++    const stats = stateRefs.current.settings.inGameStats !== false ? computeStats() : null;
++    const nextItem = computeNextItem();
++    if ((!toasts || toasts.length === 0) && stats === null && nextItem === null) return null;
++
++    // Remove the forced null for nextItem if it didn't find one, to allow the overlay to stay open
++    // even if occasionally nextItem computes to null, or stats computes to null.
+ 
+     return (
+         <div style={{
+             position: 'fixed',
+             inset: 0,
+-            display: 'flex',
+-            flexDirection: 'column',
+-            justifyContent: 'center', // Centered vertically in the available window,
+-            alignItems: 'flex-start',
+-            padding: '24px',
+-            gap: '12px',
+             pointerEvents: 'none'
+         }}>
+-            <div className="flex flex-col gap-3 w-full h-full justify-center">
+-                {showBuild && (
+-                    <div className="w-[320px] bg-black/80 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-2xl relative overflow-hidden pointer-events-none animate-in fade-in zoom-in-95 duration-500">
+-                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-500" />
+-                        <div className="ml-2 flex flex-col gap-2">
+-                            <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">BUILD RECOMMAND├ë ({champName})</div>
+-
+-                            {buildData.items.starting && buildData.items.core && (
+-                                <div className="flex flex-col gap-2">
+-                                    <div className="flex flex-wrap gap-2 items-center">
+-                                        {buildData.items.starting.map((id, idx) => (
+-                                            <img key={'start-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-8 h-8 rounded border border-white/20 shadow-md" onError={(e) => { e.target.style.display = 'none'; }} />
+-                                        ))}
+-                                        <span className="text-white/30 text-xs font-black mx-0.5">┬╗</span>
+-                                        {buildData.items.core.map((id, idx) => (
+-                                            <img key={'core-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-8 h-8 rounded border border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.3)]" onError={(e) => { e.target.style.display = 'none'; }} />
+-                                        ))}
++            {toasts && toasts.length > 0 && (
++                <div className="absolute right-[24px] top-[40%] transform -translate-y-1/2 flex flex-col gap-4">
++                    {toasts.map(toast => {
++                        const Icon = toast.icon || AlertCircle;
++
++                        if (toast.type === 'winrate') {
++                            const isWinning = toast.prob >= 50;
++                            return (
++                                <div
++                                    key={toast.id}
++                                    className="w-[380px] bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] rounded-[36px] p-7 flex flex-col gap-6 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)]"
++                                >
++                                    {/* Intense Light Reflections for Liquid Glass */}
++                                    <div className="absolute top-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
++                                    <div className="absolute bottom-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
++
++                                    {/* Premium Glow */}
++                                    <div className={`absolute -top-24 -right-24 w-56 h-56 rounded-full blur-[60px] opacity-30 ${isWinning ? 'bg-cyan-400' : 'bg-rose-500'} pointer-events-none`} />
++                                    <div className={`absolute -bottom-24 -left-24 w-56 h-56 rounded-full blur-[60px] opacity-20 ${isWinning ? 'bg-blue-600' : 'bg-orange-600'} pointer-events-none`} />
++
++                                    <div className="flex items-center gap-5 relative z-10">
++                                        <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),0_10px_20px_-5px_rgba(0,0,0,0.5)] ring-1 ring-white/30 bg-gradient-to-br border-b border-r border-black/20 ${isWinning ? 'from-cyan-400 to-blue-700' : 'from-rose-400 to-orange-700'}`}>
++                                            <Activity className="w-8 h-8 text-white drop-shadow-lg" />
++                                        </div>
++                                        <div className="flex-1 min-w-0">
++                                            <div className="text-[11px] font-black text-white/50 uppercase tracking-[0.3em] mb-1.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
++                                                {toast.title}
++                                            </div>
++                                            <div className="flex items-baseline gap-2 mb-1">
++                                                <div className="text-[17px] font-black text-white truncate leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
++                                                    Chance de Victoire
++                                                </div>
++                                            </div>
++                                            <div className="text-[13px] text-white/70 font-medium leading-snug drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
++                                                {toast.status}
++                                            </div>
++                                        </div>
+                                     </div>
+-                                </div>
+-                            )}
+-
+-                            {buildData.items.situational && buildData.items.situational.length > 0 && (
+-                                <div className="flex flex-col gap-1 mt-1">
+-                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Late Game / Options</div>
+-                                    <div className="flex flex-wrap gap-1.5 opacity-80">
+-                                        {buildData.items.situational.slice(0, 4).map((id, idx) => (
+-                                            <img key={'sit-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-6 h-6 rounded border border-white/10" onError={(e) => { e.target.style.display = 'none'; }} />
+-                                        ))}
++
++                                    <div className="w-full relative z-10 flex flex-col gap-2">
++                                        <div className="flex justify-between items-end px-1">
++                                            <div className="flex flex-col">
++                                                <span className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-80 ${isWinning ? 'text-cyan-300' : 'text-white'}`}>Alli├®s</span>
++                                                <span className={`text-[20px] font-black leading-none drop-shadow-[0_0_12px_rgba(34,211,238,0.6)] ${isWinning ? 'text-cyan-400' : 'text-white/90'}`}>{toast.prob}%</span>
++                                            </div>
++                                            <div className="flex flex-col items-end">
++                                                <span className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-80 ${!isWinning ? 'text-rose-300' : 'text-white'}`}>Ennemis</span>
++                                                <span className={`text-[20px] font-black leading-none drop-shadow-[0_0_12px_rgba(244,63,94,0.6)] ${!isWinning ? 'text-rose-400' : 'text-white/90'}`}>{(100 - parseFloat(toast.prob)).toFixed(1)}%</span>
++                                            </div>
++                                        </div>
++                                        <div className="w-full h-5 bg-black/50 rounded-full overflow-hidden shadow-[inset_0_2px_6px_rgba(0,0,0,0.6),0_1px_1px_rgba(255,255,255,0.1)] ring-1 ring-white/10 relative backdrop-blur-xl">
++                                            {/* Beautiful fluid gradient bar */}
++                                            <div
++                                                className={`h-full rounded-full transition-all duration-[1500ms] ease-out relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] ${isWinning ? 'bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400' : 'bg-gradient-to-r from-orange-700 via-orange-500 to-rose-400'}`}
++                                                style={{ width: `${toast.prob}%` }}
++                                            >
++                                                {/* Liquid shimmer inside the bar */}
++                                                <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white/60 to-transparent mix-blend-overlay rounded-r-full" />
++                                            </div>
++                                            {/* Midline marker */}
++                                            <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-white/40 -translate-x-1/2 shadow-[0_0_8px_rgba(255,255,255,0.9)] z-10" />
++                                        </div>
++                                    </div>
++
++                                    {/* Subtle progress lifetime line below the main container */}
++                                    <div className="absolute bottom-0 left-0 h-[3px] bg-white/10 w-full">
++                                        <div
++                                            className={`h-full shadow-[0_0_12px_rgba(255,255,255,0.8)] ${isWinning ? 'bg-cyan-400' : 'bg-rose-400'}`}
++                                            style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards` }}
++                                        />
+                                     </div>
+                                 </div>
+-                            )}
+-                        </div>
+-                    </div>
+-                )}
+-
+-                {toasts.map(toast => {
+-                    const Icon = toast.icon || AlertCircle;
+-
+-                    return (
+-                        <div
+-                            key={toast.id}
+-                            className={`w-[320px] bg-black/80 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-2xl`}
+-                        >
+-                            {/* Accent Line (Left edge highlight) */}
+-                            <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${toast.borderColor || 'bg-accent-primary'}`} />
+-
+-                            {/* Avatar / Icon Container */}
+-                            <div className={`relative shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg border border-white/20 ${toast.imageUrl ? 'bg-transparent overflow-hidden' : toast.iconColor}`}>
+-                                {toast.imageUrl ? (
+-                                    <img src={toast.imageUrl} alt="" className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} />
+-                                ) : toast.letter ? (
+-                                    <span className="text-white font-black text-xl drop-shadow-md">{toast.letter}</span>
+-                                ) : (
+-                                    <Icon className="w-6 h-6 text-white drop-shadow-md" />
+-                                )}
+-                            </div>
++                            );
++                        }
+ 
+-                            {/* Text Content */}
+-                            <div className="flex-1 min-w-0 pr-2">
+-                                <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">
+-                                    {toast.title || "SYSTEM"}
++                        // Standard Premium Toast
++                        return (
++                            <div
++                                key={toast.id}
++                                className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)]`}
++                            >
++                                {/* Accent Glow instead of line */}
++                                <div className={`absolute -left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
++
++                                {/* Avatar / Icon Container */}
++                                <div className={`relative shrink-0 w-12 h-12 rounded-[18px] flex items-center justify-center shadow-inner ring-1 ring-white/10 overflow-hidden ${toast.imageUrl ? 'bg-transparent' : toast.iconColor}`}>
++                                    {toast.imageUrl ? (
++                                        <img src={toast.imageUrl} alt="" className="w-[115%] h-[115%] object-cover absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" onError={(e) => { e.target.style.display = 'none'; }} />
++                                    ) : toast.letter ? (
++                                        <span className="text-white font-black text-xl drop-shadow-md">{toast.letter}</span>
++                                    ) : (
++                                        <Icon className="w-6 h-6 text-white drop-shadow-md" />
++                                    )}
+                                 </div>
+-                                <div className="text-[14px] font-black text-white truncate leading-tight mb-0.5">
+-                                    {toast.name}
++
++                                {/* Text Content */}
++                                <div className="flex-1 min-w-0 pr-2 z-10">
++                                    <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mb-1">
++                                        {toast.title || "SYSTEM"}
++                                    </div>
++                                    <div className="text-[14px] font-bold text-white/95 truncate leading-tight mb-0.5 drop-shadow-sm">
++                                        {toast.name}
++                                    </div>
++                                    <div className="text-[11px] text-white/60 font-medium leading-snug">
++                                        {toast.status}
++                                    </div>
+                                 </div>
+-                                <div className="text-[11px] text-gray-300 font-medium leading-snug">
+-                                    {toast.status}
++
++                                {/* Progress / Lifetime Bar (subtle) */}
++                                <div className="absolute bottom-0 left-0 h-[3px] bg-transparent w-full">
++                                    <div
++                                        className={`h-full opacity-40 rounded-full ${toast.iconColor ? toast.iconColor.replace('bg-', 'text-') : 'text-white'}`}
++                                        style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards`, backgroundColor: 'currentColor' }}
++                                    />
+                                 </div>
+                             </div>
+-
+-                            {/* Progress / Lifetime Bar */}
+-                            <div className="absolute bottom-0 left-0 h-1 bg-white/5 w-full">
+-                                <div
+-                                    className={`h-full opacity-50 shadow-[0_0_10px_rgba(255,255,255,0.5)] bg-current ${toast.iconColor ? toast.iconColor.replace('bg-', 'text-') : 'text-white'}`}
+-                                    style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards` }}
+-                                />
++                        );
++                    })}
++                </div>
++            )}
++
++            {/* In-Game Stats Overlay exactly at bottom right, next to minimap */}
++            {stats && (
++                <div className="absolute right-[480px] bottom-[15px] bg-white/[0.03] backdrop-blur-[40px] rounded-[28px] p-5 flex flex-col gap-3.5 border border-white/10 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.6)] min-w-[210px] select-none pointer-events-none relative overflow-hidden">
++                    {/* Subtle gradient background glow */}
++                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[40px] pointer-events-none" />
++
++                    {[
++                        { label: 'GPM', me: stats.me.gpm, ref: stats.ref.gpm, isHigherBetter: true },
++                        { label: 'CSM', me: stats.me.csm, ref: stats.ref.csm, isHigherBetter: true },
++                        { label: 'KP', me: stats.me.kp, ref: stats.ref.kp, isHigherBetter: true },
++                        { label: 'VISION', me: stats.me.vision, ref: stats.ref.vision, isHigherBetter: true }
++                    ].map(stat => {
++                        const meVal = parseFloat(stat.me);
++                        const refVal = parseFloat(stat.ref);
++                        const isWinning = stat.isHigherBetter ? meVal >= refVal : meVal <= refVal;
++                        return (
++                            <div key={stat.label} className="flex justify-between items-center w-full relative z-10">
++                                <span className="font-extrabold text-white/50 text-[12px] tracking-widest">{stat.label}</span>
++                                <div className="text-[15px] tabular-nums text-right ml-4 font-black">
++                                    <span className={isWinning ? 'text-white drop-shadow-sm' : 'text-rose-400 drop-shadow-sm'}>{stat.me}</span>
++                                </div>
+                             </div>
++                        )
++                    })}
++
++                    {/* Separator */}
++                    <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent my-0.5" />
++
++                    {/* LVL */}
++                    <div className="flex justify-between items-center w-full relative z-10">
++                        <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-1 h-4 bg-indigo-500 rounded-r-full shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
++                        <span className="font-extrabold text-indigo-200 text-[12px] tracking-widest leading-none">LVL</span>
++                        <div className="text-[16px] tabular-nums text-right ml-4 font-black leading-none">
++                            <span className={stats.me.lvl >= stats.ref.lvl ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]' : 'text-rose-400'}>{stats.me.lvl}</span>
+                         </div>
+-                    );
+-                })}
+-            </div>
++                    </div>
++                </div>
++            )}
++
++            {/* Persistent Next Item Recommandation (Placed above Stats block) */}
++            {nextItem && (
++                <div className="absolute right-[480px] bottom-[260px] bg-white/[0.03] backdrop-blur-[40px] rounded-[28px] p-5 flex flex-col items-center gap-3 border border-white/10 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.6)] select-none pointer-events-none w-[130px] relative overflow-hidden">
++                    <div className="absolute -top-10 -left-10 w-24 h-24 bg-amber-500/20 rounded-full blur-[30px] pointer-events-none" />
++                    <span className="font-black text-amber-400/90 text-[10px] tracking-[0.2em] uppercase z-10">Prochain</span>
++                    <div className="relative z-10 w-16 h-16 rounded-[18px] shadow-[0_8px_16px_rgba(0,0,0,0.4)] ring-1 ring-white/15 overflow-hidden bg-[#111]">
++                        <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${nextItem}.png`} alt="" className="w-[115%] h-[115%] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
++                    </div>
++                </div>
++            )}
+         </div>
+     );
+ }
