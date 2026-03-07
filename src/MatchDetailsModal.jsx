@@ -271,6 +271,7 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
                                 selfPuuid={selfPuuid}
                                 ver={ddragonVersion}
                                 dur={durationMin}
+                                t={t}
                             />
                         )}
 
@@ -287,7 +288,7 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
     );
 }
 
-function DetailsTabController({ loadingFull, fullGame, timeline, selfPuuid, ver, dur, initialGame, participants }) {
+function DetailsTabController({ loadingFull, fullGame, timeline, selfPuuid, ver, dur, initialGame, participants, t }) {
     const p = useMemo(() => {
         if (!participants || participants.length === 0) return null;
 
@@ -330,11 +331,12 @@ function DetailsTabController({ loadingFull, fullGame, timeline, selfPuuid, ver,
             loadingFull={loadingFull}
             fullGame={fullGame}
             selfPuuid={selfPuuid}
+            t={t}
         />
     );
 }
 
-function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, loadingFull, fullGame, selfPuuid }) {
+function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, loadingFull, fullGame, selfPuuid, t }) {
     const playersLine = (teamId) => (participants || []).filter(pl => pl.teamId === teamId);
 
     if (!p || (loadingFull && !fullGame)) return <div className="flex flex-col items-center justify-center h-[500px] text-gray-400 gap-6">
@@ -1096,33 +1098,46 @@ function Objective({ icon, val, isBlue, isGrub }) {
     return (
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/5 shadow-sm">
             <span className={cn("text-xs font-black tabular-nums contrast-125", textColor)}>{val}</span>
-            <img
-                src={icon}
-                className="w-4 h-4 object-contain brightness-110 saturate-110"
-                style={isGrub ? {
-                    filter: isBlue
-                        ? "invert(43%) sepia(85%) saturate(1475%) hue-rotate(195deg) brightness(101%) contrast(94%)"
-                        : "invert(35%) sepia(90%) saturate(3071%) hue-rotate(345deg) brightness(101%) contrast(101%)"
-                } : {}}
-                onError={(e) => {
-                    const parts = icon.split('/');
-                    const filename = parts[parts.length - 1];
-                    let name = filename.split('-')[0];
+            {isGrub ? (
+                <div
+                    className={cn("w-4 h-4", isBlue ? "bg-blue-500" : "bg-red-500")}
+                    style={{
+                        WebkitMaskImage: `url(${icon})`,
+                        WebkitMaskSize: 'contain',
+                        WebkitMaskRepeat: 'no-repeat',
+                        WebkitMaskPosition: 'center',
+                        maskImage: `url(${icon})`,
+                        maskSize: 'contain',
+                        maskRepeat: 'no-repeat',
+                        maskPosition: 'center'
+                    }}
+                />
+            ) : (
+                <img
+                    src={icon}
+                    className="w-4 h-4 object-contain brightness-110 saturate-110"
+                    onError={(e) => {
+                        const parts = icon.split('/');
+                        const filename = parts[parts.length - 1];
+                        let name = filename.split('-')[0];
 
-                    if (!e.target.triedFix) {
-                        e.target.triedFix = true;
-                        if (name.includes('horde') || name.includes('grub')) {
-                            e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/right_icons_grub.png`;
+                        if (!e.target.triedFix) {
+                            e.target.triedFix = true;
+                            if (name.includes('horde') || name.includes('grub')) {
+                                e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/right_icons_grub.png`;
+                            } else {
+                                const altName = name === 'baron' ? 'baron' : name;
+                                e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/${altName}-${teamId}.png`;
+                            }
+                        } else if (!e.target.triedAlt) {
+                            e.target.triedAlt = true;
+                            e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-${name.includes('horde') ? 'baron' : name}.png`;
                         } else {
-                            const altName = name === 'baron' ? 'baron' : name;
-                            e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/${altName}-${teamId}.png`;
+                            e.target.style.display = 'none';
                         }
-                    } else if (!e.target.triedAlt) {
-                        e.target.triedAlt = true;
-                        e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/tower-${teamId}.png`;
-                    }
-                }}
-            />
+                    }}
+                />
+            )}
         </div>
     );
 }

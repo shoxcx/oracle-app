@@ -4,6 +4,7 @@ import { Target, Eye, AlertCircle, Sparkles, Map, Skull } from 'lucide-react';
 export function InGameHelper({ ddragonVersion }) {
     const [toasts, setToasts] = useState([]);
     const [champName, setChampName] = useState("");
+    const [buildData, setBuildData] = useState(null);
 
     const [overlaySettings, setOverlaySettings] = useState({ skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false });
 
@@ -17,13 +18,16 @@ export function InGameHelper({ ddragonVersion }) {
         testModeFired: false,
         objCamp1: false, // Jungle Buffs
         objCamp2: false, // Scuttle Crab
-        objDrake: false,
+        notifiedSpawns: { drake: -1, baron: -1 },
         objVoidgrubs: false,
-        objHerald: false,
-        objBaron: false,
         isInitializingChamp: false,
-        settings: { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false }
+        settings: { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false },
+        ddVersion: ddragonVersion || "14.2.1"
     });
+
+    useEffect(() => {
+        if (ddragonVersion) stateRefs.current.ddVersion = ddragonVersion;
+    }, [ddragonVersion]);
 
     const pushToast = (toast) => {
         const id = Date.now() + Math.random();
@@ -38,14 +42,21 @@ export function InGameHelper({ ddragonVersion }) {
         document.documentElement.style.backgroundColor = 'transparent';
         if (!window.ipcRenderer) return;
 
-        window.ipcRenderer.invoke('app:get-settings').then(s => {
-            const parsed = s?.overlaySettings || { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false };
-            setOverlaySettings(parsed);
-            stateRefs.current.settings = parsed;
-        });
+        // Load correct settings directly from shared localStorage if possible
+        try {
+            const saved = localStorage.getItem('oracle_overlay_settings');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                setOverlaySettings(parsed);
+                stateRefs.current.settings = parsed;
+            }
+        } catch (e) {
+            console.error("Failed to parse settings", e);
+        }
 
         const handleSync = (_, s) => {
-            const parsed = s?.overlaySettings || { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false };
+            // "s" is the overlaySettings object sent by App.jsx
+            const parsed = s || { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false };
             setOverlaySettings(parsed);
             stateRefs.current.settings = parsed;
         };
@@ -65,14 +76,14 @@ export function InGameHelper({ ddragonVersion }) {
                 }
             }
 
-            if (champ && ddragonVersion) {
+            if (champ && stateRefs.current.ddVersion) {
                 try {
                     // Normalize id (e.g. Wukong -> MonkeyKing)
                     let ddId = champ.replace(/[^a-zA-Z0-9]/g, '');
                     if (champ.toLowerCase() === 'wukong') ddId = 'MonkeyKing';
                     if (champ.toLowerCase() === 'renata glasc') ddId = 'Renata';
 
-                    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/en_US/champion/${ddId}.json`);
+                    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/data/en_US/champion/${ddId}.json`);
                     const json = await res.json();
                     if (json.data && json.data[ddId]) {
                         const spells = json.data[ddId].spells;
@@ -88,11 +99,34 @@ export function InGameHelper({ ddragonVersion }) {
 
             try {
                 const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, 'mid');
-                if (build && build.skillOrder) {
-                    stateRefs.current.skillOrder = build.skillOrder;
+                if (build) {
+                    setBuildData(build);
+                    if (build.skillOrder) {
+                        let order = build.skillOrder;
+                        // If U.GG gives a 3-item priority list (e.g., ["Q", "W", "E"]), expand it into an 18-level standard progression
+                        if (order.length === 3 && typeof order[0] === 'string') {
+                            const [first, second, third] = order;
+                            order = [
+                                first, second, third,
+                                first, first, "R", first, second,
+                                first, second, "R", second, second,
+                                third, third, "R", third, third
+                            ];
+                        }
+                        while (order.length < 18) order.push('P'); // pad remainder to avoid undefined index
+                        stateRefs.current.skillOrder = order;
+                    }
+                }
+
+                // Fallback for Practice Tool etc if scraper fails
+                if (!stateRefs.current.skillOrder) {
+                    stateRefs.current.skillOrder = ["Q", "W", "E", "Q", "Q", "R", "Q", "E", "Q", "E", "R", "E", "E", "W", "W", "R", "W", "W"];
                 }
             } catch (e) {
                 console.error(e);
+                if (!stateRefs.current.skillOrder) {
+                    stateRefs.current.skillOrder = ["Q", "W", "E", "Q", "Q", "R", "Q", "E", "Q", "E", "R", "E", "E", "W", "W", "R", "W", "W"];
+                }
             }
         };
 
@@ -124,38 +158,43 @@ export function InGameHelper({ ddragonVersion }) {
                 const gameTime = data.gameData?.gameTime || 0; // en secondes
                 const refs = stateRefs.current;
 
-                // --- 0. INITIALISATION (If bypassed Champ Select) ---
-                if (data.activePlayer && !champName && !refs.isInitializingChamp) {
-                    refs.isInitializingChamp = true;
-                    // activePlayer.summonerSpells could contain smite (11)
-                    let isJungle = false;
+                // --- 0. INITIALISATION CONTINUE (Update isJungle live) ---
+                if (data.activePlayer) {
+                    let isJungleLive = false;
                     const allP = data.allPlayers || [];
-                    const me = allP.find(p => p.summonerName === data.activePlayer.summonerName);
+                    const activeName = (data.activePlayer.summonerName || "").split('#')[0].toLowerCase();
+                    const me = allP.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
 
                     if (me && me.summonerSpells) {
                         const s1 = (me.summonerSpells.summonerSpellOne?.displayName || '').toLowerCase();
                         const s2 = (me.summonerSpells.summonerSpellTwo?.displayName || '').toLowerCase();
                         if (s1.includes('smite') || s2.includes('smite') || s1.includes('châtiment') || s2.includes('châtiment')) {
-                            isJungle = true;
+                            isJungleLive = true;
                         }
                     }
 
-                    let resolvedChampName = me ? me.championName : undefined;
-                    // Provide fallback if data is totally empty
-                    if (!resolvedChampName && data.activePlayer.abilities) {
-                        resolvedChampName = Object.keys(data.activePlayer.abilities)[0];
-                    }
+                    if (isJungleLive) refs.isJungle = true;
 
-                    handleUpdate(null, {
-                        champName: resolvedChampName || 'Unknown',
-                        spells: { spell1Id: isJungle ? 11 : 0, spell2Id: 0 }
-                    });
+                    if (!champName && !refs.isInitializingChamp) {
+                        refs.isInitializingChamp = true;
+                        let resolvedChampName = me ? me.championName : undefined;
+                        if (!resolvedChampName && data.activePlayer.abilities) {
+                            resolvedChampName = Object.keys(data.activePlayer.abilities)[0];
+                        }
+
+                        handleUpdate(null, {
+                            champName: resolvedChampName || 'Unknown',
+                            spells: { spell1Id: isJungleLive ? 11 : 0, spell2Id: 0 }
+                        });
+                    }
                 }
 
                 // --- 1. OBJECTIFS (Timings : 30s avant spawn) ---
-                if (refs.settings.objectiveTimer !== false) {
-                    // Buffs Jungle (Spawn à 1:30 -> Notif à 1:15 = 75s)
-                    if (gameTime >= 75 && gameTime < 85 && !refs.objCamp1) {
+                // We use jungleTimers or objectiveTimer depending on settings structure
+                const showObjectives = refs.settings.objectiveTimer !== false && refs.settings.jungleTimers !== false;
+                if (showObjectives) {
+                    // Buffs Jungle (Spawn à 0:55 -> Notif à 0:40 = 40s)
+                    if (gameTime >= 40 && gameTime < 50 && !refs.objCamp1) {
                         refs.objCamp1 = true;
                         if (refs.isJungle) {
                             pushToast({
@@ -171,8 +210,8 @@ export function InGameHelper({ ddragonVersion }) {
                         }
                     }
 
-                    // Carapateur (Spawn à 3:30 -> Notif à 3:15 = 195s)
-                    if (gameTime >= 195 && gameTime < 205 && !refs.objCamp2) {
+                    // Carapateur (Spawn à 2:55 -> Notif à 2:40 = 160s)
+                    if (gameTime >= 160 && gameTime < 170 && !refs.objCamp2) {
                         refs.objCamp2 = true;
                         if (refs.isJungle) {
                             pushToast({
@@ -187,9 +226,21 @@ export function InGameHelper({ ddragonVersion }) {
                             });
                         }
                     }
-                    // Drake (Spawn à 5:00 -> Notif à 4:30 = 270s)
-                    if (gameTime >= 270 && !refs.objDrake) {
-                        refs.objDrake = true;
+                    // --- DRAGONS ET BARONS DYNAMIQUES (Respawns inclus) ---
+                    let drakeSpawnTime = 300; // 5:00 par défaut
+                    let baronSpawnTime = 1200; // 20:00 par défaut
+
+                    if (data.events && data.events.Events) {
+                        const dragons = data.events.Events.filter(e => e.EventName === 'DragonKill');
+                        if (dragons.length > 0) drakeSpawnTime = dragons[dragons.length - 1].EventTime + 300;
+
+                        const barons = data.events.Events.filter(e => e.EventName === 'BaronKill');
+                        if (barons.length > 0) baronSpawnTime = barons[barons.length - 1].EventTime + 360; // 6 mins S15+
+                    }
+
+                    // Drake (Notif à Spawn - 30s)
+                    if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 10 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
+                        refs.notifiedSpawns.drake = drakeSpawnTime;
                         pushToast({
                             type: 'objective',
                             title: 'OBJECTIF (30s)',
@@ -202,8 +253,8 @@ export function InGameHelper({ ddragonVersion }) {
                         });
                     }
 
-                    // Larves du néant (Spawn à 6:00 en S14 Split 2 / S15 -> Notif à 5:30 = 330s)
-                    if (gameTime >= 330 && !refs.objVoidgrubs) {
+                    // Larves du néant (Spawn à 8:00 S16 -> Notif à 7:30 = 450s)
+                    if (gameTime >= 450 && gameTime < 460 && !refs.objVoidgrubs) {
                         refs.objVoidgrubs = true;
                         pushToast({
                             type: 'objective',
@@ -217,24 +268,9 @@ export function InGameHelper({ ddragonVersion }) {
                         });
                     }
 
-                    // Héraut de la faille (Spawn à 14:00 -> Notif à 13:30 = 810s)
-                    // Il n'y a pas d'icone héraut 100x100 propre, on fallback sur une icone
-                    if (gameTime >= 810 && gameTime < 820 && !refs.objHerald) {
-                        refs.objHerald = true;
-                        pushToast({
-                            type: 'objective',
-                            title: 'OBJECTIF (30s)',
-                            name: 'Le Héraut de la Faille arrive',
-                            status: 'Idéal pour détruire la première tour.',
-                            borderColor: 'bg-purple-500 shadow-purple-500/50',
-                            imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/tower-100.png',
-                            duration: 12000
-                        });
-                    }
-
-                    // Baron Nashor (Spawn à 20:00 -> Notif à 19:30 = 1170s)
-                    if (gameTime >= 1170 && gameTime < 1180 && !refs.objBaron) {
-                        refs.objBaron = true;
+                    // Baron Nashor (Notif à Spawn - 30s)
+                    if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 10 && refs.notifiedSpawns.baron !== baronSpawnTime) {
+                        refs.notifiedSpawns.baron = baronSpawnTime;
                         pushToast({
                             type: 'objective',
                             title: 'OBJECTIF MAJEUR (30s)',
@@ -251,8 +287,9 @@ export function InGameHelper({ ddragonVersion }) {
                 // --- 2. JOUEUR (Skills & Wards) ---
                 if (data.activePlayer && data.allPlayers) {
                     const active = data.activePlayer;
-                    const current = data.allPlayers.find(p => p.summonerName === active.summonerName);
-                    const level = current?.level || active.level || 1;
+                    const activeName = (active.summonerName || "").split('#')[0].toLowerCase();
+                    const current = data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
+                    const level = current?.level || Math.max(refs.knownLevel, 1);
 
                     // A) SKILLS UPGRADE
                     if (refs.settings.skillLevelUp !== false) {
@@ -343,7 +380,8 @@ export function InGameHelper({ ddragonVersion }) {
         };
     }, []);
 
-    if (!toasts || toasts.length === 0) return null;
+    const showBuild = buildData && buildData.items && overlaySettings.itemBuild !== false;
+    if ((!toasts || toasts.length === 0) && !showBuild) return null;
 
     return (
         <div style={{
@@ -358,6 +396,40 @@ export function InGameHelper({ ddragonVersion }) {
             pointerEvents: 'none'
         }}>
             <div className="flex flex-col gap-3 w-full h-full justify-center">
+                {showBuild && (
+                    <div className="w-[320px] bg-black/80 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-2xl relative overflow-hidden pointer-events-none animate-in fade-in zoom-in-95 duration-500">
+                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-500" />
+                        <div className="ml-2 flex flex-col gap-2">
+                            <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">BUILD RECOMMANDÉ ({champName})</div>
+
+                            {buildData.items.starting && buildData.items.core && (
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                        {buildData.items.starting.map((id, idx) => (
+                                            <img key={'start-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-8 h-8 rounded border border-white/20 shadow-md" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ))}
+                                        <span className="text-white/30 text-xs font-black mx-0.5">»</span>
+                                        {buildData.items.core.map((id, idx) => (
+                                            <img key={'core-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-8 h-8 rounded border border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.3)]" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {buildData.items.situational && buildData.items.situational.length > 0 && (
+                                <div className="flex flex-col gap-1 mt-1">
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Late Game / Options</div>
+                                    <div className="flex flex-wrap gap-1.5 opacity-80">
+                                        {buildData.items.situational.slice(0, 4).map((id, idx) => (
+                                            <img key={'sit-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-6 h-6 rounded border border-white/10" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {toasts.map(toast => {
                     const Icon = toast.icon || AlertCircle;
 

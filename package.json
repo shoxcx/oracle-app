@@ -16,6 +16,13 @@
   "build": {
     "appId": "com.oracle.app",
     "productName": "Oracle",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "shoxcx",
+        "repo": "oracle-web"
+      }
+    ],
     "files": [
       "dist/**/*",
       "electron_app/**/*",

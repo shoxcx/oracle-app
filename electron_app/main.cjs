@@ -37,8 +37,33 @@ let toastWindow;
 let voiceWindow; // New Voice Assistant Window
 let musicWindow; // Music Overlay
 let ingameWindow; // InGame Helper Overlay
-
 const media = require('./media.cjs');
+
+async function fadeOutAndHide(win) {
+    if (!win || win.isDestroyed()) return;
+    for (let i = 1; i >= 0; i -= 0.1) {
+        if (win.isDestroyed()) return;
+        win.setOpacity(Math.max(0, i));
+        await new Promise(r => setTimeout(r, 15));
+    }
+    if (!win.isDestroyed()) {
+        win.hide();
+        win.setOpacity(1);
+    }
+}
+
+async function fadeOutAndMinimize(win) {
+    if (!win || win.isDestroyed()) return;
+    for (let i = 1; i >= 0; i -= 0.1) {
+        if (win.isDestroyed()) return;
+        win.setOpacity(Math.max(0, i));
+        await new Promise(r => setTimeout(r, 15));
+    }
+    if (!win.isDestroyed()) {
+        win.minimize();
+        setTimeout(() => { if (!win.isDestroyed()) win.setOpacity(1); }, 500);
+    }
+}
 
 function createMainWindow() {
     mainWindow = new BrowserWindow({
@@ -230,9 +255,9 @@ ipcMain.on('social:toast-ready', () => {
     }
 });
 
-ipcMain.on('social:toast-empty', () => {
+ipcMain.handle('window:hide-toast', () => {
     if (toastWindow && !toastWindow.isDestroyed()) {
-        toastWindow.hide();
+        fadeOutAndHide(toastWindow);
     }
 });
 
@@ -257,7 +282,7 @@ ipcMain.handle('social:trigger-toast', (event, data) => {
 
 ipcMain.handle('window:minimize', () => {
     const win = BrowserWindow.getFocusedWindow();
-    if (win) win.minimize();
+    if (win) fadeOutAndMinimize(win);
 });
 
 ipcMain.handle('window:close', () => {
@@ -271,7 +296,7 @@ ipcMain.handle('window:show', (event) => {
 
 ipcMain.handle('window:hide', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.hide();
+    if (win) fadeOutAndHide(win);
 });
 
 function createMusicWindow() {
@@ -322,7 +347,9 @@ ipcMain.handle('window:toggle-music', (e, enable) => {
         musicWindow.showInactive();
     } else {
         if (musicWindow) {
-            musicWindow.close();
+            fadeOutAndHide(musicWindow).then(() => {
+                if (musicWindow && !musicWindow.isDestroyed()) musicWindow.close();
+            });
         }
     }
 });
@@ -373,7 +400,7 @@ ipcMain.handle('window:toggle-ingame', (e, enable, data) => {
         ingameWindow.showInactive();
         if (data) ingameWindow.webContents.send('ingame:update', data);
     } else if (ingameWindow && !ingameWindow.isDestroyed()) {
-        ingameWindow.hide();
+        fadeOutAndHide(ingameWindow);
     }
 });
 
@@ -461,7 +488,7 @@ ipcMain.handle('scraper:get-patch-notes', async () => scraper.getPatchNotes());
 ipcMain.handle('scraper:get-esports-schedule', async () => scraper.getEsportsSchedule());
 ipcMain.handle('scraper:get-esports-news', async () => scraper.getEsportsNews());
 ipcMain.handle('scraper:get-top-live-streams', async () => scraper.getTopLiveStreams());
-ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getChampionBuild(champ1, champ2, role));
+ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getMatchupAnalysis(champ1, champ2, role));
 ipcMain.handle('scraper:get-rank-history', async (_, puuid, region) => scraper.getRankHistory(puuid, region));
 ipcMain.handle('scraper:get-lp-history', async (_, name, region) => scraper.getRankedLPHistory(name, region));
 ipcMain.handle('scraper:get-recent-lp', async (_, name, region) => scraper.getRecentLPGains(name, region));
@@ -534,7 +561,7 @@ ipcMain.handle('app:register-shortcut', () => {
                 else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
             }
         });
-        globalShortcut.register('Alt+O', () => { if (liveWindow) liveWindow.webContents.send('shortcut:toggle-winrate'); });
+        globalShortcut.register('Control+O', () => { if (liveWindow) liveWindow.webContents.send('shortcut:toggle-winrate'); });
         globalShortcut.register('Control+X', () => { if (liveWindow) liveWindow.isVisible() ? liveWindow.hide() : liveWindow.show(); });
         return true;
     } catch (e) {
@@ -616,13 +643,13 @@ async function monitorGameLoop() {
                         ingameWindow.webContents.send('ingame:update', { champName, spells: lastLockedSpells });
                     }
                 }
-            } else {
-                if (ingameWindow && !ingameWindow.isDestroyed()) {
-                    ingameWindow.hide();
+            } else if (!['ChampSelect', 'GameStart', 'InProgress', 'Reconnect', 'WaitingForStats'].includes(phase)) {
+                if (ingameWindow && !ingameWindow.isDestroyed() && ingameWindow.isVisible()) {
+                    fadeOutAndHide(ingameWindow);
                 }
             }
 
-            if (phase !== 'ChampSelect' && phase !== 'InProgress') {
+            if (!['ChampSelect', 'GameStart', 'InProgress', 'Reconnect', 'WaitingForStats'].includes(phase)) {
                 lastLockedChampId = 0; // Reset
                 lastLockedSpells = { spell1Id: 0, spell2Id: 0 };
             }

@@ -51,6 +51,7 @@ import {
   LayoutGrid,
   Layers,
   ArrowRight,
+  ArrowLeft,
   Ghost,
   Target,
   Clock,
@@ -61,6 +62,7 @@ import {
   Bell,
   ExternalLink,
   ArrowDown,
+  Wrench,
   Flag,
   ChevronDown,
   Minus,
@@ -1726,7 +1728,7 @@ function MusicOverlay() {
 
         {/* Semi-transparent logo background */}
         <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none rotate-12 mix-blend-screen scale-150">
-          <img src={oracleLogo} className="w-48 h-48 grayscale" alt="" />
+          <img src={track.cover} className="w-48 h-48 grayscale" alt="" />
         </div>
 
         <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/10 via-transparent to-accent-primary/5 pointer-events-none"></div>
@@ -1947,6 +1949,15 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     const val = localStorage.getItem('oracle_music_overlay');
     return val === 'true'; // Defaults to false
   });
+  const [isPremium, setIsPremium] = useState(false);
+
+  useEffect(() => {
+    if (!isPremium) {
+      if (musicOverlayEnabled) setMusicOverlayEnabled(false);
+      if (autoAccept) setAutoAccept(false);
+      if (theme !== 'classic') setTheme('classic');
+    }
+  }, [isPremium]);
 
 
   const regions = ['EUW', 'NA', 'KR', 'EUNE', 'BR', 'TR', 'LAS', 'LAN', 'OCE', 'RU', 'JP', 'PH', 'SG', 'TH', 'TW', 'VN'];
@@ -2368,8 +2379,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
         </div>
 
         <div className={cn("relative z-10 flex flex-col items-center justify-center transition-all duration-700 transform", showSplash ? "scale-100 translate-y-0" : "scale-95 -translate-y-10")}>
-          <div className="w-32 h-32 mb-8 relative filter drop-shadow-[0_0_30px_rgba(6,182,212,0.6)] animate-pulse">
-            <img src={oracleLogo} className="w-full h-full object-contain" alt="Oracle Logo" />
+          <div className={cn("w-32 h-32 mb-8 relative filter animate-pulse transition-all duration-700", isPremium ? "drop-shadow-[0_0_30px_rgba(234,179,8,0.4)]" : "drop-shadow-[0_0_30px_rgba(6,182,212,0.6)]")}>
+            <img src={oracleLogo} className="w-full h-full object-contain transition-all duration-700" style={isPremium ? { filter: 'sepia(1) saturate(2) hue-rotate(-20deg) brightness(1.3) drop-shadow(0 0 10px rgba(234,179,8,0.5))' } : {}} alt="Oracle Logo" />
           </div>
           <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-500 tracking-tighter mb-2">
             {splashMessage}
@@ -2383,8 +2394,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
         <div className={cn("h-full flex flex-col p-4 relative overflow-hidden", panelClass)}>
           {/* Logo Area */}
           <div className="flex items-center gap-0 px-2 mb-8 app-drag-region shrink-0">
-            <div className="w-20 h-20 shrink-0 relative filter drop-shadow-[0_0_15px_rgba(6,182,212,0.6)]">
-              <img src={oracleLogo} className="w-full h-full object-contain" alt="Oracle Logo" />
+            <div className={cn("w-20 h-20 shrink-0 relative filter transition-all duration-700", isPremium ? "drop-shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "drop-shadow-[0_0_15px_rgba(6,182,212,0.6)]")}>
+              <img src={oracleLogo} className="w-full h-full object-contain transition-all duration-700" style={isPremium ? { filter: 'sepia(1) saturate(2) hue-rotate(-20deg) brightness(1.3) drop-shadow(0 0 10px rgba(234,179,8,0.5))' } : {}} alt="Oracle Logo" />
             </div>
             <div className="hidden lg:block">
               <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 block">
@@ -2410,14 +2421,14 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               <div className="px-4 text-[10px] font-medium text-white/20 uppercase tracking-[0.2em] mb-3">ORACLE APP</div>
               <NavItem active={activeTab === 'replays'} onClick={() => setActiveTab('replays')} icon={<MonitorPlay size={18} />} label="Analyse" />
               <NavItem active={activeTab === 'collections'} onClick={() => setActiveTab('collections')} icon={<Brain size={18} />} label="Collections" />
-              <NavItem active={activeTab === 'training'} onClick={() => { }} icon={<Target size={18} />} label="Training" disabled={true} />
+              <NavItem active={activeTab === 'training'} onClick={() => setActiveTab('training')} icon={<Target size={18} />} label="Training" />
             </div>
 
             {/* INSIGHTS */}
             <div className="space-y-1">
               <div className="px-4 text-[10px] font-medium text-white/20 uppercase tracking-[0.2em] mb-3">ORACLE INSIGHTS</div>
               <NavItem active={activeTab === 'esports'} onClick={() => setActiveTab('esports')} icon={<Globe size={18} />} label="Esports" />
-              <NavItem active={activeTab === 'tutorial'} onClick={() => { }} icon={<HelpCircle size={18} />} label="Tutoriel" disabled={true} />
+              <NavItem active={activeTab === 'tutorial'} onClick={() => setActiveTab('tutorial')} icon={<HelpCircle size={18} />} label="Tutoriel" />
             </div>
 
           </nav>
@@ -2466,12 +2477,26 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   <ChevronRight size={20} />
                 </button>
                 <div className="w-px h-4 bg-white/10 mx-1"></div>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 transition-all active:rotate-180 duration-500 p-1"
-                >
-                  <RefreshCw size={18} />
-                </button>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 transition-all active:rotate-180 duration-500 p-1 mr-4"
+                  >
+                    <RefreshCw size={18} />
+                  </button>
+                  <button
+                    onClick={() => setIsPremium(!isPremium)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg border font-black text-[9px] uppercase tracking-widest transition-all cursor-pointer z-50 shadow-sm",
+                      isPremium
+                        ? "bg-[#18181b] text-yellow-400 border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]"
+                        : "bg-white/5 text-gray-500 border-white/5 hover:border-white/20"
+                    )}
+                    title="Activer/Désactiver l'abonnement Oracle Gold (Test)"
+                  >
+                    {isPremium ? "Gold: ON" : "Gold: OFF"}
+                  </button>
+                </div>
               </div>
 
               <div className="relative">
@@ -2659,6 +2684,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   prefetchedData={prefetchedData}
                   userRank={userRank}
                   userHistory={currentUserHistory}
+                  isPremium={isPremium}
                   onSearch={(sum) => {
                     const isObj = typeof sum === 'object' && sum !== null;
                     const finalObj = isObj ? { ...sum, region: sum.region || searchRegion } : { name: sum, region: searchRegion, skipLcu: false, puuid: null };
@@ -2679,6 +2705,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   onBack={() => setActiveTab('dashboard')}
                   overlaySettings={overlaySettings}
                   ddragonVersion={ddragonVersion}
+                  isPremium={isPremium}
+                  onSubscribe={() => setActiveTab('subscription')}
                 />}
                 {activeTab === 'tierlist' && <BuildView panelClass={panelClass} t={t} initialChamp={targetChamp} ddragonVersion={ddragonVersion} championList={championList} />}
 
@@ -2686,7 +2714,9 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {/* Removed Notifications tab as it is now a dropdown */}
 
                 {activeTab === 'matchups' && <MatchupsView panelClass={panelClass} t={t} championList={championList} ddragonVersion={ddragonVersion} onOpenUrl={setBrowserUrl} />}
-                {activeTab === 'replays' && <ReplaysView panelClass={panelClass} t={t} currentUser={currentUser} />}
+                {activeTab === 'replays' && (!isPremium ? (
+                  <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} />
+                ) : <ReplaysView panelClass={panelClass} t={t} currentUser={currentUser} />)}
                 {activeTab === 'esports' && <EsportsView panelClass={panelClass} t={t} prefetchedData={prefetchedData} onShowNews={setSelectedArticle} />}
                 {activeTab === 'collections' && <CollectionsView panelClass={panelClass} t={t} ddragonVersion={ddragonVersion} currentUser={currentUser} championList={championList} />}
                 {activeTab === 'leaderboards' && <RankingsView
@@ -2707,11 +2737,17 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
 
                 {/* Fallback */}
                 {['tutorial', 'training'].includes(activeTab) && (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <Brain size={48} className="mb-4 opacity-20" />
-                    <h2 className="text-xl font-bold">{t(activeTab) || (activeTab === 'tutorial' ? "Tutoriel" : "Training")}</h2>
-                    <p className="text-sm opacity-60">{t('coming_soon')}</p>
-                  </div>
+                  !isPremium ? (
+                    <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} />
+                  ) : (
+                    <div className="relative h-full flex flex-col items-center justify-center text-gray-500 rounded-2xl overflow-hidden bg-black/5 dark:bg-white/5 shadow-inner">
+                      <Wrench size={56} className="mb-6 opacity-30 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
+                      <h2 className="text-3xl font-black text-white italic tracking-tighter mb-4 drop-shadow-md">En Maintenance</h2>
+                      <p className="text-gray-400 max-w-sm text-center font-medium leading-relaxed">
+                        Cette section <b>Oracle Gold</b> est actuellement en cours de mise à jour pour vous offrir les meilleurs outils interactifs.
+                      </p>
+                    </div>
+                  )
                 )}
 
                 {activeTab === 'settings' && <SettingsView
@@ -2733,8 +2769,18 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   setOverlaySettings={setOverlaySettings}
                   panelClass={panelClass}
                   triggerSocialToast={triggerSocialToast}
-                />
-                }
+                  setActiveTab={setActiveTab}
+                  isPremium={isPremium}
+                  setIsPremium={setIsPremium}
+                />}
+
+                {activeTab === 'subscription' && <SubscriptionView
+                  t={t}
+                  panelClass={panelClass}
+                  isPremium={isPremium}
+                  setIsPremium={setIsPremium}
+                  setActiveTab={setActiveTab}
+                />}
               </div>
             )}
           </div>
@@ -3113,7 +3159,7 @@ const getQueueName = (game, t) => {
 
 // --- New Screen 1: Dashboard View ---
 
-function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVersion, patchNotes, setActiveTab, setTargetChamp, onOpenUrl, onSearch, prefetchedData, userRank, userHistory }) {
+function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVersion, patchNotes, setActiveTab, setTargetChamp, onOpenUrl, onSearch, prefetchedData, userRank, userHistory, isPremium }) {
   const version = ddragonVersion || "16.1.1";
   /* DashboardView: Always show currentUser, ignoring search results */
   const displayUser = currentUser;
@@ -3709,6 +3755,8 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
           puuid={currentUser?.puuid}
           panelClass={cn(panelClass, "min-h-[140px]")}
           t={t}
+          isPremium={isPremium}
+          onSubscribe={() => setActiveTab('subscription')}
         />
 
 
@@ -3939,7 +3987,27 @@ const PING_ICONS = {
   vision: "https://raw.communitydragon.org/latest/game/assets/ux/minimap/minimap_ping_icon__vision.png"
 };
 
-function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onChampClick, onBack, overlaySettings, ddragonVersion }) {
+const PremiumOverlay = ({ title, text, onAction }) => (
+  <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-[60] flex flex-col items-center justify-center rounded-inherit border border-yellow-500/20 m-[1px] rounded-2xl">
+    <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mb-4 border border-yellow-500/20">
+      <Star size={32} className="text-yellow-400 fill-current drop-shadow-[0_0_10px_rgba(234,179,8,0.8)]" />
+    </div>
+    <h3 className="text-2xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 font-black italic tracking-tighter mb-2 drop-shadow-lg text-center px-4">
+      {title || "Oracle Gold Requis"}
+    </h3>
+    <p className="text-gray-400 text-xs text-center px-8 mb-6 max-w-sm font-medium leading-relaxed">
+      {text || "Pour débloquer cette fonctionnalité avancée et prendre l'avantage, abonnez-vous à Oracle Gold."}
+    </p>
+    <button
+      onClick={onAction}
+      className="px-6 py-2 bg-gradient-to-r from-yellow-600 to-yellow-400 text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:scale-105 transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.4)] pointer-events-auto"
+    >
+      Découvrir
+    </button>
+  </div>
+);
+
+function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onChampClick, onBack, overlaySettings, ddragonVersion, isPremium, onSubscribe }) {
   const [displayUser, setDisplayUser] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
   const [history, setHistory] = useState([]);
@@ -4784,8 +4852,8 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         <div className="relative z-10 flex flex-col items-center p-12">
           <div className="relative mb-8">
             {/* Just the Logo, no container box, no rings */}
-            <div className="w-32 h-32 relative filter drop-shadow-[0_0_30px_rgba(6,182,212,0.8)]">
-              <img src={oracleLogo} className="w-full h-full object-contain animate-pulse" />
+            <div className={cn("w-32 h-32 relative filter transition-all duration-700", isPremium ? "drop-shadow-[0_0_30px_rgba(234,179,8,0.4)]" : "drop-shadow-[0_0_30px_rgba(6,182,212,0.8)]")}>
+              <img src={oracleLogo} className="w-full h-full object-contain animate-pulse transition-all duration-700" style={isPremium ? { filter: 'sepia(1) saturate(2) hue-rotate(-20deg) brightness(1.3) drop-shadow(0 0 10px rgba(234,179,8,0.5))' } : {}} />
             </div>
           </div>
 
@@ -4859,14 +4927,21 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         <div className="relative h-full flex items-center px-8 z-10">
           <div className="flex items-start gap-6">
             <div className="relative group">
-              <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${displayUser?.profileIconId || 29}.jpg`} className="w-28 h-28 rounded-[2rem] border-4 border-[#1e1e24] shadow-2xl relative z-10" />
-              <div className="absolute -top-3 -left-3 bg-[#5c7ce5] text-gray-900 dark:text-gray-100 font-bold px-2 py-0.5 rounded-lg text-xs shadow-lg z-20 uppercase">{displayUser?.region || "EUW"}</div>
+              <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${displayUser?.profileIconId || 29}.jpg`} className={cn("w-28 h-28 rounded-[2rem] border-4 shadow-2xl relative z-10 transition-all", isPremium ? "border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border-[#1e1e24]")} />
+              <div className="absolute -top-3 -left-3 bg-[#5c7ce5] text-white font-bold px-2 py-0.5 rounded-lg text-xs shadow-lg z-20 uppercase">{displayUser?.region || "EUW"}</div>
+              {isPremium && (
+                <div className="absolute -top-3 -right-3 z-20 animate-in zoom-in duration-300">
+                  <div className="bg-gradient-to-br from-yellow-300 to-yellow-600 text-[#13141a] p-1.5 rounded-full shadow-[0_0_15px_rgba(234,179,8,0.5)] border-2 border-[#13141a]">
+                    <Star size={18} className="fill-current" />
+                  </div>
+                </div>
+              )}
               {displayUser?.summonerLevel > 0 && (
                 <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-white border border-gray-200 dark:border-white/10 dark:bg-[#1e1e24] text-gray-900 dark:text-gray-100 font-bold px-3 py-1 rounded-lg text-sm border border-[#2d2d35] z-20">{displayUser.summonerLevel}</div>
               )}
             </div>
-            <div className="mt-2">
-              <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 tracking-tight mb-0 leading-tight italic">{displayUser?.gameName || displayUser?.displayName || "Summoner"}</h1>
+            <div className="mt-2 text-left">
+              <h1 className={cn("text-3xl font-semibold tracking-tight mb-0 leading-tight italic", isPremium ? "text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 drop-shadow-sm" : "text-gray-900 dark:text-gray-100")}>{displayUser?.gameName || displayUser?.displayName || "Summoner"}</h1>
               <div className="text-lg text-gray-600 dark:text-gray-400 font-normal uppercase flex items-center gap-3">
                 <span>#{displayUser?.tagLine || displayUser?.region || "EUW"}</span>
               </div>
@@ -4981,7 +5056,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
           </div>
           <div className="flex-1 flex flex-col h-full min-h-0">
             {/* Match History Container - Rounded Frame with internal scrolling */}
-            <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-4 flex flex-col gap-3 h-[520px] overflow-hidden shadow-2xl">
+            <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-4 flex flex-col gap-3 h-[625px] overflow-hidden shadow-2xl">
               <div className="shrink-0 flex items-center justify-between">
                 <h3 className="text-gray-600 dark:text-gray-400 text-xs font-bold uppercase flex items-center gap-2">
                   <Clock size={12} /> {t('recent_matches')}
@@ -5036,7 +5111,12 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
             </div>
           </div>
 
-          <BehavioralCard data={behavioralData} t={t} />
+          <div className="relative rounded-2xl overflow-hidden w-full flex flex-col shadow-2xl" style={{ minHeight: "480px" }}>
+            {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Analyse Comportementale" text="Débloquez l'analyse psychologique avancée de votre profil de joueur avec Oracle Gold." />}
+            <div className={cn("w-full h-full flex flex-col", !isPremium && "blur-lg pointer-events-none opacity-60 scale-[1.02]")}>
+              <BehavioralCard data={behavioralData} t={t} />
+            </div>
+          </div>
         </div>
 
         {/* Middle Column: Stats Cards */}
@@ -5049,11 +5129,18 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
               puuid={displayUser?.puuid}
               panelClass={panelClass}
               t={t}
+              isPremium={isPremium}
+              onSubscribe={onSubscribe}
             />
           </div>
 
           {/* Lens Card (Radar Chart) - Moved here as requested */}
-          <LensCard data={lensData} t={t} rankedStats={rankedStats} />
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+            {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Oracle Lens" text="L'analyse en araignée de vos KPI est réservée aux membres Oracle Gold." />}
+            <div className={!isPremium ? "blur-xl pointer-events-none opacity-50 scale-105" : ""}>
+              <LensCard data={lensData} t={t} rankedStats={rankedStats} />
+            </div>
+          </div>
 
           {/* Records Card (Modern Style) */}
           <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-6 relative overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[300px] hover:border-yellow-500/20 transition-all duration-500" >
@@ -5557,7 +5644,7 @@ function StatBox({ label, value, trend, trendUp, graph, t }) {
   )
 }
 
-function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueId }) {
+function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueId, isPremium, onSubscribe }) {
   const [filter, setFilter] = useState('20_games');
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [scrapedHistory, setScrapedHistory] = useState([]);
@@ -5899,161 +5986,165 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
             </div>
 
             <div
-              className="relative w-full h-[350px] group mt-2 flex bg-black/20 rounded-2xl border border-white/5 p-4 pl-0 overflow-visible"
+              className="relative w-full h-[350px] group mt-2 flex bg-black/20 rounded-2xl border border-white/5 p-4 pl-0 overflow-hidden"
             >
-              {/* Left Y-Axis Labeling */}
-              <div className="w-[140px] border-r border-white/10 relative shrink-0 z-0">
-                {yAxisTicks.map(tickLp => {
-                  const rank = getRankFromAbs(tickLp);
-                  const y = ((maxAbs - tickLp) / range) * 100;
-                  const color = rank.tier?.toLowerCase() === 'gold' ? '#facc15' : rank.tier?.toLowerCase() === 'platinum' ? '#22d3ee' : rank.tier?.toLowerCase() === 'emerald' ? '#4ade80' : rank.tier?.toLowerCase() === 'diamond' ? '#60a5fa' : rank.tier?.toLowerCase() === 'master' ? '#c084fc' : rank.tier?.toLowerCase() === 'grandmaster' ? '#f43f5e' : rank.tier?.toLowerCase() === 'challenger' ? '#fbbf24' : '#a855f7';
-                  return (
-                    <div key={tickLp} className="absolute left-0 flex items-center transform translate-y-[-50%] w-[1000px] pointer-events-none" style={{ top: `${y}%` }}>
-                      <div className="w-[140px] text-right shrink-0 pr-4 flex justify-end items-center gap-2 opacity-100">
-                        <img src={getRankIcon(rank.tier)} className="w-5 h-5 object-contain" alt="" />
-                        <span style={{ color }} className="font-black text-[10px] uppercase tracking-tighter opacity-80 whitespace-nowrap">
-                          {TIER_NAMES[rank.tier] || rank.tier} {rank.div}
-                        </span>
-                      </div>
-                      <div className="flex-1 border-t border-dashed border-white/10" />
-                    </div>
-                  );
-                })}
-              </div>
+              {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Évolution des LP" text="Suivez avec précision vos gains et pertes de LP grâce à l'historique premium." />}
 
-              {/* Chart SVG */}
-              <div
-                className="flex-1 relative overflow-visible cursor-crosshair"
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-              >
-                <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="gradientLP" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor={rankColor} stopOpacity="0.4" />
-                      <stop offset="100%" stopColor={rankColor} stopOpacity="0" />
-                    </linearGradient>
-                    <pattern id="graph-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-                    </pattern>
-                  </defs>
-
-                  {/* Tech Grid Background */}
-                  <rect width="100%" height="100%" fill="url(#graph-grid)" />
-
-                  {/* Current LP Reference Baseline */}
-                  {pointsOnSvg.length > 0 && (
-                    <line
-                      x1="0"
-                      y1={pointsOnSvg[pointsOnSvg.length - 1].y}
-                      x2={width}
-                      y2={pointsOnSvg[pointsOnSvg.length - 1].y}
-                      stroke={rankColor}
-                      strokeOpacity="0.3"
-                      strokeWidth="1"
-                      strokeDasharray="5,5"
-                    />
-                  )}
-
-                  {/* Clean Smooth Fill Area */}
-                  <path d={`${pathData} L ${width} ${height} L 0 ${height} Z`} fill="url(#gradientLP)" className="transition-all duration-700 ease-out" />
-
-                  {/* Glowing Smooth Curve */}
-                  <path d={pathData} fill="none" stroke={rankColor} className="transition-all duration-700 ease-out" strokeWidth="3" style={{ filter: `drop-shadow(0 4px 6px ${rankColor}40)` }} />
-
-                  {/* Crosshair Vertical Line */}
-                  {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
-                    <line
-                      x1={pointsOnSvg[hoveredIndex].x}
-                      y1="0"
-                      x2={pointsOnSvg[hoveredIndex].x}
-                      y2={height}
-                      stroke="#ffffff"
-                      strokeOpacity="0.1"
-                      strokeWidth="1"
-                      strokeDasharray="4,4"
-                      className="transition-all duration-300 pointer-events-none"
-                    />
-                  )}
-
-                  {/* Highlight only the hovered area dot */}
-                  {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
-                    <circle
-                      cx={pointsOnSvg[hoveredIndex].x}
-                      cy={pointsOnSvg[hoveredIndex].y}
-                      r="5"
-                      fill="#fff"
-                      stroke={rankColor}
-                      strokeWidth="3"
-                      className="transition-all duration-300 pointer-events-none"
-                      style={{ filter: `drop-shadow(0 0 8px ${rankColor})` }}
-                    />
-                  )}
-
-                  {/* Last point always visible if nothing is hovered to show "current" */}
-                  {hoveredIndex === null && pointsOnSvg.length > 0 && (
-                    <circle
-                      cx={pointsOnSvg[pointsOnSvg.length - 1].x}
-                      cy={pointsOnSvg[pointsOnSvg.length - 1].y}
-                      r="4"
-                      fill="#fff"
-                      stroke={rankColor}
-                      strokeWidth="2"
-                      style={{ filter: `drop-shadow(0 0 5px ${rankColor})` }}
-                    />
-                  )}
-                </svg>
-
-                {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
-                  <div
-                    className="absolute pointer-events-none transition-all duration-100 ease-out z-20"
-                    style={{
-                      left: `${(pointsOnSvg[hoveredIndex].x / width) * 100}%`,
-                      top: 0,
-                      bottom: 0,
-                      transform: 'translateX(-50%)'
-                    }}
-                  >
-                    <div className="w-px h-full bg-white/20 relative">
-                      <div
-                        className="absolute left-1/2 -translate-x-1/2 bg-[#2a2a32] border border-white/20 text-white px-3 py-2 rounded-xl shadow-xl flex flex-col items-center gap-1"
-                        style={{ top: `${(pointsOnSvg[hoveredIndex].y / height) * 100}%`, transform: 'translate(-50%, -120%)', minWidth: '80px' }}
-                      >
-                        {mockDataPoints[hoveredIndex].date && (
-                          <div className="text-[9px] text-gray-400 font-bold mb-1.5 pt-0.5 uppercase tracking-wider">
-                            {new Date(mockDataPoints[hoveredIndex].date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </div>
-                        )}
-                        {/* True rank at this dot */}
-                        <div className="text-[12px] font-black flex flex-col items-center leading-none mt-0.5 whitespace-nowrap" style={{ color: rankColor }}>
-                          <span className="uppercase tracking-wide">
-                            <span className="text-white">{getRankFromAbs(pointsOnSvg[hoveredIndex].val).tier.charAt(0)}{getRankFromAbs(pointsOnSvg[hoveredIndex].val).div === 'IV' ? '4' : getRankFromAbs(pointsOnSvg[hoveredIndex].val).div === 'III' ? '3' : getRankFromAbs(pointsOnSvg[hoveredIndex].val).div === 'II' ? '2' : '1'}</span> <span className="text-gray-300 ml-0.5">{getRankFromAbs(pointsOnSvg[hoveredIndex].val).lp} LP</span>
+              <div className={cn("flex w-full h-full", !isPremium && "blur-xl pointer-events-none opacity-40 scale-[1.03]")}>
+                {/* Left Y-Axis Labeling */}
+                <div className="w-[140px] border-r border-white/10 relative shrink-0 z-0">
+                  {yAxisTicks.map(tickLp => {
+                    const rank = getRankFromAbs(tickLp);
+                    const y = ((maxAbs - tickLp) / range) * 100;
+                    const color = rank.tier?.toLowerCase() === 'gold' ? '#facc15' : rank.tier?.toLowerCase() === 'platinum' ? '#22d3ee' : rank.tier?.toLowerCase() === 'emerald' ? '#4ade80' : rank.tier?.toLowerCase() === 'diamond' ? '#60a5fa' : rank.tier?.toLowerCase() === 'master' ? '#c084fc' : rank.tier?.toLowerCase() === 'grandmaster' ? '#f43f5e' : rank.tier?.toLowerCase() === 'challenger' ? '#fbbf24' : '#a855f7';
+                    return (
+                      <div key={tickLp} className="absolute left-0 flex items-center transform translate-y-[-50%] w-[1000px] pointer-events-none" style={{ top: `${y}%` }}>
+                        <div className="w-[140px] text-right shrink-0 pr-4 flex justify-end items-center gap-2 opacity-100">
+                          <img src={getRankIcon(rank.tier)} className="w-5 h-5 object-contain" alt="" />
+                          <span style={{ color }} className="font-black text-[10px] uppercase tracking-tighter opacity-80 whitespace-nowrap">
+                            {TIER_NAMES[rank.tier] || rank.tier} {rank.div}
                           </span>
                         </div>
-                        {mockDataPoints[hoveredIndex].diff ? (
-                          <>
-                            <div className="w-full h-px bg-white/10 my-0.5"></div>
-                            <div className="w-full text-center mt-1">
-                              <span className={cn("text-[10px] font-black leading-none", mockDataPoints[hoveredIndex].diff >= 0 ? 'text-blue-400' : 'text-red-400')}>{mockDataPoints[hoveredIndex].diff > 0 ? '+' : ''}{mockDataPoints[hoveredIndex].diff} LP</span>
+                        <div className="flex-1 border-t border-dashed border-white/10" />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Chart SVG */}
+                <div
+                  className="flex-1 relative overflow-visible cursor-crosshair"
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="gradientLP" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor={rankColor} stopOpacity="0.4" />
+                        <stop offset="100%" stopColor={rankColor} stopOpacity="0" />
+                      </linearGradient>
+                      <pattern id="graph-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                      </pattern>
+                    </defs>
+
+                    {/* Tech Grid Background */}
+                    <rect width="100%" height="100%" fill="url(#graph-grid)" />
+
+                    {/* Current LP Reference Baseline */}
+                    {pointsOnSvg.length > 0 && (
+                      <line
+                        x1="0"
+                        y1={pointsOnSvg[pointsOnSvg.length - 1].y}
+                        x2={width}
+                        y2={pointsOnSvg[pointsOnSvg.length - 1].y}
+                        stroke={rankColor}
+                        strokeOpacity="0.3"
+                        strokeWidth="1"
+                        strokeDasharray="5,5"
+                      />
+                    )}
+
+                    {/* Clean Smooth Fill Area */}
+                    <path d={`${pathData} L ${width} ${height} L 0 ${height} Z`} fill="url(#gradientLP)" className="transition-all duration-700 ease-out" />
+
+                    {/* Glowing Smooth Curve */}
+                    <path d={pathData} fill="none" stroke={rankColor} className="transition-all duration-700 ease-out" strokeWidth="3" style={{ filter: `drop-shadow(0 4px 6px ${rankColor}40)` }} />
+
+                    {/* Crosshair Vertical Line */}
+                    {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
+                      <line
+                        x1={pointsOnSvg[hoveredIndex].x}
+                        y1="0"
+                        x2={pointsOnSvg[hoveredIndex].x}
+                        y2={height}
+                        stroke="#ffffff"
+                        strokeOpacity="0.1"
+                        strokeWidth="1"
+                        strokeDasharray="4,4"
+                        className="transition-all duration-300 pointer-events-none"
+                      />
+                    )}
+
+                    {/* Highlight only the hovered area dot */}
+                    {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
+                      <circle
+                        cx={pointsOnSvg[hoveredIndex].x}
+                        cy={pointsOnSvg[hoveredIndex].y}
+                        r="5"
+                        fill="#fff"
+                        stroke={rankColor}
+                        strokeWidth="3"
+                        className="transition-all duration-300 pointer-events-none"
+                        style={{ filter: `drop-shadow(0 0 8px ${rankColor})` }}
+                      />
+                    )}
+
+                    {/* Last point always visible if nothing is hovered to show "current" */}
+                    {hoveredIndex === null && pointsOnSvg.length > 0 && (
+                      <circle
+                        cx={pointsOnSvg[pointsOnSvg.length - 1].x}
+                        cy={pointsOnSvg[pointsOnSvg.length - 1].y}
+                        r="4"
+                        fill="#fff"
+                        stroke={rankColor}
+                        strokeWidth="2"
+                        style={{ filter: `drop-shadow(0 0 5px ${rankColor})` }}
+                      />
+                    )}
+                  </svg>
+
+                  {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
+                    <div
+                      className="absolute pointer-events-none transition-all duration-100 ease-out z-20"
+                      style={{
+                        left: `${(pointsOnSvg[hoveredIndex].x / width) * 100}%`,
+                        top: 0,
+                        bottom: 0,
+                        transform: 'translateX(-50%)'
+                      }}
+                    >
+                      <div className="w-px h-full bg-white/20 relative">
+                        <div
+                          className="absolute left-1/2 -translate-x-1/2 bg-[#2a2a32] border border-white/20 text-white px-3 py-2 rounded-xl shadow-xl flex flex-col items-center gap-1"
+                          style={{ top: `${(pointsOnSvg[hoveredIndex].y / height) * 100}%`, transform: 'translate(-50%, -120%)', minWidth: '80px' }}
+                        >
+                          {mockDataPoints[hoveredIndex].date && (
+                            <div className="text-[9px] text-gray-400 font-bold mb-1.5 pt-0.5 uppercase tracking-wider">
+                              {new Date(mockDataPoints[hoveredIndex].date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                             </div>
-                          </>
-                        ) : mockDataPoints[hoveredIndex].label === 'Actuel' ? (
-                          <div className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-gray-400 font-bold uppercase mt-1 w-full text-center">Actuel</div>
-                        ) : null}
+                          )}
+                          {/* True rank at this dot */}
+                          <div className="text-[12px] font-black flex flex-col items-center leading-none mt-0.5 whitespace-nowrap" style={{ color: rankColor }}>
+                            <span className="uppercase tracking-wide">
+                              <span className="text-white">{getRankFromAbs(pointsOnSvg[hoveredIndex].val).tier.charAt(0)}{getRankFromAbs(pointsOnSvg[hoveredIndex].val).div === 'IV' ? '4' : getRankFromAbs(pointsOnSvg[hoveredIndex].val).div === 'III' ? '3' : getRankFromAbs(pointsOnSvg[hoveredIndex].val).div === 'II' ? '2' : '1'}</span> <span className="text-gray-300 ml-0.5">{getRankFromAbs(pointsOnSvg[hoveredIndex].val).lp} LP</span>
+                            </span>
+                          </div>
+                          {mockDataPoints[hoveredIndex].diff ? (
+                            <>
+                              <div className="w-full h-px bg-white/10 my-0.5"></div>
+                              <div className="w-full text-center mt-1">
+                                <span className={cn("text-[10px] font-black leading-none", mockDataPoints[hoveredIndex].diff >= 0 ? 'text-blue-400' : 'text-red-400')}>{mockDataPoints[hoveredIndex].diff > 0 ? '+' : ''}{mockDataPoints[hoveredIndex].diff} LP</span>
+                              </div>
+                            </>
+                          ) : mockDataPoints[hoveredIndex].label === 'Actuel' ? (
+                            <div className="text-[9px] bg-white/10 px-2 py-0.5 rounded text-gray-400 font-bold uppercase mt-1 w-full text-center">Actuel</div>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-function ModernRankCard({ rankedStats, history, puuid, panelClass, t }) {
+function ModernRankCard({ rankedStats, history, puuid, panelClass, t, isPremium, onSubscribe }) {
   // 'solo', 'flex', 'estimated_solo', 'estimated_flex'
   const [viewMode, setViewMode] = useState('solo');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -6316,7 +6407,7 @@ function ModernRankCard({ rankedStats, history, puuid, panelClass, t }) {
         </div>
       </div>
 
-      <RankGraphModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} t={t} type={type} data={data} history={history} puuid={puuid} queueId={viewMode.includes('flex') ? 440 : 420} />
+      <RankGraphModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} t={t} type={type} data={data} history={history} puuid={puuid} queueId={viewMode.includes('flex') ? 440 : 420} isPremium={isPremium} onSubscribe={onSubscribe} />
     </>
   );
 }
@@ -6330,7 +6421,7 @@ function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
 
   const isWin = part.stats.win;
   const champId = part.championId;
-  const champName = part.championName || "unknown";
+  const champName = part.championName || getChampName(champId);
   const champIcon = (champId && champId > 0)
     ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${champId}.png`
     : `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "15.1.1"}/img/champion/${normalizeChampName(champName)}.png`;
@@ -6367,7 +6458,7 @@ function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
       <div className="relative shrink-0 ml-1">
         <img src={champIcon} className={cn("w-10 h-10 rounded-lg border shadow-sm z-10 relative object-cover", isWin ? "border-blue-400/50" : "border-red-400/50")} />
         {roleIcon && (
-          <div className="absolute -bottom-1.5 -left-1.5 bg-black border border-gray-200 dark:border-white/40 rounded-full w-4 h-4 flex items-center justify-center z-20 p-0.5 shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+          <div className="absolute -bottom-1.5 -left-1.5 bg-black border border-gray-200 dark:border-white/40 rounded-full w-5 h-5 flex items-center justify-center z-20 p-0.5 shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
             <img src={roleIcon} className="w-full h-full brightness-0 invert" />
           </div>
         )}
@@ -6586,7 +6677,7 @@ function CustomSelect({ value, onChange, options, className = "", buttonClassNam
   );
 }
 
-function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, musicOverlayEnabled, setMusicOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast }) {
+function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, musicOverlayEnabled, setMusicOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast, setActiveTab, isPremium, setIsPremium }) {
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const languages = [
     { code: 'en', label: 'English (US)' },
@@ -6642,25 +6733,32 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             icon={Palette} color="blue"
             title={t('colorTheme')} desc={t('themeToggleDesc')}
             action={
-              <div className="flex gap-1.5 p-1 bg-black/5 dark:bg-black/40 rounded-xl border border-gray-200 dark:border-white/5">
-                {[
-                  { id: 'classic', label: t('theme_classic') },
-                  { id: 'purple', label: t('theme_purple') },
-                  { id: 'storm', label: t('theme_storm') },
-                  { id: 'radiant', label: t('theme_radiant') }
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setTheme(opt.id)}
-                    className={cn(
-                      "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all",
-                      theme === opt.id ? "bg-accent-primary text-black" : "text-gray-500 hover:text-gray-900 dark:text-gray-100"
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              !isPremium ? (
+                <button onClick={() => setActiveTab('subscription')} className="px-5 py-2 bg-yellow-500/5 hover:bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-bold text-xs uppercase rounded-xl transition-all hover:scale-[1.02] flex items-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.1)] mb-1">
+                  <Star size={14} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" />
+                  S'abonner
+                </button>
+              ) : (
+                <div className="flex gap-1.5 p-1 bg-black/5 dark:bg-black/40 rounded-xl border border-gray-200 dark:border-white/5">
+                  {[
+                    { id: 'classic', label: t('theme_classic') },
+                    { id: 'purple', label: t('theme_purple') },
+                    { id: 'storm', label: t('theme_storm') },
+                    { id: 'radiant', label: t('theme_radiant') }
+                  ].map(opt => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setTheme(opt.id)}
+                      className={cn(
+                        "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all",
+                        theme === opt.id ? "bg-accent-primary text-black" : "text-gray-500 hover:text-gray-900 dark:text-gray-100"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )
             }
           />
           <SettingCard
@@ -6698,7 +6796,18 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           <SettingCard
             icon={Sword} color="orange"
             title={t('auto_accept')} desc={t('auto_accept_desc')}
-            action={<SettingsToggle active={autoAccept} onToggle={() => setAutoAccept(!autoAccept)} />}
+            action={
+              !isPremium ? (
+                <button onClick={() => setActiveTab('subscription')} className="px-5 py-2 bg-yellow-500/5 hover:bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-bold text-xs uppercase rounded-xl transition-all hover:scale-[1.02] flex items-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+                  <Star size={14} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" />
+                  S'abonner
+                </button>
+              ) : (
+                <div>
+                  <SettingsToggle active={autoAccept} onToggle={() => setAutoAccept(!autoAccept)} />
+                </div>
+              )
+            }
           />
         </SettingsSection>
 
@@ -6731,12 +6840,46 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           <SettingCard
             icon={Music} color="green"
             title="Overlay Musique" desc="Affiche un mini-lecteur transparent en haut à droite pour contrôler votre musique."
-            action={<SettingsToggle active={musicOverlayEnabled} onToggle={() => setMusicOverlayEnabled(!musicOverlayEnabled)} />}
+            action={
+              !isPremium ? (
+                <button onClick={() => setActiveTab('subscription')} className="px-5 py-2 bg-yellow-500/5 hover:bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-bold text-xs uppercase rounded-xl transition-all hover:scale-[1.02] flex items-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
+                  <Star size={14} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" />
+                  S'abonner
+                </button>
+              ) : (
+                <div>
+                  <SettingsToggle active={musicOverlayEnabled} onToggle={() => setMusicOverlayEnabled(!musicOverlayEnabled)} />
+                </div>
+              )
+            }
           />
         </SettingsSection>
 
+        {/* --- Gold Subscription Section --- */}
+        <SettingsSection title="Abonnement Gold" icon={Star}>
+          <div
+            className="group relative cursor-pointer overflow-hidden rounded-2xl border border-yellow-500/30 p-[1px] shadow-[0_4px_30px_rgba(234,179,8,0.15)] transition-all hover:scale-[1.01] hover:shadow-[0_0_40px_rgba(234,179,8,0.4)] hover:border-yellow-400/60"
+            onClick={() => setActiveTab('subscription')}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-300 to-yellow-600 opacity-10 transition-all duration-500 group-hover:opacity-30"></div>
+            {/* Shimmer Effect */}
+            <div className="absolute top-0 -inset-full h-full w-1/2 z-0 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-[shimmer_1.5s_infinite]"></div>
 
-      </div>
+            <div className="relative flex items-center justify-between rounded-2xl bg-[#13141a]/95 p-6 backdrop-blur-xl overflow-hidden z-10 transition-colors duration-500 group-hover:bg-[#13141a]/80">
+              <div className="flex items-center gap-4 relative z-10">
+                <div>
+                  <h3 className="text-xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600">Oracle Gold</h3>
+                  <p className="mt-1 text-sm font-medium text-gray-400 transition-colors group-hover:text-yellow-100/70">Gérer mon moyen de paiement, abonnement...</p>
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); window.ipcRenderer.invoke('app:open-url', 'https://shoxcx.github.io/oracle-web/'); }} className="flex items-center gap-2 rounded-xl bg-yellow-500/10 px-5 py-2.5 font-bold uppercase tracking-widest text-yellow-400 transition-all duration-300 group-hover:bg-yellow-400 group-hover:text-black border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.15)] z-10 cursor-pointer">
+                {isPremium ? "Gérer" : "Découvrir"} <ArrowRight size={16} />
+              </button>
+            </div>
+          </div>
+        </SettingsSection>
+
+      </div >
 
       {isEditingLayout && (
         <OverlayLayoutEditor
@@ -6745,7 +6888,185 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           setOverlaySettings={setOverlaySettings}
           onClose={() => setIsEditingLayout(false)}
         />
-      )}
+      )
+      }
+    </div >
+  );
+}
+
+function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab }) {
+  // Simulate cancellation state (in a real app, this comes from backend)
+  const [isCanceled, setIsCanceled] = useState(false);
+  const expirationDate = "31/12/2026"; // mock
+
+  if (!isPremium) {
+    const premiumFeatures = [
+      { icon: Music, color: "text-yellow-400", bg: "bg-yellow-400/10", title: "Music Overlay", desc: "Contrôlez Spotify directement depuis votre partie sans altérer. Précision tactique et ambiance audio réunies." },
+      { icon: Brain, color: "text-blue-400", bg: "bg-blue-400/10", title: "Analyse IA", desc: "Notre algorithme analyse vos actions et trajectoires pour vous délivrer un coaching professionnel automatisé." },
+      { icon: Eye, color: "text-emerald-400", bg: "bg-emerald-400/10", title: "In-Game Overlays", desc: "Des outils tactiques exclusifs en jeu (Ward timer, stats) pour garder une longueur d'avance sur vos ennemis." },
+      { icon: Target, color: "text-purple-400", bg: "bg-purple-400/10", title: "Training Avancé", desc: "Des entraînements ciblés et personnalisés construits sur les données de notre algorithme." },
+      { icon: Palette, color: "text-pink-400", bg: "bg-pink-400/10", title: "Thèmes Custom", desc: "Personnalisez votre interface en débloquant les styles premiums (Radiant, Storm ou Purple)." },
+      { icon: Zap, color: "text-orange-400", bg: "bg-orange-400/10", title: "Auto-Accept", desc: "Laissez Oracle gérer vos files d'attentes automatiquement." }
+    ];
+
+    return (
+      <div className={cn("h-full w-full flex flex-col items-center justify-center animate-in fade-in pb-12 overflow-hidden", panelClass)}>
+        <style>
+          {`
+            @keyframes marquee {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-scrolling {
+              animation: marquee 30s linear infinite;
+            }
+            .animate-scrolling:hover {
+              animation-play-state: paused;
+            }
+          `}
+        </style>
+        <div className="max-w-5xl w-full text-center px-4 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-yellow-500/10 border border-yellow-500/30 mb-8 shadow-[0_0_40px_rgba(234,179,8,0.2)] hover:scale-110 transition-transform duration-300">
+            <Star size={44} className="text-yellow-400 fill-current drop-shadow-[0_0_15px_rgba(234,179,8,0.7)]" />
+          </div>
+          <h1 className="text-5xl font-black tracking-tighter italic text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 mb-6 drop-shadow-lg">
+            Deviens Oracle Gold
+          </h1>
+          <p className="text-lg text-gray-400 font-medium mb-12 max-w-xl mx-auto leading-relaxed">
+            Passez au niveau supérieur. Accédez à l'ensemble des fonctionnalités premium dont l'analyse IA, l'overlay In-Game avancé et des statistiques illimitées.
+          </p>
+
+          <div
+            className="w-[120%] -ml-[10%] overflow-hidden mb-12 py-10"
+            style={{
+              maskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)',
+              WebkitMaskImage: 'linear-gradient(to right, transparent, black 15%, black 85%, transparent)'
+            }}
+          >
+            <div className="flex w-max animate-scrolling gap-4 px-4 cursor-pointer hover:[animation-play-state:paused]">
+              {/* Duplicate array for infinite scroll illusion */}
+              {[...premiumFeatures, ...premiumFeatures].map((feat, idx) => (
+                <div key={idx} className="bg-white/5 dark:bg-[#13141a]/80 backdrop-blur-sm border border-white/10 dark:border-white/5 rounded-2xl p-6 shadow-xl relative overflow-hidden w-72 shrink-0 text-left transition-all duration-300 hover:scale-[1.03] hover:border-white/20 hover:shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+                  <div className={cn("absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl opacity-60", feat.bg)}></div>
+                  <feat.icon className={cn("mb-4 relative z-10", feat.color)} size={28} />
+                  <h3 className="text-white font-bold mb-2 tracking-tight relative z-10">{feat.title}</h3>
+                  <p className="text-gray-400 text-xs leading-relaxed opacity-90 relative z-10">{feat.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button
+            className="px-12 py-4 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-400 text-black font-black uppercase tracking-widest text-lg shadow-[0_0_30px_rgba(234,179,8,0.4)] hover:shadow-[0_0_50px_rgba(234,179,8,0.6)] hover:scale-105 transition-all duration-300"
+            onClick={() => setIsPremium(true)}
+          >
+            S'abonner (4.99€/mois)
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("h-full flex flex-col animate-in fade-in", panelClass)}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 flex items-center gap-3 tracking-tighter italic">
+            <img src={oracleLogo} className="w-8 h-8 object-contain opacity-90" style={{ filter: 'sepia(1) saturate(2) hue-rotate(-20deg) brightness(1.3) drop-shadow(0 0 8px rgba(234,179,8,0.8))' }} alt="Oracle Gold" />
+            Oracle Gold
+          </h2>
+          <p className="text-gray-500 text-sm font-medium mt-1">Gestion de l'abonnement en cours.</p>
+        </div>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className="px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition font-bold text-sm flex items-center gap-2"
+        >
+          <ArrowLeft size={16} /> Retour
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+        {/* Status Card */}
+        <div className="glass-panel p-8 border-y border-yellow-500/20 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-yellow-500/20 transition-all duration-700"></div>
+
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={cn("w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]", isCanceled ? "bg-orange-500 text-orange-500" : "bg-green-500 text-green-500")}></span>
+                <span className="text-xs font-black uppercase tracking-widest text-gray-400">Statut</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-6">
+                {isCanceled ? "Annulation programmée" : "Actif"}
+              </h3>
+            </div>
+            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+              <CreditCard className="text-gray-300" size={24} />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-white/5">
+              <span className="text-gray-400 text-sm">Date de facturation</span>
+              <span className="text-white font-bold font-mono">{expirationDate}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-white/5">
+              <span className="text-gray-400 text-sm">Moyen de paiement</span>
+              <span className="text-white font-bold flex items-center gap-2">
+                •••• 4242 <CreditCard size={14} />
+              </span>
+            </div>
+
+            {isCanceled && (
+              <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400 text-sm font-medium">
+                Vous conserverez vos avantages Oracle Gold jusqu'au <strong className="text-orange-300">{expirationDate}</strong>. Aucun autre prélèvement ne sera effectué.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions Card */}
+        <div className="glass-panel p-8 border-t border-white/10 flex flex-col justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">Actions</h3>
+            <p className="text-gray-500 text-sm">Mettez à jour vos informations ou gérez le renouvellement de l'abonnement.</p>
+
+            <div className="space-y-3 mt-6">
+              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition text-white font-bold text-left">
+                <div className="flex items-center gap-3">
+                  <CreditCard size={18} className="text-gray-400" /> Modifier le paiement
+                </div>
+                <ArrowRight size={16} className="text-gray-500" />
+              </button>
+              <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition text-white font-bold text-left">
+                <div className="flex items-center gap-3">
+                  <FileText size={18} className="text-gray-400" /> Historique de facturation
+                </div>
+                <ArrowRight size={16} className="text-gray-500" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-white/5">
+            {!isCanceled ? (
+              <button
+                className="w-full py-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 font-bold hover:bg-red-500/10 transition"
+                onClick={() => setIsCanceled(true)}
+              >
+                Annuler l'abonnement
+              </button>
+            ) : (
+              <button
+                className="w-full py-3 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400 font-bold hover:bg-green-500/20 shadow-[0_0_15px_rgba(74,222,128,0.1)] transition"
+                onClick={() => setIsCanceled(false)}
+              >
+                Réactiver Oracle Gold
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -7560,7 +7881,9 @@ function ReplaysView({ t, panelClass, currentUser }) {
   const [replays, setReplays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [coachingGame, setCoachingGame] = useState(null);
+  const [isCoachingLoading, setIsCoachingLoading] = useState(false);
   const [lpGains, setLpGains] = useState([]);
+  const fullGameCache = useRef({});
 
   useEffect(() => {
     async function fetchReplays() {
@@ -7582,6 +7905,25 @@ function ReplaysView({ t, panelClass, currentUser }) {
             }
           }));
           setReplays(gamesWithMeta);
+
+          // Background pre-fetch full games to eliminate click latency
+          gamesWithMeta.forEach(async (g) => {
+            try {
+              if (!fullGameCache.current[g.gameId]) {
+                const fullGame = await window.ipcRenderer.invoke('lcu:get-game', g.gameId);
+                if (fullGame && fullGame.participants) {
+                  const identity = fullGame.participantIdentities?.find(ident => ident?.player?.puuid === currentUser?.puuid);
+                  const p = fullGame.participants.find(part => part.participantId === identity?.participantId) || fullGame.participants[0];
+                  fullGameCache.current[g.gameId] = {
+                    ...fullGame,
+                    _userPart: p,
+                    _champName: getChampName(p.championId),
+                    _mode: getQueueLabel(fullGame.queueId, t)
+                  };
+                }
+              }
+            } catch (e) { }
+          });
         }
       } catch (e) {
         console.error("Replay fetch error", e);
@@ -7605,6 +7947,13 @@ function ReplaysView({ t, panelClass, currentUser }) {
   // Helper: Fetch extensive game details (Match History List often returns partial data)
   const loadFullGame = async (summaryGame) => {
     try {
+      // Use cache for instant loading if available
+      if (fullGameCache.current[summaryGame.gameId]) {
+        setCoachingGame(fullGameCache.current[summaryGame.gameId]);
+        return;
+      }
+
+      setIsCoachingLoading(true);
       console.log("Fetching full details for game:", summaryGame.gameId);
       const fullGame = await window.ipcRenderer.invoke('lcu:get-game', summaryGame.gameId);
 
@@ -7620,18 +7969,15 @@ function ReplaysView({ t, panelClass, currentUser }) {
       const mode = getQueueLabel(fullGame.queueId, t);
       const champName = getChampName(p.championId);
 
-      setCoachingGame({ ...fullGame, _userPart: p, _champName: champName, _mode: mode });
+      const computedGame = { ...fullGame, _userPart: p, _champName: champName, _mode: mode };
+      fullGameCache.current[summaryGame.gameId] = computedGame;
+      setCoachingGame(computedGame);
     } catch (e) {
       console.error("Failed to load full game:", e);
+    } finally {
+      setIsCoachingLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (!coachingGame && replays.length > 0) {
-      // Auto-load the first game (FULL details)
-      loadFullGame(replays[0]);
-    }
-  }, [replays, coachingGame, currentUser]);
 
   // Enhanced Watch Handler (Download + Watch)
   const [downloadingId, setDownloadingId] = useState(null);
@@ -7726,7 +8072,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
             const isWatchable = state === 'WATCH';
             const isDownloading = downloadingId === r.gameId; // simplified local state tracking
             const mode = p ? getQueueLabel(r.queueId, t) : t('queue_unknown');
-            const champName = p ? getChampName(p.championId) : t('unknown');
+            const champName = p ? p.championName || getChampName(p.championId) : t('unknown');
 
             // Find LP Gain
             let kdaString = '';
@@ -7775,31 +8121,6 @@ function ReplaysView({ t, panelClass, currentUser }) {
                 </div>
 
                 <div className="flex gap-2">
-                  <div className="relative group/tooltip">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isWatchable) handleWatch(r.gameId, r.platformId, state);
-                      }}
-                      disabled={!isWatchable}
-                      className={cn(
-                        "p-2 rounded-lg transition-all",
-                        isWatchable
-                          ? "bg-accent-primary text-black hover:bg-white shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-                          : "bg-white dark:bg-white/5 text-gray-600 border border-gray-200 dark:border-white/5 cursor-not-allowed opacity-50"
-                      )}
-                      title={isWatchable ? t('watch_replay') : undefined}
-                    >
-                      {isWatchable ? <Play size={16} fill="currentColor" /> : <ArrowDown size={16} />}
-                    </button>
-                    {!isWatchable && (
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 bg-slate-50 dark:bg-[#0a0a0c]/90 border border-gray-200 dark:border-white/10 rounded-lg text-[10px] font-black uppercase tracking-widest text-gray-300 backdrop-blur-md shadow-2xl opacity-0 scale-90 group-hover/tooltip:opacity-100 group-hover/tooltip:scale-100 transition-all duration-300 pointer-events-none whitespace-nowrap z-50 flex items-center gap-2">
-                        <Clock size={10} className="text-accent-primary" />
-                        <span>A venir...</span>
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-50 dark:bg-[#0a0a0c]/90 border-r border-b border-gray-200 dark:border-white/10 rotate-45"></div>
-                      </div>
-                    )}
-                  </div>
                   <button
                     className={cn(
                       "p-2 rounded-lg transition-all border",
@@ -7821,7 +8142,12 @@ function ReplaysView({ t, panelClass, currentUser }) {
 
         {/* AI Coaching Panel */}
         <div className="col-span-12 lg:col-span-8 h-full min-h-0">
-          {coachingGame ? (
+          {isCoachingLoading ? (
+            <div className="h-full glass-panel flex flex-col items-center justify-center p-12 text-center">
+              <RefreshCw size={48} className="text-accent-primary animate-spin opacity-20 mb-4" />
+              <h3 className="text-lg font-bold text-gray-400 italic">Analyse en cours...</h3>
+            </div>
+          ) : coachingGame ? (
             <AICoachingPanel game={coachingGame} t={t} onWatch={handleWatch} />
           ) : (
             <div className="h-full glass-panel flex flex-col items-center justify-center p-12 text-center">
@@ -7829,9 +8155,9 @@ function ReplaysView({ t, panelClass, currentUser }) {
                 <Brain size={48} className="text-accent-primary animate-pulse" />
                 <div className="absolute inset-0 bg-accent-primary/20 rounded-full blur-2xl"></div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2 italic">{t('ai_analyzer_title')}</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2 italic">Sélectionnez une partie</h3>
               <p className="text-gray-500 text-sm max-w-sm">
-                {t('ai_analyzer_desc')}
+                Cliquez sur une partie dans la liste à gauche pour lancer l'analyse IA de vos performances.
               </p>
             </div>
           )}
@@ -7847,7 +8173,7 @@ function AICoachingPanel({ game, t, onWatch }) {
   const stats = p.stats;
   const isWatchable = game.replayMeta?.state === 'WATCH';
   const mode = game._mode || getQueueLabel(game.queueId, t);
-  const champName = game._champName || getChampName(p.championId);
+  const champName = game._champName || p.championName || getChampName(p.championId);
   const roleName = getRoleLabel(p.timeline?.lane, p.timeline?.role);
   const roleIcon = getRoleIcon(p.timeline?.lane);
 
@@ -7917,7 +8243,7 @@ function AICoachingPanel({ game, t, onWatch }) {
     return rankedEnemies[0].unit;
   }, [game, p]);
 
-  const oppChampName = opponent ? getChampName(opponent.championId) : null;
+  const oppChampName = opponent ? opponent.championName || getChampName(opponent.championId) : null;
 
   // Normalize stats helper to handle inconsistent API data (stats vs root properties)
   const getNormStats = (pt) => {
@@ -7941,11 +8267,13 @@ function AICoachingPanel({ game, t, onWatch }) {
   const [insightIndex, setInsightIndex] = useState(0);
 
   useEffect(() => {
+    // Significantly reduce the artificial UI loading "latency" effect (from 800ms to 200ms)
+    // so it feels much more responsive (since cache is almost instant).
     setAnalyzing(true);
     setShowTips(false);
     setShowMatchup(false);
     setInsightIndex(0);
-    const timer = setTimeout(() => setAnalyzing(false), 800);
+    const timer = setTimeout(() => setAnalyzing(false), 200);
     return () => clearTimeout(timer);
   }, [game.gameId]);
 
@@ -8923,6 +9251,22 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-10 h-full flex flex-col relative overflow-hidden">
       <ParticleBackground />
+      {loading && (
+        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-3xl flex flex-col items-center justify-center text-accent-primary animate-in fade-in zoom-in-95 duration-700 transition-all">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/10 to-transparent animate-pulse pointer-events-none"></div>
+          <div className="relative w-32 h-32 flex items-center justify-center mb-8 scale-110">
+            <div className="absolute inset-0 border-[4px] border-blue-500/10 rounded-full animate-[spin_4s_linear_infinite] drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]"></div>
+            <div className="absolute inset-2 border-[4px] border-dashed border-blue-400/40 rounded-full animate-[spin_3s_linear_infinite_reverse]"></div>
+            <Swords size={48} className="animate-pulse text-blue-300 drop-shadow-[0_0_25px_rgba(59,130,246,0.8)]" />
+          </div>
+          <h3 className="text-4xl font-black tracking-[0.2em] uppercase italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-200 to-blue-400 drop-shadow-2xl animate-pulse">
+            Analyse du Matchup
+          </h3>
+          <p className="text-xs text-blue-300/70 font-bold tracking-[0.4em] mt-4 animate-[pulse_2s_ease-in-out_infinite]">
+            TRAITEMENT DES MILLIONS DE PARTIES...
+          </p>
+        </div>
+      )}
       {/* Champion Select Modal */}
       {selectingStr && (
         <ChampionSelector

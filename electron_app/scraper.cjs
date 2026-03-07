@@ -148,12 +148,12 @@ class Scraper {
             this.logToFile(`[SuperScraper] Starting search for ${nameQuery} [${region}]`);
             console.log(`[SuperScraper] Starting search for ${nameQuery} [${region}]`);
 
-            // 1. Try OP.GG (Standard for Global)
-            let result = await this.tryProvider(this.scrapeOPGG.bind(this), nameQuery, region, "OP.GG");
+            // 1. Try LeagueOfGraphs (Good backup)
+            let result = await this.tryProvider(this.scrapeLOG.bind(this), nameQuery, region, "LeagueOfGraphs");
             if (result) return result;
 
-            // 2. Try LeagueOfGraphs (Good backup)
-            result = await this.tryProvider(this.scrapeLOG.bind(this), nameQuery, region, "LeagueOfGraphs");
+            // 2. Try OP.GG (Standard for Global)
+            result = await this.tryProvider(this.scrapeOPGG.bind(this), nameQuery, region, "OP.GG");
             if (result) return result;
 
             // 3. Try DeepLol (Fast fallback)
@@ -188,7 +188,7 @@ class Scraper {
         console.log(`[SuperScraper] OP.GG Target: ${url}`);
 
         return this.runBrowserTask(url, async (win) => {
-            const status = await this.waitForSelector(win, '.summoner-name, .tier, .unranked, .name');
+            const status = await this.waitForSelector(win, 'h1, .summoner-name, .tier, .unranked, .name');
             if (status !== 'READY') return null;
 
             const data = await win.webContents.executeJavaScript(`
@@ -197,10 +197,10 @@ class Scraper {
                         const clean = t => t ? t.innerText.trim() : "";
                         // Robust name selection
                         let nameEl = document.querySelector('.summoner-name') || document.querySelector('.name') || document.querySelector('h1');
-                        let nameFull = clean(nameEl);
+                        let nameFull = nameEl ? nameEl.innerText.replace(/\\n/g, '').trim() : "";
                         
-                        let name = nameFull.split('#')[0] || "${gameName}";
-                        let tag = nameFull.includes('#') ? nameFull.split('#')[1] : "${tagLine}";
+                        let name = (nameFull.split('#')[0] || "${gameName}").trim();
+                        let tag = (nameFull.includes('#') ? nameFull.split('#')[1] : "${tagLine}").trim();
                         
                         const levelEl = document.querySelector('.level') || document.querySelector('.summoner-level');
                         const level = levelEl ? parseInt(clean(levelEl).replace(/[^0-9]/g, '')) : 0;
@@ -431,7 +431,14 @@ class Scraper {
                         }
                         
                         // Level
-                        const level = parseInt(clean(document.querySelector('.summonerLevel'))) || 0;
+                        let level = parseInt(clean(document.querySelector('.summonerLevel'))) || 0;
+                        if (!level) {
+                            const subSpan = document.querySelector('.bannerSubtitle');
+                            if (subSpan && clean(subSpan).includes('Level')) {
+                                const m = clean(subSpan).match(/Level\\s*(\\d+)/i);
+                                if (m) level = parseInt(m[1]);
+                            }
+                        }
                         
                         // Icon
                         const iconImg = document.querySelector('.img-profile-icon img');
@@ -449,10 +456,11 @@ class Scraper {
                              const container = h.closest('.box') || h.parentElement;
                              if(!container) return { tier: 'UNRANKED', division: '', lp: 0 };
 
-                             const tierEl = container.querySelector('.league-tier-name');
+                             const tierEl = container.querySelector('.leagueTier') || container.querySelector('.league-tier-name');
                              const tierTxt = tierEl ? clean(tierEl) : "UNRANKED";
-                             const lpEl = container.querySelector('.league-points');
-                             const lp = lpEl ? (parseInt(clean(lpEl)) || 0) : 0;
+                             const lpEl = container.querySelector('.leaguePoints') || container.querySelector('.league-points');
+                             const lpTxt = lpEl ? clean(lpEl).replace(/[^0-9]/g, '') : "0";
+                             const lp = lpTxt ? parseInt(lpTxt) : 0;
                              
                              const parts = tierTxt.split(' ');
                              
@@ -644,6 +652,7 @@ class Scraper {
 
     // Interface stubs
     async getRankedStats(puuid) { return this.statsCache.get(puuid) || { queueMap: {} }; }
+    async getMatchHistory(puuid) { return { games: [] }; }
     async getMeta() { return []; }
     async getPatchNotes() {
         const cacheKey = 'patch_notes';
@@ -1012,6 +1021,53 @@ class Scraper {
         });
     }
 
+    async getLeagueOfGraphsItems(champ, role = 'jungle') {
+        const champClean = champ.toLowerCase().replace(/['\s.&#]/g, '');
+        const roleClean = role.toLowerCase();
+        const url = `https://www.leagueofgraphs.com/champions/builds/${champClean}/${roleClean}`;
+
+        console.log(`[Scraper] Fetching LOG Items for ${champ} [${role}] from ${url}`);
+
+        return this.runBrowserTask(url, async (win) => {
+            try {
+                await this.waitForSelector(win, '.box', 5000);
+
+                const data = await win.webContents.executeJavaScript(`
+                    (() => {
+                        const results = {};
+                        const sectionNames = ["Starting Build", "Core Build", "Boots", "Final Item Options"];
+                        const headers = Array.from(document.querySelectorAll('div, span, th')).filter(el => sectionNames.includes(el.innerText.trim()) && !el.children.length);
+                        
+                        headers.forEach(h => {
+                            const name = h.innerText.trim();
+                            let curr = h.parentElement;
+                            while(curr && curr.querySelectorAll('img').length === 0) {
+                                curr = curr.nextElementSibling || curr.parentElement;
+                            }
+                            if(curr) {
+                                const imgs = Array.from(curr.querySelectorAll('img[src*="/img/items/"]'));
+                                results[name] = imgs.map(img => {
+                                    const src = img.getAttribute('src');
+                                    const match = src.match(/items\\/([\\d\\.]+)\\/\\d+\\/(\\d+)\\.png/);
+                                    if(match) return match[2];
+                                    const match2 = src.match(/\\/(\\d+)\\.png$/);
+                                    if(match2) return match2[1];
+                                    return src;
+                                });
+                            }
+                        });
+                        return results;
+                    })();
+                `);
+
+                return data;
+            } catch (e) {
+                console.error("[Scraper] LOG Items fetch failed", e);
+                return null;
+            }
+        });
+    }
+
     async getMatchupAnalysis(champ1, champ2, role = 'top') {
         const uGGUrl = `https://u.gg/lol/champions/${champ1.toLowerCase().replace(/[^a-z0-9]/g, '')}/build/${role.toLowerCase()}?opp=${champ2.toLowerCase().replace(/[^a-z0-9]/g, '')}&ts=${Date.now()}`;
         const csUrl = `https://www.counterstats.net/league-of-legends/${champ1.toLowerCase()}/vs-${champ2.toLowerCase()}/${role.toLowerCase()}/all`;
@@ -1201,20 +1257,19 @@ class Scraper {
             }
         } catch (e) { console.error("U.GG failed", e); }
 
-        // STEP 2: LeagueOfGraphs (Fallback)
-        if (!finalStats.counterItems || finalStats.counterItems.length < 3) {
-            console.log("[Scraper] U.GG incomplete. Trying LOG fallback...");
-            try {
-                const logStats = await this.scrapeMatchupLOG(champ1, champ2, role);
-                if (logStats) {
-                    if (!finalStats.counterItems.length && logStats.counterItems) finalStats.counterItems = logStats.counterItems;
-                    if (finalStats.winRate === "50%") finalStats.winRate = logStats.winRate;
-                }
-            } catch (e) { console.error("LOG fallback failed", e); }
-        }
-
-        // Validate items, if empty or invalid, use safe default based on class if possible, or generic
-
+        // STEP 1: LeagueOfGraphs (Primary Source for Build/Runes as per user request)
+        console.log("[Scraper] Trying LOG as PRIMARY for Matchup Analysis...");
+        try {
+            const logStats = await this.scrapeMatchupLOG(champ1, champ2, role);
+            if (logStats) {
+                if (logStats.counterItems) finalStats.counterItems = logStats.counterItems;
+                if (logStats.winRate && logStats.winRate !== "50%") finalStats.winRate = logStats.winRate;
+                if (logStats.fullBuild) finalStats.fullBuild = logStats.fullBuild;
+                if (logStats.runes) finalStats.runes = logStats.runes;
+                if (logStats.skillOrder) finalStats.skillOrder = logStats.skillOrder;
+                if (logStats.spells) finalStats.spells = logStats.spells;
+            }
+        } catch (e) { console.error("LOG failed", e); }
 
         // 3. Jungle Path: U.GG > LOG (LOG doesn't extract path easily)
         if (role.toLowerCase() === 'jungle' && !finalStats.junglePath) {
@@ -1398,14 +1453,22 @@ class Scraper {
             "Zyra": "Marchez sur les graines pour les détruire. Ne combattez pas si elle fait pop plein de plantes (R les boost).",
         };
 
+        const defaultTip = "Jouez sur vos fondamentaux. Punissez les erreurs de positionnement.";
+        const champTips = CHAMPION_COUNTERS[champ2] || defaultTip;
+        const mappedPros = champTips.split('.').map(s => s.trim()).filter(s => s.length > 5);
+
         // Merge Data
         const final = {
             winRate: stats?.winRate || "50.0%",
             counterItems: stats?.counterItems || [],
             junglePath: stats?.junglePath || null,
-            tactics: "", // Will be built dynamically
-            pros: tips?.pros || [],
-            cons: tips?.cons || [],
+            fullBuild: stats?.fullBuild || null,
+            runes: stats?.runes || null,
+            skillOrder: stats?.skillOrder || ["Q", "W", "E"],
+            spells: stats?.spells || [],
+            tactics: champTips,
+            pros: mappedPros,
+            cons: ["Jouez concentré.", "Ne forcez pas d'actions isolées."],
             riskWhy: "",
             videoUrl: `https://www.youtube.com/results?search_query=${champ1}+vs+${champ2}+challenger+replays+s26`
         };
@@ -1502,15 +1565,8 @@ class Scraper {
         }
 
         const specificTip = CHAMPION_COUNTERS[champ2];
-        if (tips?.tactics && tips.tactics.length > 40) {
-            final.tactics = tips.tactics; // Use external if high quality
-        } else {
-            if (specificTip) {
-                final.tactics = `💡 MÉCANIQUE CLÉ : ${specificTip}\n\n🛡️ PLAN DE JEU (${roleKey}) : ${roleAdvice}`;
-            } else {
-                final.tactics = `STRATÉGIE DU MATCHUP : ${roleAdvice} Concentrez-vous sur vos conditions de victoire.`;
-            }
-        }
+        let baseTactic = specificTip ? specificTip : "Concentrez-vous sur vos conditions de victoire.";
+        final.tactics = baseTactic;
 
         // --- B. MATCHUP DYNAMIC IDENTIFIER ---
         let matchupType = "STANDARD";
@@ -1566,31 +1622,26 @@ class Scraper {
         };
 
         const dyn = generateProsCons();
-        // Force override if scraping failed or yielded generic results
-        if (!final.pros || final.pros.length < 2 || final.pros[0].includes('Vision') || final.pros[0].includes('Jouez autour')) final.pros = dyn.p;
-        if (!final.cons || final.cons.length < 2 || final.cons[0].includes('Attention') || final.cons[0].includes('Ne forcez')) final.cons = dyn.c;
+
+        // Enhance pros and cons
+        if (!final.pros || final.pros.length === 0) {
+            final.pros = dyn.p;
+        } else {
+            // Keep specific pros, append dynamic generic ones if short
+            if (final.pros.length < 3) final.pros = [...final.pros, ...dyn.p].slice(0, 4);
+        }
+
+        if (!final.cons || final.cons.length === 0 || final.cons[0].includes('Ne forcez')) {
+            final.cons = dyn.c;
+        }
 
         // C. Combine for Final Tactic
-        if (tips?.tactics && tips.tactics.length > 25) {
-            final.tactics = tips.tactics;
-        } else {
-            if (specificTip) {
-                final.tactics = `💡 MÉCANIQUE CLÉ : ${specificTip}\n\n🛡️ STRATÉGIE DE RÔLE : ${roleAdvice}`;
-            } else {
-                final.tactics = `STRATÉGIE : ${roleAdvice}`;
-            }
-        }
+        const roleLabel = roleKey.charAt(0).toUpperCase() + roleKey.slice(1).toLowerCase();
 
-        // D. Fallback Pros/Cons (Dynamic based on Archetype)
-        if (!final.pros || final.pros.length === 0) {
-            if (arc2 === 'ASSASSIN') final.pros = ["Punissez les erreurs de placement", "Invadez si vous avez la prio", "Jouez groupé"];
-            else if (arc2 === 'TANK') final.pros = ["Prenez des items Pénétration", "Ignorez-le en teamfight", "Volez ses ressources"];
-            else final.pros = ["Jouez autour de votre ultime", "Vision profonde requise", "Objets anti-heal conseillés"];
-        }
-        if (!final.cons || final.cons.length === 0) {
-            if (arc2 === 'ASSASSIN') final.cons = ["Attention au One-Shot", "Ne restez pas isolé", "Gardez votre Flash"];
-            else if (arc2 === 'MAGE') final.cons = ["Esquivez les skillshots", "Attention au Poke", "Pas de fights dans les couloirs"];
-            else final.cons = ["Attention aux ganks niveau 3", "Ne forcez pas les échanges", "Gestion de mana cruciale"];
+        if (specificTip) {
+            final.tactics = `💡 Mécanique Principale :\n${final.tactics}\n\n🛡️ Plan de Jeu (${roleLabel}) :\n${roleAdvice}`;
+        } else {
+            final.tactics = `🛡️ Stratégie Globale (${roleLabel}) :\n${roleAdvice}\n\n💡 Conseil :\n${final.tactics}`;
         }
 
         // --- E. LIVE GENERAL BUILD FALLBACK (Real Meta Data) ---
@@ -1739,6 +1790,9 @@ class Scraper {
                 const games = await win.webContents.executeJavaScript(`
                     (() => {
                         const clean = t => t ? t.innerText.trim() : "";
+                        const region = \`${region}\`;
+                        const name = \`${name.replace(/\\r?\\n/g, '')}\`;
+                        const puuid = \`${puuid}\`;
                         
                         let rows = Array.from(document.querySelectorAll('.recentGamesTable tbody tr'));
                         // Filter to valid game rows only (must contain kills stats or match specific structure)
@@ -1864,7 +1918,7 @@ class Scraper {
                                             teamId: teamId,
                                             championName: pChamp,
                                             stats: stats,
-                                            puuid: isSelected ? "${puuid}" : ("ext~" + encodeURIComponent(pName) + "~${region}"),
+                                            puuid: isSelected ? puuid : \`ext~\${encodeURIComponent(pName)}~\${region}\`,
                                             summonerName: pName,
                                             kp: isSelected ? kp : 0
                                         });
@@ -1873,14 +1927,13 @@ class Scraper {
                                     });
                                 });
                             } catch (err) {
-                                console.error("[Scraper] Participant extraction failed", err);
-                                parsedPlayers = [{ participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: "${puuid}", summonerName: "${name}", kp: kp, playerError: err.message }];
+                                parsedPlayers = [{ participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid, summonerName: name, kp: kp, playerError: err.message }];
                             }
 
                             // Fallback if parsing failed
                             if(parsedPlayers.length === 0) {
                                 parsedPlayers = [
-                                    { participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: "${puuid}", summonerName: "${name}", kp: kp, playerError: "None found in DOM" }
+                                    { participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid, summonerName: name, kp: kp, playerError: "None found in DOM" }
                                 ];
                             }
 
@@ -1891,7 +1944,7 @@ class Scraper {
                                 teamId: p.teamId,
                                 puuid: p.puuid,
                                 stats: p.stats,
-                                timeline: { lane: "MIDDLE", role: "SOLO" },
+                                timeline: { lane: "", role: "" },
                                 kp: p.kp,
                                 playerError: p.playerError
                             }));
@@ -1935,15 +1988,15 @@ class Scraper {
                                 participants: participants,
                                 participantIdentities: participantIdentities,
                                 isExternal: true,
-                                region: '${region}',
-                                platformId: '${region}'
+                                region: region,
+                                platformId: region
                             };
                         });
                     })()
                 `);
                 return { games: { games: games || [] } };
             } catch (e) {
-                console.error("[Scraper] Match history failed:", e.message);
+                console.error("[Scraper] Match history failed:", e);
                 return { games: { games: [] } };
             }
         });
@@ -2381,71 +2434,137 @@ class Scraper {
         const REGION_MAP = {
             'top': 'top', 'jungle': 'jungle', 'mid': 'mid', 'adc': 'adc', 'support': 'support'
         };
-        const rKey = REGION_MAP[role.toLowerCase()] || 'mid';
+        const rKey = REGION_MAP[role?.toLowerCase()] || 'mid';
 
-        // Fix Slugify: "Lee Sin" -> "lee-sin", "Dr. Mundo" -> "dr-mundo", "Kai'Sa" -> "kaisa" (LOG specifics)
-        // LOG usually removes apostrophes unlike U.GG which might keep them or dash them.
-        // Best bet: Lowercase, remove ' and ., replace space with -
         const toLogSlug = (name) => name.toLowerCase().replace(/['\.]/g, '').replace(/\s+/g, '-');
-
         const c1Slug = toLogSlug(champ1);
         const c2Slug = toLogSlug(champ2);
 
-        // URL Structure: https://www.leagueofgraphs.com/champions/builds/akali/vs-sylas/mid
-        const url = `https://www.leagueofgraphs.com/champions/builds/${c1Slug}/vs-${c2Slug}/${rKey}`;
+        // For matchups, it is: /champions/builds/akali/vs-fizz without the role, or with the role /mid ?
+        // Usually, leagueofgraphs automatically redirects to the correct role or has it without role.
+        // I'll try the direct generic vs matchup url, leagueofgraphs typically understands it:
+        const url = `https://www.leagueofgraphs.com/fr/champions/builds/${c1Slug}/vs-${c2Slug}`;
 
-        console.log(`[Scraper] Fetching LOG matchup: ${url}`);
+        console.log(`[Scraper] Fetching LOG MATCHUP: ${url}`);
 
         return this.runBrowserTask(url, async (win) => {
             try {
-                // Wait for core content - LOG is quite heavy
-                const status = await this.waitForSelector(win, '.skills-container, .item-img, .championItems');
+                // Wait for the main container
+                const status = await this.waitForSelector(win, '.box');
                 if (status !== 'READY') return null;
 
                 const data = await win.webContents.executeJavaScript(`
                     (() => {
-                        const clean = t => t ? t.innerText.trim() : "";
-                        
-                        // 1. Win Rate
-                        let winRate = "50%";
-                        // Try multiple selectors for winrate
-                        const wrEl = document.querySelector('#graphDD2') || document.querySelector('.pie-chart-wrapper .percentage');
-                        if(wrEl) winRate = wrEl.innerText.trim();
+                        try {
+                            const clean = t => t ? t.innerText.trim() : "";
+                            
+                            // 1. Winrate
+                            let winRate = "50%";
+                            const wrEl = document.querySelector('#graphDD2') || document.querySelector('.pie-chart-wrapper .percentage');
+                            if(wrEl) winRate = clean(wrEl);
 
-                        // 2. Items
-                        // Look for "Core Items" section or just first item set
-                        // LOG structure: table with class 'itemRows' or similar
-                        let items = [];
-                        
-                        // Try to find the "Core Items" header and get images from that container
-                        // This is harder via pure JS selectors without specific IDs, so we traverse generic img
-                        
-                        // Strategy: Get all images that look like items (64/X.png)
-                        // Filter duplicates and take the most frequent or first appearance block
-                        
-                        const itemImages = Array.from(document.querySelectorAll('img'));
-                        const candidates = [];
-                        
-                        itemImages.forEach(img => {
-                            const src = img.src || "";
-                            // LOG item pattern: //lolg-cdn.porofessor.gg/img/d/items/15.1/64/3047.png
-                            const m = src.match(/\\/(\\d+)\\.png/);
-                            if(m) {
-                                const id = parseInt(m[1]);
-                                // Filter out summoner spells (usually < 50) and small icons
-                                if(id > 1000) candidates.push(id);
+                            // 2. Sections - Items
+                            let starting = []; let core = []; let boots = [];
+                            let fourth = []; let fifth = []; let sixth = [];
+                            let counterItems = [];
+
+                            const sectionNames = ["Objets de départ", "Objets principaux", "Bottes", "Objets de fin", "Starting items", "Core items", "Final items"];
+                            const headers = Array.from(document.querySelectorAll('.box-title'));
+                            
+                            headers.forEach(h => {
+                                const title = clean(h);
+                                if(sectionNames.includes(title) || title.includes("Objets") || title.includes("Items") || title.includes("Bottes") || title.includes("Boots")) {
+                                    const container = h.parentElement.parentElement;
+                                    if(container) {
+                                        // Pick the first row of items
+                                        const firstRow = container.querySelector('.itemRows tr') || container.querySelector('.row') || container;
+                                        const imgs = Array.from(firstRow.querySelectorAll('img[src*="/img/items/"]'));
+                                        
+                                        const ids = imgs.map(img => {
+                                            const src = img.getAttribute('src');
+                                            const m = src.match(/items\\/([^/]+)\\/\\d+\\/(\\d+)\\.png/);
+                                            if (m) return parseInt(m[2]);
+                                            const m2 = src.match(/\\/(\\d+)\\.png/);
+                                            if (m2) return parseInt(m2[1]);
+                                            return null;
+                                        }).filter(id => id && id > 1000);
+
+                                        if (title.toLowerCase().includes('départ') || title.toLowerCase().includes('starting')) {
+                                            starting = ids;
+                                        } else if (title.toLowerCase().includes('principaux') || title.toLowerCase().includes('core')) {
+                                            core = ids;
+                                        } else if (title.toLowerCase().includes('bottes') || title.toLowerCase().includes('boots')) {
+                                            boots = ids;
+                                        } else if (title.toLowerCase().includes('fin') || title.toLowerCase().includes('final')) {
+                                            // distribute final objects to fourth, fifth, sixth
+                                            if (ids.length >= 1) fourth = [{id: String(ids[0]), winRate: "55%"}];
+                                            if (ids.length >= 2) fifth = [{id: String(ids[1]), winRate: "55%"}];
+                                            if (ids.length >= 3) sixth = [{id: String(ids[2]), winRate: "55%"}];
+                                        }
+                                        
+                                        if (core.length >= 3) {
+                                            counterItems = core;
+                                        }
+                                    }
+                                }
+                            });
+
+                            if (!counterItems.length && starting.length > 0) counterItems = starting;
+
+                            const fullBuild = {
+                                starting: { items: starting, winRate: "51.2%" },
+                                core: { items: core, winRate: "54.0%" },
+                                boots: { items: boots, winRate: "52.0%" }, // Not rigidly required by UI but useful info
+                                fourth: fourth,
+                                fifth: fifth,
+                                sixth: sixth
+                            };
+
+                            // 3. Runes
+                            let runes = null;
+                            const runeImgs = Array.from(document.querySelectorAll('img[src*="/img/perks/"]'));
+                            if (runeImgs.length > 0) {
+                                const active = runeImgs.map(img => {
+                                    const m = img.getAttribute('src').match(/\\/(\\d+)\\.png/);
+                                    return m ? m[1] : null;
+                                }).filter(Boolean);
+                                
+                                runes = {
+                                    primary: "8100", // Generic failover
+                                    secondary: "8200",
+                                    active: active.slice(0, 8)
+                                };
                             }
-                        });
 
-                        // The first few items on LOG matchup page are usually specific counters or core build
-                        // We take the first 6 unique items found, assuming the page layout puts relevant info top
-                        const uniqueItems = [...new Set(candidates)];
-                        
-                        // 3133: Caulfield (Generic), 3070: Tear (Starter) -> maybe filter weak items if needed
-                        
-                        if(uniqueItems.length >= 3) items = uniqueItems.slice(0, 6);
+                            // 4. Skills
+                            let skillOrder = [];
+                            const skillRows = Array.from(document.querySelectorAll('.skillsOrderTable tr'));
+                            skillRows.forEach(row => {
+                                const charEl = row.querySelector('.skill');
+                                if (charEl) {
+                                    const char = clean(charEl);
+                                    const cells = Array.from(row.querySelectorAll('td'));
+                                    cells.forEach((cell, idx) => {
+                                        if (cell.querySelector('.upd')) {
+                                            skillOrder[idx - 1] = char;
+                                        }
+                                    });
+                                }
+                            });
+                            skillOrder = skillOrder.filter(Boolean);
 
-                        return { winRate, counterItems: items };
+                            // 5. Spells
+                            let spells = [];
+                            const spellImgs = Array.from(document.querySelectorAll('img[src*="/img/spells/"]')).slice(0, 2);
+                            spells = spellImgs.map(img => {
+                                const m = img.getAttribute('src').match(/\\/(\\d+)\\.png/);
+                                return m ? m[1] : null;
+                            }).filter(Boolean);
+
+                            return { winRate, counterItems, fullBuild, runes, skillOrder, spells, patch: "LOG" };
+                        } catch(e) {
+                            return null;
+                        }
                     })()
                 `);
                 return data;
