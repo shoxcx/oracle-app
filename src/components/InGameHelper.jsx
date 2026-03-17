@@ -23,6 +23,7 @@ export function InGameHelper({ ddragonVersion }) {
         notifiedSpawns: { drake: -1, baron: -1 },
         objVoidgrubs: false,
         isInitializingChamp: false,
+<<<<<<< HEAD
         itemState: { notifiedStarting: false, toastScheduledFor: 0 },
         lastItemsStr: '',
         settings: { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false },
@@ -34,6 +35,10 @@ export function InGameHelper({ ddragonVersion }) {
         lastWinrateTime: 0,
         winrateSpamTriggered: false,
         processedEventsCount: 0
+=======
+        settings: { skillLevelUp: true, wardTimer: true, objectiveTimer: true, testMode: false },
+        ddVersion: ddragonVersion || "14.2.1"
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
     });
 
     useEffect(() => {
@@ -89,7 +94,11 @@ export function InGameHelper({ ddragonVersion }) {
                 }
             }
 
+<<<<<<< HEAD
             if (champ) {
+=======
+            if (champ && stateRefs.current.ddVersion) {
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                 try {
                     let v = stateRefs.current.ddVersion;
                     if (!v || v.startsWith("14.")) {
@@ -100,6 +109,7 @@ export function InGameHelper({ ddragonVersion }) {
                         } catch(e) {}
                     }
 
+<<<<<<< HEAD
                     // Normalize id (e.g. Wukong -> MonkeyKing, LeBlanc -> Leblanc)
                     const normalizeChampName = (name) => {
                         if (!name) return "Yasuo";
@@ -121,6 +131,9 @@ export function InGameHelper({ ddragonVersion }) {
                     let ddId = normalizeChampName(champ);
 
                     const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${v}/data/en_US/champion/${ddId}.json`);
+=======
+                    const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/data/en_US/champion/${ddId}.json`);
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                     const json = await res.json();
                     if (json.data && json.data[ddId]) {
                         const spells = json.data[ddId].spells;
@@ -135,8 +148,12 @@ export function InGameHelper({ ddragonVersion }) {
             }
 
             try {
+<<<<<<< HEAD
                 const requestedRole = stateRefs.current.isJungle ? 'jungle' : '';
                 const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, requestedRole);
+=======
+                const build = await window.ipcRenderer.invoke('scraper:get-champion-build', champ, 'mid');
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                 if (build) {
                     setBuildData(build);
                     if (build.skillOrder) {
@@ -285,11 +302,16 @@ export function InGameHelper({ ddragonVersion }) {
                 if (data.activePlayer) {
                     let isJungleLive = false;
                     const allP = data.allPlayers || [];
+<<<<<<< HEAD
                     const rawActiveName = data.activePlayer.summonerName || data.activePlayer.riotIdGameName || data.activePlayer.rawPlayerName || "";
                     const activeName = rawActiveName.split('#')[0].toLowerCase();
 
                     let me = activeName ? allP.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName)) : null;
                     if (!me && allP.length > 0) me = allP[0];
+=======
+                    const activeName = (data.activePlayer.summonerName || "").split('#')[0].toLowerCase();
+                    const me = allP.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
 
                     if (me && me.summonerSpells) {
                         const s1 = (me.summonerSpells.summonerSpellOne?.displayName || '').toLowerCase();
@@ -300,6 +322,7 @@ export function InGameHelper({ ddragonVersion }) {
                     }
 
                     if (isJungleLive) refs.isJungle = true;
+<<<<<<< HEAD
 
                     if (!champName && !refs.isInitializingChamp) {
                         let resolvedChampName = me ? me.championName : undefined;
@@ -338,6 +361,20 @@ export function InGameHelper({ ddragonVersion }) {
                                 }
                             }
                         }).catch(e => console.error("Error fetching build for role:", e));
+=======
+
+                    if (!champName && !refs.isInitializingChamp) {
+                        refs.isInitializingChamp = true;
+                        let resolvedChampName = me ? me.championName : undefined;
+                        if (!resolvedChampName && data.activePlayer.abilities) {
+                            resolvedChampName = Object.keys(data.activePlayer.abilities)[0];
+                        }
+
+                        handleUpdate(null, {
+                            champName: resolvedChampName || 'Unknown',
+                            spells: { spell1Id: isJungleLive ? 11 : 0, spell2Id: 0 }
+                        });
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                     }
                 }
 
@@ -346,7 +383,11 @@ export function InGameHelper({ ddragonVersion }) {
                 const showObjectives = refs.settings.objectiveTimer !== false && refs.settings.jungleTimers !== false;
                 if (showObjectives) {
                     // Buffs Jungle (Spawn à 0:55 -> Notif à 0:40 = 40s)
+<<<<<<< HEAD
                     if (gameTime >= 40 && gameTime < 120 && !refs.objCamp1) {
+=======
+                    if (gameTime >= 40 && gameTime < 50 && !refs.objCamp1) {
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                         refs.objCamp1 = true;
                         if (refs.isJungle) {
                             pushToast({
@@ -363,7 +404,11 @@ export function InGameHelper({ ddragonVersion }) {
                     }
 
                     // Carapateur (Spawn à 2:55 -> Notif à 2:40 = 160s)
+<<<<<<< HEAD
                     if (gameTime >= 160 && gameTime < 300 && !refs.objCamp2) {
+=======
+                    if (gameTime >= 160 && gameTime < 170 && !refs.objCamp2) {
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                         refs.objCamp2 = true;
                         if (refs.isJungle) {
                             pushToast({
@@ -391,7 +436,11 @@ export function InGameHelper({ ddragonVersion }) {
                     }
 
                     // Drake (Notif à Spawn - 30s)
+<<<<<<< HEAD
                     if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 90 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
+=======
+                    if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 10 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                         refs.notifiedSpawns.drake = drakeSpawnTime;
                         pushToast({
                             type: 'objective',
@@ -406,7 +455,11 @@ export function InGameHelper({ ddragonVersion }) {
                     }
 
                     // Larves du néant (Spawn à 8:00 S16 -> Notif à 7:30 = 450s)
+<<<<<<< HEAD
                     if (gameTime >= 450 && gameTime < 550 && !refs.objVoidgrubs) {
+=======
+                    if (gameTime >= 450 && gameTime < 460 && !refs.objVoidgrubs) {
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                         refs.objVoidgrubs = true;
                         pushToast({
                             type: 'objective',
@@ -421,7 +474,11 @@ export function InGameHelper({ ddragonVersion }) {
                     }
 
                     // Baron Nashor (Notif à Spawn - 30s)
+<<<<<<< HEAD
                     if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 90 && refs.notifiedSpawns.baron !== baronSpawnTime) {
+=======
+                    if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 10 && refs.notifiedSpawns.baron !== baronSpawnTime) {
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                         refs.notifiedSpawns.baron = baronSpawnTime;
                         pushToast({
                             type: 'objective',
@@ -439,12 +496,17 @@ export function InGameHelper({ ddragonVersion }) {
                 // --- 2. JOUEUR (Skills & Wards) ---
                 if (data.activePlayer && data.allPlayers) {
                     const active = data.activePlayer;
+<<<<<<< HEAD
                     const rawActiveName = active.summonerName || active.riotIdGameName || active.rawPlayerName || "";
                     const activeName = rawActiveName.split('#')[0].toLowerCase();
 
                     let current = activeName ? data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName)) : null;
                     if (!current && data.allPlayers.length > 0) current = data.allPlayers[0];
 
+=======
+                    const activeName = (active.summonerName || "").split('#')[0].toLowerCase();
+                    const current = data.allPlayers.find(p => (p.summonerName || "").toLowerCase().includes(activeName) || (p.riotIdGameName || "").toLowerCase().includes(activeName) || (p.rawPlayerName || "").toLowerCase().includes(activeName));
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
                     const level = current?.level || Math.max(refs.knownLevel, 1);
 
                     // A) SKILLS UPGRADE
@@ -558,6 +620,7 @@ export function InGameHelper({ ddragonVersion }) {
         };
     }, []);
 
+<<<<<<< HEAD
     const computeStats = () => {
         if (!liveData || !liveData.gameData || liveData.gameData.gameTime < 5) {
             return null;
@@ -705,6 +768,10 @@ export function InGameHelper({ ddragonVersion }) {
     const stats = computeStats();
 
     if ((!toasts || toasts.length === 0) && stats === null && !showBuild) return null;
+=======
+    const showBuild = buildData && buildData.items && overlaySettings.itemBuild !== false;
+    if ((!toasts || toasts.length === 0) && !showBuild) return null;
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
 
     return (
         <div style={{
@@ -712,11 +779,51 @@ export function InGameHelper({ ddragonVersion }) {
             inset: 0,
             pointerEvents: 'none'
         }}>
+<<<<<<< HEAD
             <div className="absolute left-[24px] top-[24px] flex flex-col gap-4 items-start">
                 {showBuild && (
                     <div className="w-[360px] bg-white/[0.02] backdrop-blur-[40px] border border-white/[0.08] rounded-[32px] p-6 flex flex-col gap-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] relative overflow-hidden pointer-events-none animate-in slide-in-from-left-8 fade-in duration-500">
                         {/* Light Reflections */}
                         <div className="absolute top-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+=======
+            <div className="flex flex-col gap-3 w-full h-full justify-center">
+                {showBuild && (
+                    <div className="w-[320px] bg-black/80 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shadow-2xl relative overflow-hidden pointer-events-none animate-in fade-in zoom-in-95 duration-500">
+                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-500" />
+                        <div className="ml-2 flex flex-col gap-2">
+                            <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">BUILD RECOMMANDÉ ({champName})</div>
+
+                            {buildData.items.starting && buildData.items.core && (
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                        {buildData.items.starting.map((id, idx) => (
+                                            <img key={'start-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-8 h-8 rounded border border-white/20 shadow-md" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ))}
+                                        <span className="text-white/30 text-xs font-black mx-0.5">»</span>
+                                        {buildData.items.core.map((id, idx) => (
+                                            <img key={'core-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-8 h-8 rounded border border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.3)]" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {buildData.items.situational && buildData.items.situational.length > 0 && (
+                                <div className="flex flex-col gap-1 mt-1">
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Late Game / Options</div>
+                                    <div className="flex flex-wrap gap-1.5 opacity-80">
+                                        {buildData.items.situational.slice(0, 4).map((id, idx) => (
+                                            <img key={'sit-' + id + '-' + idx} src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-6 h-6 rounded border border-white/10" onError={(e) => { e.target.style.display = 'none'; }} />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {toasts.map(toast => {
+                    const Icon = toast.icon || AlertCircle;
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
 
                         {/* Premium Glow */}
                         <div className="absolute -top-20 -left-20 w-48 h-48 rounded-full blur-[50px] opacity-20 bg-amber-500 pointer-events-none" />

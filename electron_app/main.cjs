@@ -605,6 +605,7 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
                 else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
             }
         });
+<<<<<<< HEAD
         if (['CommandOrControl+C', 'CommandOrControl+V', 'CommandOrControl+X'].includes(winrateShortcut)) {
             console.warn(`Prevented overriding standard shortcut: ${winrateShortcut}, coercing to CommandOrControl+Shift+O`);
             winrateShortcut = 'CommandOrControl+Shift+O';
@@ -624,6 +625,10 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
                 ingameWindow.webContents.send('shortcut:force-winrate');
             }
         });
+=======
+        globalShortcut.register('Control+O', () => { if (liveWindow) liveWindow.webContents.send('shortcut:toggle-winrate'); });
+        globalShortcut.register('Control+X', () => { if (liveWindow) liveWindow.isVisible() ? liveWindow.hide() : liveWindow.show(); });
+>>>>>>> c3886816852b3562e04905206a3a072f9223f682
         return true;
     } catch (e) {
         console.error("Shortcut registration failed", e);
