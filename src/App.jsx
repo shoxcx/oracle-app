@@ -3915,11 +3915,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
           puuid={displayUser?.puuid}
           panelClass={cn(panelClass, "min-h-[140px]")}
           t={t}
-<<<<<<< HEAD
           isPremium={isPremium && (!currentUser || displayUser?.puuid === currentUser?.puuid)}
-=======
-          isPremium={isPremium}
->>>>>>> c3886816852b3562e04905206a3a072f9223f682
           onSubscribe={() => setActiveTab('subscription')}
         />
 
@@ -5094,15 +5090,9 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         <div className="relative h-full flex items-center px-8 z-10">
           <div className="flex items-start gap-6">
             <div className="relative group">
-<<<<<<< HEAD
               <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${displayUser?.profileIconId || 29}.jpg`} className={cn("w-28 h-28 rounded-[2rem] border-4 shadow-2xl relative z-10 transition-all", isDisplayUserPremium ? "border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border-[#1e1e24]")} />
               <div className="absolute -top-3 -left-3 bg-[#5c7ce5] text-white font-bold px-2 py-0.5 rounded-lg text-xs shadow-lg z-20 uppercase">{displayUser?.region || "EUW"}</div>
               {isDisplayUserPremium && (
-=======
-              <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${displayUser?.profileIconId || 29}.jpg`} className={cn("w-28 h-28 rounded-[2rem] border-4 shadow-2xl relative z-10 transition-all", isPremium ? "border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border-[#1e1e24]")} />
-              <div className="absolute -top-3 -left-3 bg-[#5c7ce5] text-white font-bold px-2 py-0.5 rounded-lg text-xs shadow-lg z-20 uppercase">{displayUser?.region || "EUW"}</div>
-              {isPremium && (
->>>>>>> c3886816852b3562e04905206a3a072f9223f682
                 <div className="absolute -top-3 -right-3 z-20 animate-in zoom-in duration-300">
                   <div className="bg-gradient-to-br from-yellow-300 to-yellow-600 text-[#13141a] p-1.5 rounded-full shadow-[0_0_15px_rgba(234,179,8,0.5)] border-2 border-[#13141a]">
                     <Star size={18} className="fill-current" />
@@ -5114,13 +5104,9 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
               )}
             </div>
             <div className="mt-2 text-left">
-<<<<<<< HEAD
               <div className="relative group mb-0 leading-tight">
                 <h1 className={cn("text-3xl font-semibold tracking-tight italic inline-block", isDisplayUserPremium ? "text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 drop-shadow-sm" : "text-gray-900 dark:text-gray-100")}>{displayUser?.gameName || displayUser?.displayName || "Summoner"}</h1>
               </div>
-=======
-              <h1 className={cn("text-3xl font-semibold tracking-tight mb-0 leading-tight italic", isPremium ? "text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-600 drop-shadow-sm" : "text-gray-900 dark:text-gray-100")}>{displayUser?.gameName || displayUser?.displayName || "Summoner"}</h1>
->>>>>>> c3886816852b3562e04905206a3a072f9223f682
               <div className="text-lg text-gray-600 dark:text-gray-400 font-normal uppercase flex items-center gap-3">
                 <span>#{displayUser?.tagLine || displayUser?.region || "EUW"}</span>
               </div>
@@ -6881,10 +6867,7 @@ function CustomSelect({ value, onChange, options, className = "", buttonClassNam
     </div>
   );
 }
-<<<<<<< HEAD
-=======
 
->>>>>>> c3886816852b3562e04905206a3a072f9223f682
 function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, musicOverlayEnabled, setMusicOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast, setActiveTab, isPremium, setIsPremium }) {
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const languages = [
@@ -8463,13 +8446,8 @@ function AICoachingPanel({ game, t, onWatch }) {
   const isWatchable = game.replayMeta?.state === 'WATCH';
   const mode = game._mode || getQueueLabel(game.queueId, t);
   const champName = game._champName || p.championName || getChampName(p.championId);
-<<<<<<< HEAD
   const roleName = getRoleLabel(p);
   const roleIcon = getRoleIcon(p);
-=======
-  const roleName = getRoleLabel(p.timeline?.lane, p.timeline?.role);
-  const roleIcon = getRoleIcon(p.timeline?.lane);
->>>>>>> c3886816852b3562e04905206a3a072f9223f682
 
   const opponent = useMemo(() => {
     if (!game?.participants || !p) return null;
