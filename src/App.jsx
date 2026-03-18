@@ -1369,8 +1369,8 @@ function FloatingParticles() {
 
 function GlobalFullScreenLoader({ text = "Chargement...", subtext = "Les données sont en train d'être récupéré..." }) {
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#f5f5f7] dark:bg-[rgb(var(--bg-main))] animate-in fade-in duration-300">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-[#f5f5f7] dark:bg-[rgb(var(--bg-main))] animate-in fade-in duration-300 rounded-3xl overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-3xl">
         <motion.div
           initial={{ scale: 0.8, opacity: 0, rotate: -25 }}
           animate={{ scale: 1, opacity: 0.5, rotate: 15 }}
@@ -1379,6 +1379,7 @@ function GlobalFullScreenLoader({ text = "Chargement...", subtext = "Les donnée
         />
       </div>
       <div className="relative z-10 flex flex-col items-center justify-center p-12 w-full">
+        <RefreshCw size={36} className="text-accent-primary/80 animate-spin mb-8 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
         <motion.div 
           initial="hidden" animate="visible"
           variants={{
@@ -7850,32 +7851,9 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           />
           <SettingCard
             icon={Activity} color="indigo"
-            title={"Prédiction de Victoire"} desc={"Active l'overlay prédictif (Winrate) et définit son raccourci."}
+            title={"Prédiction de Victoire"} desc={"Active l'overlay prédictif (Winrate). Raccourci pour l'afficher : CTRL+X"}
             action={
               <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={overlaySettings.winProbabilityShortcut?.replace('CommandOrControl', 'CTRL') || 'CTRL+X'}
-                  onClick={(e) => {
-                    const keys = [];
-                    const handleKeyDown = (ke) => {
-                      ke.preventDefault();
-                      if (ke.key !== 'Control' && ke.key !== 'Alt' && ke.key !== 'Shift') {
-                        let finalKey = ke.key.toUpperCase();
-                        if (ke.ctrlKey) finalKey = `CommandOrControl+${finalKey}`;
-                        else if (ke.altKey) finalKey = `Alt+${finalKey}`;
-                        else if (ke.shiftKey) finalKey = `Shift+${finalKey}`;
-                        setOverlaySettings(p => ({ ...p, winProbabilityShortcut: finalKey }));
-                        if (window.ipcRenderer) window.ipcRenderer.invoke('app:update-winrate-shortcut', finalKey);
-                        document.removeEventListener('keydown', handleKeyDown);
-                      }
-                    };
-                    e.target.value = "Appuyez...";
-                    document.addEventListener('keydown', handleKeyDown);
-                  }}
-                  className="w-20 text-[10px] bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-gray-100 rounded-xl px-2 py-1.5 font-bold text-center cursor-pointer outline-none hover:border-indigo-400/50 transition-colors"
-                />
                 <SettingsToggle active={overlaySettings.winProbability !== false} onToggle={() => setOverlaySettings(p => ({ ...p, winProbability: p.winProbability === false ? true : false }))} />
               </div>
             }
@@ -8569,10 +8547,7 @@ function BuildView({ t, panelClass, initialChamp, ddragonVersion, championList }
 
       <div className="flex-1 min-h-0">
         {loading ? (
-          <div className="h-full flex flex-col items-center justify-center gap-4">
-            <RefreshCw className="w-12 h-12 animate-spin text-accent-primary/30" />
-            <span className="text-[10px] font-black uppercase tracking-[0.6em] animate-pulse text-white/20">Syncing Intelligence...</span>
-          </div>
+          <GlobalFullScreenLoader text="TIERLIST & BUILDS" subtext="SYNCING INTELLIGENCE..." />
         ) : data ? (
           <div className="h-full grid grid-cols-12 gap-3 animate-in fade-in duration-700">
             {/* Column 1: Items & Spells (Wide 3) */}
@@ -11714,7 +11689,7 @@ function RankingsView({ panelClass, setTargetSummoner, setActiveTab, ddragonVers
             <Trophy className="text-accent-primary" size={28} />
             Leaderboards
           </h2>
-          <p className="text-sm text-gray-500 font-medium mt-1">Meilleurs joueurs mondiaux par serveur (OP.GG)</p>
+          <p className="text-sm text-gray-500 font-medium mt-1">Meilleurs joueurs mondiaux par serveur</p>
         </div>
 
         {/* Region Selector */}
@@ -11739,10 +11714,7 @@ function RankingsView({ panelClass, setTargetSummoner, setActiveTab, ddragonVers
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4 opacity-50">
-            <div className="w-12 h-12 border-4 border-accent-primary/20 border-t-accent-primary rounded-full animate-spin" />
-            <div className="font-bold text-gray-400 uppercase tracking-widest text-xs">Chargement du ladder...</div>
-          </div>
+          <GlobalFullScreenLoader text="CLASSEMENTS" subtext="CHARGEMENT DU LADDER..." />
         ) : !data || data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-50">
             <Trophy size={48} className="mb-4 text-gray-600" />
