@@ -1,7 +1,7 @@
 {
   "name": "lol-tracker",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "main": "electron_app/main.cjs",
   "scripts": {
@@ -16,6 +16,8 @@
   "build": {
     "appId": "com.oracle.app",
     "productName": "Oracle",
+    "artifactName": "Oracle_Installer_0.0.0.exe",
+    "icon": "electron_app/icon.png",
     "publish": [
       {
         "provider": "github",
@@ -33,7 +35,10 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "public/oracle-logo.png"
+      "icon": "electron_app/icon.png"
+    },
+    "nsis": {
+      "oneClick": true
     }
   },
   "dependencies": {

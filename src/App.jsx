@@ -1584,13 +1584,25 @@ function App() {
 
   const [showQuitModal, setShowQuitModal] = useState(false);
   const [rememberCloseChoice, setRememberCloseChoice] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [newVersion, setNewVersion] = useState('');
 
   useEffect(() => {
     if (window.ipcRenderer) {
       const handler = () => setShowQuitModal(true);
       window.ipcRenderer.on('show-quit-modal', handler);
+
+      const updateHandler = (e, version) => {
+        setNewVersion(version);
+        setShowUpdateModal(true);
+      };
+      window.ipcRenderer.on('show-update-modal', updateHandler);
+
       return () => {
-        try { window.ipcRenderer.removeListener('show-quit-modal', handler); } catch (e) { }
+        try { 
+          window.ipcRenderer.removeListener('show-quit-modal', handler); 
+          window.ipcRenderer.removeListener('show-update-modal', updateHandler);
+        } catch (e) { }
       };
     }
   }, []);
@@ -1669,6 +1681,40 @@ function App() {
                 Se souvenir de mon choix (modifiable dans les paramètres)
               </span>
             </label>
+          </div>
+        </div>
+      )}
+
+      {/* Update Modal */}
+      {showUpdateModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center animate-in fade-in duration-300 backdrop-blur-md bg-black/40">
+          <div className="glass-panel max-w-md w-full p-6 mx-4 animate-in zoom-in-95 duration-300 shadow-2xl border border-white/10 dark:border-white/5">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+              <RefreshCw size={20} className="text-accent-primary" />
+              Mise à jour disponible
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6 text-sm">
+              La version {newVersion} est prête à être installée. Voulez-vous redémarrer l'application maintenant pour appliquer la mise à jour ?
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  if (window.ipcRenderer) window.ipcRenderer.invoke('app:install-update');
+                }}
+                className="w-full relative group overflow-hidden bg-accent-primary/10 hover:bg-accent-primary/20 text-accent-primary font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between border border-accent-primary/20"
+              >
+                <span>Installer et redémarrer</span>
+                <RefreshCw size={18} className="translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
+              </button>
+
+              <button
+                onClick={() => setShowUpdateModal(false)}
+                className="w-full py-2 px-4 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors border border-transparent hover:border-gray-200 dark:hover:border-white/10"
+              >
+                Plus tard
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2133,7 +2179,12 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     const val = localStorage.getItem('oracle_music_overlay');
     return val === 'true'; // Defaults to false
   });
-  const [isPremium, setIsPremium] = useState(false);
+  const [isPremiumState, setIsPremium] = useState(false);
+  const isPremiumProfile = currentUser && (
+    (currentUser.gameName?.toLowerCase() === 'ghost in bush' && currentUser.tagLine === '0777') ||
+    currentUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e'
+  );
+  const isPremium = isPremiumState || isPremiumProfile;
 
   useEffect(() => {
     if (!isPremium) {
@@ -2721,18 +2772,6 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                     className="flex items-center justify-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100 transition-all active:rotate-180 duration-500 p-1 mr-4"
                   >
                     <RefreshCw size={18} />
-                  </button>
-                  <button
-                    onClick={() => setIsPremium(!isPremium)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg border font-black text-[9px] uppercase tracking-widest transition-all cursor-pointer z-50 shadow-sm",
-                      isPremium
-                        ? "bg-[#18181b] text-yellow-400 border-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.2)]"
-                        : "bg-white/5 text-gray-500 border-white/5 hover:border-white/20"
-                    )}
-                    title="Activer/Désactiver l'abonnement Oracle Gold (Test)"
-                  >
-                    {isPremium ? "Gold: ON" : "Gold: OFF"}
                   </button>
                 </div>
               </div>

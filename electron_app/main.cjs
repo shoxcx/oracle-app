@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, screen, shell, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 process.on('uncaughtException', (err) => {
     if (err.code === 'EPIPE') {
@@ -84,7 +85,7 @@ function createMainWindow() {
             webviewTag: true
         },
         title: 'Oracle',
-        icon: path.join(__dirname, '../public/oracle-logo.png'),
+        icon: path.join(__dirname, 'icon.png'),
         backgroundColor: '#1C1C21',
         show: false,
         frame: false,
@@ -1016,7 +1017,7 @@ app.whenReady().then(() => {
     createInGameWindow();
 
     // Create System Tray
-    const iconPath = path.join(__dirname, '../src/assets/oracle_logo.png');
+    const iconPath = path.join(__dirname, 'icon.png');
     const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
     tray = new Tray(icon);
     const contextMenu = Menu.buildFromTemplate([
@@ -1037,6 +1038,20 @@ app.whenReady().then(() => {
     // Start shortcut registered from App.jsx via app:register-shortcut
 
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); });
+
+    // Auto Updater logic
+    autoUpdater.autoDownload = true;
+    autoUpdater.checkForUpdatesAndNotify();
+
+    autoUpdater.on('update-downloaded', (info) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('show-update-modal', info.version);
+        }
+    });
+});
+
+ipcMain.handle('app:install-update', () => {
+    autoUpdater.quitAndInstall();
 });
 
 ipcMain.handle('app:show-live', () => {
