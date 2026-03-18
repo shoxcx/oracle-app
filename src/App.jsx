@@ -1414,6 +1414,15 @@ function GlobalFullScreenLoader({ text = "Chargement...", subtext = "Les donnée
   );
 }
 
+const premiumUsers = [
+  { name: 'ghost in bush', tag: '0777' },
+  { name: 'guillaume13fr', tag: '1968' },
+  { name: 'courgette', tag: '1234' },
+  { name: '92itastycrousty', tag: 'rnf' },
+  { name: 'magernos', tag: 'euw' },
+  { name: 'tartilou', tag: 'euw' }
+];
+
 function App() {
   const [appMode, setAppMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -2187,15 +2196,6 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     return val === 'true'; // Defaults to false
   });
   const [isPremiumState, setIsPremium] = useState(false);
-  
-  const premiumUsers = [
-    { name: 'ghost in bush', tag: '0777' },
-    { name: 'guillaume13fr', tag: '1968' },
-    { name: 'courgette', tag: '1234' },
-    { name: '92itastycrousty', tag: 'rnf' },
-    { name: 'magernos', tag: 'euw' },
-    { name: 'tartilou', tag: 'euw' }
-  ];
 
   const isPremiumProfile = currentUser && (
     premiumUsers.some(p => currentUser.gameName?.toLowerCase() === p.name && currentUser.tagLine?.toLowerCase() === p.tag) ||
@@ -2204,12 +2204,13 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   const isPremium = isPremiumState || isPremiumProfile;
 
   useEffect(() => {
+    if (!currentUser) return; // Wait for LCU profile to load before wiping settings
     if (!isPremium) {
       if (musicOverlayEnabled) setMusicOverlayEnabled(false);
       if (autoAccept) setAutoAccept(false);
       if (theme !== 'classic') setTheme('classic');
     }
-  }, [isPremium]);
+  }, [isPremium, currentUser]);
 
 
   const regions = ['EUW', 'NA', 'KR', 'EUNE', 'BR', 'TR', 'LAS', 'LAN', 'OCE', 'RU', 'JP', 'PH', 'SG', 'TH', 'TW', 'VN'];
@@ -4701,24 +4702,40 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         setActiveGame(foundActiveGame);
 
         if (user && user.puuid) {
-          const region = user.region || currentUser?.region || 'EUW';
+          const isExternal = user?.isExternal || targetSummoner?.skipLcu;
           const hasRiotKey = !!(overlaySettings?.riotApiKey);
 
           const [stats, matches, mastery] = await Promise.all([
-            hasRiotKey
-              ? window.ipcRenderer.invoke('riot:get-league-entries', { summonerId: user.summonerId, region })
+            isExternal
+              ? Promise.resolve({ error: "scraper has stats in user object" })
               : window.ipcRenderer.invoke('lcu:get-ranked-stats', user.puuid),
 
-            hasRiotKey
-              ? window.ipcRenderer.invoke('riot:get-match-history', { puuid: user.puuid, region, count: 50 })
+            isExternal
+              ? window.ipcRenderer.invoke('scraper:get-match-history', user.isExternal ? user.puuid : (user.gameName ? `${user.gameName}#${user.tagLine}` : user.displayName), user.region)
               : window.ipcRenderer.invoke('lcu:get-match-history', user.puuid, 0, 150),
 
-            window.ipcRenderer.invoke('lcu:get-champion-mastery', user.puuid)
+            isExternal
+              ? Promise.resolve([])
+              : window.ipcRenderer.invoke('lcu:get-champion-mastery', user.puuid)
           ]);
 
-          // Normalize League Stats if from Riot API
+          // Normalize League Stats if from Riot API or Scraper
           let normalizedStats = stats;
-          if (hasRiotKey && Array.isArray(stats)) {
+          if (isExternal) {
+            normalizedStats = {
+              queueMap: {
+                RANKED_SOLO_5x5: {
+                  tier: user.tier || "UNRANKED",
+                  division: user.division || "",
+                  leaguePoints: user.lp || 0,
+                  wins: user.wins || 0,
+                  losses: user.losses || 0,
+                  winRatio: user.wins ? Math.round((user.wins / (user.wins + user.losses)) * 100) : 0
+                },
+                RANKED_FLEX_SR: { tier: 'UNRANKED', division: '' }
+              }
+            };
+          } else if (hasRiotKey && Array.isArray(stats)) {
             const solo = stats.find(s => s.queueType === 'RANKED_SOLO_5x5');
             const flex = stats.find(s => s.queueType === 'RANKED_FLEX_SR');
             normalizedStats = {
@@ -4760,7 +4777,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                 const champStats = {};
                 const roleCounts = { TOP: 0, JUNGLE: 0, MIDDLE: 0, BOTTOM: 0, SUPPORT: 0, total: 0 };
 
-                recentGames.forEach(g => {
+                recentGames.slice(0, 20).forEach(g => {
                   // Find self in summary
                   const iden = g.participantIdentities.find(i => i.player.puuid === user.puuid);
                   if (!iden) return;
@@ -4770,7 +4787,8 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
 
                   // Champ Stats
                   const cid = part.championId;
-                  const cName = championMap[cid] || "Unknown";
+                  // Scraper provides part.championName, if native LCU we use championMap
+                  const cName = part.championName && part.championName !== "Unknown" ? part.championName : (championMap[cid] || "Unknown");
 
                   if (!champStats[cName]) {
                     champStats[cName] = { name: cName, count: 0, wins: 0, k: 0, d: 0, a: 0 };
@@ -5252,7 +5270,10 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   }
 
   // Determines if the avatar should have the Golden aesthetic (only if it's the current user)
-  const isDisplayUserPremium = isPremium && (!targetSummoner || displayUser?.puuid === currentUser?.puuid);
+  const isDisplayUserPremium = displayUser && (
+    premiumUsers.some(p => displayUser.gameName?.toLowerCase() === p.name && displayUser.tagLine?.toLowerCase() === p.tag) ||
+    displayUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e'
+  );
 
   return (
     <div id="profile-scroll-container" className={cn("h-full flex flex-col gap-2 animate-in fade-in", panelClass, "p-0! overflow-y-auto custom-scrollbar bg-white dark:bg-slate-50 dark:bg-[#0a0a0c] transition-colors duration-300")}>
@@ -5630,8 +5651,11 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
             <div className="flex justify-between items-center text-center">
               {['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'SUPPORT'].map((r, i) => {
                 const count = roleStats[r] || 0;
-                const total = Math.max(1, roleStats.total);
-                const pct = Math.round((count / total) * 100);
+                
+                // Calculate total based only on matched structured roles so percentages reflect exact distribution
+                const validTotal = Math.max(1, ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'SUPPORT'].reduce((acc, curr) => acc + (roleStats[curr] || 0), 0));
+                
+                const pct = Math.round((count / validTotal) * 100);
 
                 // Map to icon names
                 const iconMap = {
@@ -5646,7 +5670,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                 return (
                   <div key={r} className="flex flex-col items-center gap-1 group">
                     <img src={iconUrl} className={cn("w-6 h-6 transition-all opacity-40 group-hover:opacity-100", pct > 0 ? "opacity-90" : "opacity-30 grayscale")} />
-                    <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">{pct}%</div>
+                    <div className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">{count > 0 ? pct + '%' : '0%'}</div>
                     <div className="text-[9px] text-gray-500 font-medium">{count} {t('parties')}</div>
                   </div>
                 );
@@ -5817,10 +5841,21 @@ function LensCard({ data, t, rankedStats }) {
         else if (avgScore >= 35) { highestTier = "BRONZE"; }
         else { highestTier = "IRON"; }
 
-        // Dynamic division (I to IV) based on the score variance
+        // Dynamic division (I to IV) based on the score variance properly interpolated
         if (["DIAMOND", "EMERALD", "PLATINUM", "GOLD", "SILVER", "BRONZE", "IRON"].includes(highestTier)) {
-          const divIndex = 3 - (Math.floor(avgScore) % 4);
-          const divs = ["I", "II", "III", "IV"];
+          let tMin = 35; let tMax = 45;
+          if (highestTier === "DIAMOND") { tMin = 75; tMax = 80; }
+          else if (highestTier === "EMERALD") { tMin = 68; tMax = 75; }
+          else if (highestTier === "PLATINUM") { tMin = 60; tMax = 68; }
+          else if (highestTier === "GOLD") { tMin = 52; tMax = 60; }
+          else if (highestTier === "SILVER") { tMin = 45; tMax = 52; }
+          else if (highestTier === "BRONZE") { tMin = 35; tMax = 45; }
+          else if (highestTier === "IRON") { tMin = 0; tMax = 35; }
+
+          const percent = Math.max(0, Math.min(1, (avgScore - tMin) / (tMax - tMin)));
+          const divs = ["IV", "III", "II", "I"];
+          let divIndex = Math.floor(percent * 4);
+          if (divIndex > 3) divIndex = 3;
           highestDivision = divs[divIndex];
         }
 
@@ -7867,6 +7902,11 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             action={<SettingsToggle active={overlaySettings.objectiveTimer ?? true} onToggle={() => setOverlaySettings(p => ({ ...p, objectiveTimer: !(p.objectiveTimer ?? true) }))} />}
           />
           <SettingCard
+            icon={Sparkles} color="amber"
+            title={t('gold_sound_label') || "Alerte Or (1200g)"} desc={t('gold_sound_desc') || "Joue un son quand vous atteignez 1200 gold"}
+            action={<SettingsToggle active={overlaySettings.goldSound !== false} onToggle={() => setOverlaySettings(p => ({ ...p, goldSound: p.goldSound === false ? true : false }))} />}
+          />
+          <SettingCard
             icon={Map} color="purple"
             title={"In-Game Stats"} desc={"Affiche une comparaison de vos statistiques en direct (GPM, CSM, etc.) en bas à droite de l'écran."}
             action={<SettingsToggle active={overlaySettings.inGameStats !== false} onToggle={() => setOverlaySettings(p => ({ ...p, inGameStats: p.inGameStats === false ? true : false }))} />}
@@ -7891,7 +7931,7 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
         <SettingsSection title="Notifications & Social" icon={Bell}>
           <SettingCard
             icon={Users} color="indigo"
-            title="Overlay Social" desc="Affiche une notification visuelle en bas à droite de l'écran quand vos amis se connectent ou lancent une partie."
+            title="Overlay Social" desc="Affiche une notification visuelle en haut à droite de l'écran quand vos amis se connectent ou lancent une partie."
             action={<SettingsToggle active={socialOverlayEnabled} onToggle={() => setSocialOverlayEnabled(!socialOverlayEnabled)} />}
           />
           <SettingCard

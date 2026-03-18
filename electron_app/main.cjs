@@ -575,6 +575,7 @@ ipcMain.handle('live:get-player-list', async () => liveApi.getPlayerList());
 ipcMain.handle('riot:get-match-history', async (_, { puuid, region, count }) => riotApi.getMatchHistory(puuid, region, count));
 ipcMain.handle('riot:get-match-details', async (_, { matchId, region }) => riotApi.getMatchDetails(matchId, region));
 ipcMain.handle('riot:get-league-entries', async (_, { summonerId, region }) => riotApi.getLeagueEntries(summonerId, region));
+ipcMain.handle('scraper:get-match-history', async (_, puuid, region) => scraper.getMatchHistory(puuid, region));
 
 // lazy handler moved to the bottom of the file
 
@@ -998,6 +999,49 @@ async function monitorSocialLoop() {
     }
 }
 
+let activeWindowTrackerInterval = null;
+async function startActiveWindowTracker() {
+    try {
+        const activeWinPkg = await import('active-win');
+        const activeWin = activeWinPkg.default;
+        
+        activeWindowTrackerInterval = setInterval(async () => {
+            try {
+                const win = await activeWin();
+                if (!win || !win.owner || typeof win.owner.name !== 'string') return;
+                
+                const name = win.owner.name.toLowerCase();
+                const title = (win.title || '').toLowerCase();
+                
+                const isLeague = name.includes('league') || name.includes('riot');
+                const isOracle = name.includes('oracle') || name.includes('electron') || title.includes('oracle');
+                
+                const shouldShow = isLeague || isOracle;
+                
+                if (ingameWindow && !ingameWindow.isDestroyed()) {
+                    const isVisible = ingameWindow.isVisible();
+                    if (['InProgress', 'GameStart'].includes(lastPhase)) {
+                        if (shouldShow && !isVisible) {
+                            ingameWindow.showInactive();
+                        } else if (!shouldShow && isVisible) {
+                            // Don't hide using fadeOutAndHide because it takes time, just hide immediately for alt-tab speed
+                            ingameWindow.hide();
+                        }
+                    }
+                }
+
+                if (liveWindow && !liveWindow.isDestroyed()) {
+                    if (!shouldShow && liveWindow.isVisible()) {
+                        liveWindow.hide();
+                    }
+                }
+            } catch (err) {}
+        }, 1000);
+    } catch(e) {
+        console.error("Failed to init active-win", e);
+    }
+}
+
 setInterval(monitorSocialLoop, 3000);
 
 app.whenReady().then(() => {
@@ -1039,6 +1083,8 @@ app.whenReady().then(() => {
     // Start shortcut registered from App.jsx via app:register-shortcut
 
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); });
+
+    startActiveWindowTracker();
 
     // Auto Updater logic
     autoUpdater.autoDownload = true;

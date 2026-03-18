@@ -1782,11 +1782,15 @@ class Scraper {
         });
     }
 
-    async getMatchHistory(puuid) {
-        if (!puuid.startsWith('ext~')) return { games: { games: [] } };
-        const parts = puuid.split('~');
-        const name = decodeURIComponent(parts[1]);
-        const region = parts[2] || 'EUW';
+    async getMatchHistory(puuid_or_name, regionOverride = 'euw') {
+        let name = puuid_or_name;
+        let region = regionOverride;
+
+        if (puuid_or_name && puuid_or_name.startsWith('ext~')) {
+            const parts = puuid_or_name.split('~');
+            name = decodeURIComponent(parts[1]);
+            region = parts[2] || region;
+        }
         const { slug } = this.parseName(name);
 
         const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br' };
@@ -1805,7 +1809,7 @@ class Scraper {
                         const clean = t => t ? t.innerText.trim() : "";
                         const region = \`${region}\`;
                         const name = \`${name.replace(/\\r?\\n/g, '')}\`;
-                        const puuid = \`${puuid}\`;
+                        const puuid = \`${puuid_or_name}\`;
                         
                         let rows = Array.from(document.querySelectorAll('.recentGamesTable tbody tr'));
                         // Filter to valid game rows only (must contain kills stats or match specific structure)
@@ -1931,7 +1935,7 @@ class Scraper {
                                             teamId: teamId,
                                             championName: pChamp,
                                             stats: stats,
-                                            puuid: isSelected ? puuid : \`ext~\${encodeURIComponent(pName)}~\${region}\`,
+                                            puuid: isSelected ? puuid_or_name : \`ext~\${encodeURIComponent(pName)}~\${region}\`,
                                             summonerName: pName,
                                             kp: isSelected ? kp : 0
                                         });
@@ -1940,13 +1944,13 @@ class Scraper {
                                     });
                                 });
                             } catch (err) {
-                                parsedPlayers = [{ participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid, summonerName: name, kp: kp, playerError: err.message }];
+                                parsedPlayers = [{ participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid_or_name, summonerName: name, kp: kp, playerError: err.message }];
                             }
 
                             // Fallback if parsing failed
                             if(parsedPlayers.length === 0) {
                                 parsedPlayers = [
-                                    { participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid, summonerName: name, kp: kp, playerError: "None found in DOM" }
+                                    { participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid_or_name, summonerName: name, kp: kp, playerError: "None found in DOM" }
                                 ];
                             }
 
