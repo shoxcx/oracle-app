@@ -846,17 +846,30 @@ class Scraper {
                             const lpText = clean(cells[3]);
                             const lp = parseInt(lpText.replace(/[^0-9]/g, '')) || 0;
 
-                            // Winrate / Stats
-                            const statsText = clean(cells[5]); 
-                            const wins = parseInt(statsText.match(/(\\d+)W/)?.[1]) || 0;
-                            const losses = parseInt(statsText.match(/(\\d+)L/)?.[1]) || 0;
+                            // Winrate / Stats - Search backwards for the column that holds W/L/%
+                            let statsText = '';
+                            for (let i = cells.length - 1; i >= 0; i--) {
+                                const cText = clean(cells[i]);
+                                if (cText.match(/\\d+[%WVL]/i)) {
+                                    statsText = cText;
+                                    break;
+                                }
+                            }
+                            if (!statsText) statsText = clean(cells[cells.length - 1]) || '';
+                            
+                            statsText = statsText.replace(/,/g, '').replace(/\\s+/g, ' '); 
+                            const nums = statsText.match(/\\d+/g);
+                            
+                            // Typically: [Wins, Losses, Winrate]
+                            const wins = (nums && nums.length > 0) ? parseInt(nums[0]) : 0;
+                            const losses = (nums && nums.length > 1) ? parseInt(nums[1]) : 0;
 
                             // 4. Icon ID Extraction
                             let iconId = Math.floor(Math.random() * 50) + 1;
-                            const img = row.querySelector('img[src*="profileIcon"], img[src*="profile_icons"]');
+                            const img = row.querySelector('img[src*="profileIcon"], img[src*="profile_icon"]');
                             if (img && img.src) {
-                                // Extract number from URL like ...profileIcon6268.jpg or .../profile_icons/6268.jpg
-                                const idMatch = img.src.match(/profile(?:Icon|_icons)\\/?(\\d+)/);
+                                // Extract number from URL like ...profileIcon6268.jpg or .../profile_icon/6268.jpg
+                                const idMatch = img.src.match(/profile(?:Icon|_icons|_icon)\\/?(\\d+)/i);
                                 if (idMatch) iconId = parseInt(idMatch[1]);
                             }
 

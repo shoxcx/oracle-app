@@ -596,7 +596,8 @@ ipcMain.handle('app:open-url', (_, url) => {
     }
 });
 
-ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+Shift+O') => {
+ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+X') => {
+    console.log(`[IPC] app:register-shortcut called with: ${winrateShortcut}`);
     try {
         globalShortcut.unregisterAll();
         globalShortcut.register('CommandOrControl+H', () => {
@@ -605,12 +606,9 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
                 else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
             }
         });
-        if (['CommandOrControl+C', 'CommandOrControl+V', 'CommandOrControl+X'].includes(winrateShortcut)) {
-            console.warn(`Prevented overriding standard shortcut: ${winrateShortcut}, coercing to CommandOrControl+Shift+O`);
-            winrateShortcut = 'CommandOrControl+Shift+O';
-        }
-        globalShortcut.register(winrateShortcut, () => {
-            console.log(`Shortcut ${winrateShortcut} pressed!`);
+
+        const action = () => {
+            console.log(`Shortcut pressed!`);
             if (!ingameWindow || ingameWindow.isDestroyed()) {
                 createInGameWindow();
                 ingameWindow.webContents.once('did-finish-load', () => {
@@ -623,7 +621,14 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
                 }
                 ingameWindow.webContents.send('shortcut:force-winrate');
             }
-        });
+        };
+
+        globalShortcut.register(winrateShortcut, action);
+        // Force a secondary fallback since Control+X is often eaten by Windows or League
+        if (winrateShortcut === 'CommandOrControl+X') {
+            globalShortcut.register('Alt+X', action);
+            globalShortcut.register('CommandOrControl+Shift+X', action);
+        }
         return true;
     } catch (e) {
         console.error("Shortcut registration failed", e);
@@ -640,12 +645,9 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
                 else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
             }
         });
-        if (['CommandOrControl+C', 'CommandOrControl+V', 'CommandOrControl+X'].includes(keys)) {
-            console.warn(`Prevented overriding standard shortcut: ${keys}, coercing to CommandOrControl+Shift+O`);
-            keys = 'CommandOrControl+Shift+O';
-        }
-        globalShortcut.register(keys, () => {
-            console.log(`Shortcut ${keys} pressed!`);
+
+        const action = () => {
+            console.log(`Shortcut pressed!`);
             if (!ingameWindow || ingameWindow.isDestroyed()) {
                 createInGameWindow();
                 ingameWindow.webContents.once('did-finish-load', () => {
@@ -658,7 +660,13 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
                 }
                 ingameWindow.webContents.send('shortcut:force-winrate');
             }
-        });
+        };
+
+        globalShortcut.register(keys, action);
+        if (keys === 'CommandOrControl+X') {
+            globalShortcut.register('Alt+X', action);
+            globalShortcut.register('CommandOrControl+Shift+X', action);
+        }
         return true;
     } catch (e) {
         console.error("Shortcut update failed", e);

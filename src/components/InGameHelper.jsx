@@ -42,9 +42,12 @@ export function InGameHelper({ ddragonVersion }) {
 
     const pushToast = (toast) => {
         const id = Date.now() + Math.random();
-        setToasts(prev => [...prev, { id, ...toast }]);
+        setToasts(prev => [...prev, { id, isLeaving: false, ...toast }]);
         setTimeout(() => {
-            setToasts(prev => prev.filter(t => t.id !== id));
+            setToasts(prev => prev.map(t => t.id === id ? { ...t, isLeaving: true } : t));
+            setTimeout(() => {
+                setToasts(prev => prev.filter(t => t.id !== id));
+            }, 500);
         }, toast.duration || 8000); // 8 seconds default
     };
 
@@ -381,57 +384,52 @@ export function InGameHelper({ ddragonVersion }) {
                     // --- DRAGONS ET BARONS DYNAMIQUES (Respawns inclus) ---
                     let drakeSpawnTime = 300; // 5:00 par défaut
                     let baronSpawnTime = 1200; // 20:00 par défaut
+                    let heraldSpawnTime = 840; // 14:00 par défaut
+                    let grubsSpawnTime = 300; // 5:00 par défaut pour les larves
 
                     if (data.events && data.events.Events) {
                         const dragons = data.events.Events.filter(e => e.EventName === 'DragonKill');
-                        if (dragons.length > 0) drakeSpawnTime = dragons[dragons.length - 1].EventTime + 300;
+                        if (dragons.length > 0) drakeSpawnTime = dragons[dragons.length - 1].EventTime + 300; // 5 min respawn
 
                         const barons = data.events.Events.filter(e => e.EventName === 'BaronKill');
-                        if (barons.length > 0) baronSpawnTime = barons[barons.length - 1].EventTime + 360; // 6 mins S15+
+                        if (barons.length > 0) baronSpawnTime = barons[barons.length - 1].EventTime + 180; // 3 min respawn
+
+                        const hordes = data.events.Events.filter(e => e.EventName === 'HordeKill');
+                        if (hordes.length > 0 && hordes[hordes.length - 1].EventTime < 525) grubsSpawnTime = hordes[hordes.length - 1].EventTime + 240; // 4 min respawn (avant héraut)
                     }
 
-                    // Drake (Notif à Spawn - 30s)
+                    // Notifs (30s avant)
+                    if (!refs.notifiedSpawns) refs.notifiedSpawns = {};
+
+                    // Drake
                     if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 90 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
                         refs.notifiedSpawns.drake = drakeSpawnTime;
                         pushToast({
-                            type: 'objective',
-                            title: 'OBJECTIF (30s)',
-                            name: 'Dragon',
-                            status: 'Préparez la vision autour de la fosse.',
-                            iconColor: 'bg-red-500',
-                            borderColor: 'bg-red-500 shadow-red-500/50',
-                            imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/dragon-100.png',
-                            duration: 12000
+                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Dragon', status: 'Le prochain Dragon apparaît bientôt.', iconColor: 'bg-red-500', borderColor: 'bg-red-500 shadow-red-500/50', imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/dragon-100.png', duration: 12000
                         });
                     }
 
-                    // Larves du néant (Spawn à 8:00 S16 -> Notif à 7:30 = 450s)
-                    if (gameTime >= 450 && gameTime < 550 && !refs.objVoidgrubs) {
-                        refs.objVoidgrubs = true;
-                        pushToast({
-                            type: 'objective',
-                            title: 'OBJECTIF (30s)',
-                            name: 'Larves du Néant',
-                            status: 'Important pour push les tours rapidement.',
-                            iconColor: 'bg-purple-700',
-                            borderColor: 'bg-purple-700 shadow-purple-700/50',
-                            icon: Skull, // Fallback symbol for void monsters
-                            duration: 12000
-                        });
-                    }
-
-                    // Baron Nashor (Notif à Spawn - 30s)
+                    // Baron
                     if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 90 && refs.notifiedSpawns.baron !== baronSpawnTime) {
                         refs.notifiedSpawns.baron = baronSpawnTime;
                         pushToast({
-                            type: 'objective',
-                            title: 'OBJECTIF MAJEUR (30s)',
-                            name: 'Baron Nashor',
-                            status: 'Objectif de victoire, contrôlez la rivière.',
-                            iconColor: 'bg-fuchsia-600',
-                            borderColor: 'bg-fuchsia-600 shadow-fuchsia-600/50',
-                            imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/baron-100.png',
-                            duration: 12000
+                            type: 'objective', title: 'OBJECTIF MAJEUR (30s)', name: 'Baron Nashor', status: 'Le Baron apparaît bientôt.', iconColor: 'bg-fuchsia-600', borderColor: 'bg-fuchsia-600 shadow-fuchsia-600/50', imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/baron-100.png', duration: 12000
+                        });
+                    }
+
+                    // Larves
+                    if (gameTime >= grubsSpawnTime - 30 && gameTime < grubsSpawnTime + 90 && refs.notifiedSpawns.grubs !== grubsSpawnTime && gameTime < 820) {
+                        refs.notifiedSpawns.grubs = grubsSpawnTime;
+                        pushToast({
+                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Larves du Néant', status: 'Important pour push les tours rapidement.', iconColor: 'bg-purple-700', borderColor: 'bg-purple-700 shadow-purple-700/50', icon: Skull, duration: 12000
+                        });
+                    }
+
+                    // Héraut
+                    if (gameTime >= heraldSpawnTime - 30 && gameTime < heraldSpawnTime + 90 && refs.notifiedSpawns.herald !== heraldSpawnTime) {
+                        refs.notifiedSpawns.herald = heraldSpawnTime;
+                        pushToast({
+                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Héraut de la Faille', status: 'Le Héraut apparaît dans 30s.', iconColor: 'bg-indigo-600', borderColor: 'bg-indigo-600 shadow-indigo-600/50', icon: Target, duration: 12000
                         });
                     }
                 }
@@ -759,29 +757,7 @@ export function InGameHelper({ ddragonVersion }) {
                                 </div>
                             )}
 
-                            {stateRefs.current.skillOrder && stateRefs.current.skillOrder.length > 0 && (
-                                <div className="flex flex-col gap-2 mt-2">
-                                    <div className="flex gap-1 opacity-90 overflow-hidden bg-black/20 p-2 rounded-[16px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] ring-1 ring-white/5 w-full">
-                                        {stateRefs.current.skillOrder.slice(0, 18).map((skill, idx) => {
-                                            const colors = {
-                                                'Q': 'text-blue-300 bg-blue-500/10 border-blue-400/20',
-                                                'W': 'text-teal-300 bg-teal-500/10 border-teal-400/20',
-                                                'E': 'text-amber-300 bg-amber-500/10 border-amber-400/20',
-                                                'R': 'text-purple-300 bg-purple-500/20 border-purple-400/50 shadow-[0_0_8px_rgba(168,85,247,0.4)]',
-                                            };
-                                            const isUltimate = skill === 'R';
-                                            const colorClass = colors[skill] || 'text-gray-400 bg-white/5 border-white/10';
-                                            return (
-                                                <div key={'skill-' + idx} className={`flex-1 flex flex-col items-center justify-center rounded-[6px] border ${colorClass} ${isUltimate ? 'ring-1 ring-purple-400/50' : ''} overflow-hidden bg-gradient-to-b from-white/[0.05] to-transparent`}>
-                                                    <span className="text-[11px] font-black leading-none py-1.5 drop-shadow-md">{skill}</span>
-                                                    <div className="h-px w-full bg-white/10 shadow-[0_1px_2px_rgba(0,0,0,0.5)]" />
-                                                    <span className="text-[8px] font-bold text-white/40 py-1 bg-black/40 w-full text-center">{idx + 1}</span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
+
                         </div>
                     </div>
                 )}
@@ -796,7 +772,7 @@ export function InGameHelper({ ddragonVersion }) {
                                 return (
                                     <div
                                         key={toast.id}
-                                        className="w-[380px] bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] rounded-[36px] p-7 flex flex-col gap-6 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)]"
+                                        className={`w-[380px] bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] rounded-[36px] p-7 flex flex-col gap-6 relative overflow-hidden pointer-events-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 -translate-x-8 scale-95' : 'animate-in slide-in-from-left-8 fade-in'}`}
                                     >
                                         {/* Intense Light Reflections for Liquid Glass */}
                                         <div className="absolute top-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
@@ -865,7 +841,7 @@ export function InGameHelper({ ddragonVersion }) {
                             return (
                                 <div
                                     key={toast.id}
-                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)]`}
+                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 -translate-x-8 scale-95' : 'animate-in slide-in-from-left-8 fade-in'}`}
                                 >
                                     {/* Accent Glow instead of line */}
                                     <div className={`absolute -left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
@@ -918,7 +894,7 @@ export function InGameHelper({ ddragonVersion }) {
                             return (
                                 <div
                                     key={toast.id}
-                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] flex-row-reverse`}
+                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] flex-row-reverse transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 translate-x-8 scale-95' : 'animate-in slide-in-from-right-8 fade-in'}`}
                                 >
                                     {/* Accent Glow */}
                                     <div className={`absolute -right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
