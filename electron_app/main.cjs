@@ -808,17 +808,39 @@ async function monitorGameLoop() {
 
                 // 2. AUTO RUNES
                 if (settings.autoImportRunes) {
-                    console.log(`[Monitor] Importing runes for ${champName}...`);
+                    console.log(`[Monitor] Importing runes & spells for ${champName}...`);
                     try {
-                        const build = await scraper.getChampionBuild(champName, 'mid');
-                        if (build && build.runes) {
-                            const { perks, styles } = await getPerkMapping();
+                        const targetRoleRaw = me.assignedPosition ? me.assignedPosition.toLowerCase() : 'mid';
+                        const roleMapping = { 'utility': 'support', 'bottom': 'adc', 'middle': 'mid', 'jungle': 'jungle', 'top': 'top' };
+                        const targetRole = roleMapping[targetRoleRaw] || targetRoleRaw || 'mid';
 
-                            const findStyleId = (name) => styles.find(s => s.name.toLowerCase() === name.toLowerCase())?.id;
-                            const findPerkId = (name) => perks.find(p => p.name.toLowerCase().replace(/[^a-z]/g, '') === name.toLowerCase().replace(/[^a-z]/g, ''))?.id;
+                        const build = await scraper.getChampionBuild(champName, targetRole);
+                        
+                        if (build) {
+                            // Summs update logic
+                            if (build.spells && build.spells.length >= 2) {
+                                let s1 = parseInt(build.spells[0]);
+                                let s2 = parseInt(build.spells[1]);
+                                
+                                // Apply Flash Positioning on the fetched spells natively
+                                if (settings.flashPosition === 'D' && s2 === 4) {
+                                    s2 = s1; s1 = 4;
+                                } else if (settings.flashPosition === 'F' && s1 === 4) {
+                                    s1 = s2; s2 = 4;
+                                }
 
-                            const primaryStyleId = findStyleId(build.runes.path);
-                            const selectedPerkIds = build.runes.active.map(name => findPerkId(name)).filter(id => id);
+                                if (me.spell1Id !== s1 || me.spell2Id !== s2) {
+                                    console.log(`[Monitor] Updating Summoner Spells to ${s1}, ${s2}`);
+                                    await lcu.setSummonerSpells(s1, s2);
+                                    me.spell1Id = s1;
+                                    me.spell2Id = s2;
+                                }
+                            }
+                        }
+
+                        if (build && build.runes && build.runes.primary && build.runes.active) {
+                            const primaryStyleId = parseInt(build.runes.primary);
+                            const selectedPerkIds = build.runes.active.map(id => parseInt(id)).filter(id => !isNaN(id));
 
                             if (primaryStyleId && selectedPerkIds.length >= 4) {
                                 const pages = await lcu.getRunePages();
@@ -827,7 +849,7 @@ async function monitorGameLoop() {
                                 const pageData = {
                                     name: `Oracle (${champName})`,
                                     primaryStyleId: primaryStyleId,
-                                    subStyleId: styles.find(s => s.id !== primaryStyleId)?.id || styles[0].id,
+                                    subStyleId: parseInt(build.runes.secondary) || 8200,
                                     selectedPerkIds: selectedPerkIds.slice(0, 9),
                                     current: true
                                 };
@@ -837,7 +859,15 @@ async function monitorGameLoop() {
                                     await lcu.putRunePage(oraclePage.id, pageData);
                                 } else {
                                     console.log("[Monitor] Creating new Oracle page...");
-                                    await lcu.postRunePage(pageData);
+                                    const postRes = await lcu.postRunePage(pageData);
+                                    if (!postRes || postRes.errorCode) {
+                                         console.log("[Monitor] Rune creation failed (likely max pages). Deleting oldest editable page.");
+                                         const editablePages = pages.filter(p => p.isEditable && p.name !== 'Oracle');
+                                         if (editablePages.length > 0) {
+                                             await lcu.deleteRunePage(editablePages[0].id);
+                                             await lcu.postRunePage(pageData);
+                                         }
+                                    }
                                 }
                                 console.log(`[Monitor] Runes successfully imported for ${champName}`);
                             } else {

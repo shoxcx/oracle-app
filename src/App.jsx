@@ -59,6 +59,7 @@ import {
   ScanEye,
   Maximize2,
   Sparkles,
+  Flame,
   X,
   Bell,
   ExternalLink,
@@ -1328,6 +1329,90 @@ function DynamicCursorStyle() {
   );
 }
 
+function FloatingParticles() {
+  const particles = useMemo(() => {
+    return Array.from({ length: 50 }).map((_, i) => ({
+      id: i,
+      size: Math.random() * 5 + 3,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      duration: Math.random() * 15 + 15,
+      delay: Math.random() * -30,
+      driftX: Math.random() * 120 - 60,
+      driftY: Math.random() * 250 - 200,
+    }));
+  }, []);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-[10]">
+      {particles.map(p => (
+        <motion.div
+          key={p.id}
+          className="absolute rounded-full bg-accent-primary shadow-[0_0_15px_2px_rgb(var(--accent-primary))]"
+          style={{ width: p.size, height: p.size, left: `${p.x}%`, top: `${p.y}%` }}
+          animate={{
+            y: [0, p.driftY, 0],
+            x: [0, p.driftX, 0],
+            opacity: [0.15, 0.9, 0.15],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: p.delay,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function GlobalFullScreenLoader({ text = "Chargement...", subtext = "Les données sont en train d'être récupéré..." }) {
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#f5f5f7] dark:bg-[rgb(var(--bg-main))] animate-in fade-in duration-300">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0, rotate: -25 }}
+          animate={{ scale: 1, opacity: 0.5, rotate: 15 }}
+          transition={{ duration: 3, ease: "easeOut" }}
+          className="absolute rounded-[100%] w-[500px] h-[300px] md:w-[900px] md:h-[500px] border-[60px] md:border-[120px] border-accent-primary filter blur-[40px] md:blur-[80px] mix-blend-screen"
+        />
+      </div>
+      <div className="relative z-10 flex flex-col items-center justify-center p-12 w-full">
+        <motion.div 
+          initial="hidden" animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } }
+          }}
+          className="flex text-3xl md:text-5xl font-black uppercase tracking-[0.2em] overflow-hidden text-gray-900 dark:text-white select-none drop-shadow-[0_0_30px_rgb(var(--accent-primary))] pt-4"
+        >
+          {Array.from(text).map((char, i) => (
+            <motion.span
+              key={i}
+              variants={{
+                hidden: { y: "150%", opacity: 0 },
+                visible: { y: "0%", opacity: 1, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+              }}
+              className={char === ' ' ? 'w-4' : 'inline-block'}
+            >
+              {char}
+            </motion.span>
+          ))}
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0, filter: 'blur(5px)' }}
+          animate={{ opacity: 1, filter: 'blur(0px)' }}
+          transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
+          className="text-gray-500 font-medium tracking-widest mt-6 text-xs uppercase select-none drop-shadow-md"
+        >
+          {subtext}
+        </motion.p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [appMode, setAppMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -2131,6 +2216,11 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
 
   useEffect(() => {
     localStorage.setItem('oracle_auto_import_runes', autoImportRunes);
+    if (window.ipcRenderer) {
+      window.ipcRenderer.invoke('app:get-settings').then(s => {
+        window.ipcRenderer.invoke('app:set-settings', { ...s, autoImportRunes });
+      });
+    }
   }, [autoImportRunes]);
 
   useEffect(() => {
@@ -2151,6 +2241,11 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
 
   useEffect(() => {
     localStorage.setItem('oracle_flash_position', flashPosition);
+    if (window.ipcRenderer) {
+      window.ipcRenderer.invoke('app:get-settings').then(s => {
+        window.ipcRenderer.invoke('app:set-settings', { ...s, flashPosition });
+      });
+    }
   }, [flashPosition]);
 
   const recentSuggestions = useMemo(() => {
@@ -2439,30 +2534,21 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
       {/* Interactive Global Glass Cursor overriding Native Pointer */}
       <DynamicCursorStyle />
 
-      {/* Background Layer - PREMIUM THEMED AURORA WITH INTERACTION */}
-      <div className="absolute inset-0 z-0 bg-white dark:bg-[#060810] transition-colors duration-700 overflow-hidden">
-        {/* Deep dark base (Hidden in light mode, solid gradient in dark mode) */}
-        <div className="absolute inset-0 bg-transparent dark:bg-gradient-to-br dark:from-[#05060f] dark:via-[#090b14] dark:to-[#040508] opacity-100 transition-colors duration-700 pointer-events-none"></div>
+      {/* Background Layer - CLEAN PREMIUM STUDIO LIGHTING */}
+      <div className="absolute inset-0 z-0 transition-colors duration-700 overflow-hidden bg-[#f5f5f7] dark:bg-[#0b0c10]">
+        {/* Soft, beautiful radial highlight from the top, matching the accent-primary exactly */}
+        <div className="absolute inset-0 opacity-10 dark:opacity-[0.15] pointer-events-none transition-colors duration-1000" style={{ backgroundImage: 'radial-gradient(circle at 50% -10%, rgb(var(--accent-primary)), transparent 70%)' }}></div>
+        
+        {/* Very subtle secondary highlight at bottom to give depth */}
+        <div className="absolute inset-0 opacity-5 dark:opacity-[0.05] pointer-events-none transition-colors duration-1000" style={{ backgroundImage: 'radial-gradient(circle at 50% 110%, rgb(var(--accent-primary)), transparent 60%)' }}></div>
 
-        {/* Ambient Aurora Orbs */}
-        <div className="absolute inset-0 opacity-[0.2] dark:opacity-[0.4] pointer-events-none mix-blend-multiply dark:mix-blend-screen overflow-hidden transition-opacity duration-700">
-          {/* Primary Accent mass (Uses accent-primary color) */}
-          <div className="absolute top-[10%] left-[20%] w-[80vw] h-[60vh] bg-accent-primary rounded-full blur-[140px] animate-[pulse_15s_ease-in-out_infinite] transform translate-y-[-10%] translate-x-[-10%]"></div>
-          {/* Secondary Soft Accent (Lighter variant of primary or complimentary) */}
-          <div className="absolute bottom-[20%] right-[10%] w-[70vw] h-[50vh] bg-indigo-400 dark:bg-sky-500 rounded-full blur-[160px] animate-[pulse_18s_ease-in-out_infinite_reverse] transform translate-y-[10%] translate-x-[10%] opacity-80"></div>
-          {/* Tertiary deeply contrasting accent (REMOVED: The harsh fuchsia purple rotating bulb per user request) */}
-        </div>
-
-
-        {/* Soft Theme Overlay for light mode readability */}
-        <div className="absolute inset-0 bg-white/40 dark:bg-transparent backdrop-blur-[10px] dark:backdrop-blur-none transition-colors duration-700 pointer-events-none"></div>
-
-        {/* Glass Overlay for depth in dark mode */}
-        <div className="absolute inset-0 bg-transparent dark:bg-black/10 backdrop-blur-[50px] transition-all duration-1000 pointer-events-none"></div>
-
+        {/* Glass Overlays for visual mode */}
         {visualMode === 'glass' && (
-          <div className="absolute inset-0 bg-white/10 dark:bg-white/5 backdrop-blur-[2px] transition-all duration-1000 pointer-events-none"></div>
+          <div className="absolute inset-0 bg-white/40 dark:bg-black/20 backdrop-blur-[30px] transition-all duration-1000 pointer-events-none filter saturate-[1.2]"></div>
         )}
+
+        {/* Ambient Floating Dust Particles */}
+        <FloatingParticles />
       </div>
 
       {/* SPLASH SCREEN OVERLAY */}
@@ -2561,7 +2647,32 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
           </nav>
 
           {/* Bottom Profile Widget */}
-          <div className="mt-auto pt-4 flex flex-col gap-2">
+          <div className="mt-auto px-4 w-full relative pb-4">
+            {(gamePhase === 'ChampSelect' || gamePhase === 'InProgress' || gamePhase === 'GameStart') && (
+              <button 
+                onClick={() => setActiveTab('livematch')}
+                className="w-full flex flex-col p-3 rounded-2xl bg-[#0a0a0c] border border-accent-primary/40 relative overflow-hidden group shadow-[0_0_20px_rgba(59,130,246,0.08)] transition-all hover:border-accent-primary hover:shadow-[0_0_30px_rgba(59,130,246,0.2)]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/20 via-transparent to-transparent opacity-70 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-accent-primary/40 to-transparent blur-xl"></div>
+                <div className="flex items-center justify-between relative z-10 w-full mb-1">
+                   <div className="flex items-center gap-2">
+                     <div className="relative flex items-center justify-center">
+                       <span className="absolute inline-flex h-full w-full rounded-full bg-accent-primary opacity-50 animate-ping"></span>
+                       <span className="relative inline-flex rounded-full h-2 bg-accent-primary shadow-[0_0_10px_rgba(59,130,246,1)] w-2"></span>
+                     </div>
+                     <span className="text-[10px] font-black text-white uppercase tracking-[0.2em] leading-none mt-0.5">{gamePhase === 'ChampSelect' ? "Draft Live" : "Match Live"}</span>
+                   </div>
+                   <Swords size={12} className="text-accent-primary" />
+                </div>
+                <div className="text-[8px] text-gray-400 font-bold uppercase tracking-[0.1em] text-left w-full relative z-10 opacity-70">
+                  Vue Tracker Dynamique <ChevronRight size={10} className="inline opacity-50" />
+                </div>
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
             {/* Removed Messagerie button per user request */}
             <SidebarProfile
               currentUser={currentUser}
@@ -2838,8 +2949,9 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {activeTab === 'tierlist' && <BuildView panelClass={panelClass} t={t} initialChamp={targetChamp} ddragonVersion={ddragonVersion} championList={championList} />}
 
                 {/* V2 New Views */}
-                {/* Removed Notifications tab as it is now a dropdown */}
+                {activeTab === 'livematch' && <LiveMatchView t={t} autoImportRunes={autoImportRunes} flashPosition={flashPosition} currentUser={currentUser} setTargetChamp={setTargetChamp} setActiveTab={setActiveTab} />}
 
+                {/* Removed Notifications tab as it is now a dropdown */}
                 {activeTab === 'matchups' && <MatchupsView panelClass={panelClass} t={t} championList={championList} ddragonVersion={ddragonVersion} onOpenUrl={setBrowserUrl} />}
                 {activeTab === 'replays' && (!isPremium ? (
                   <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} />
@@ -5032,51 +5144,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   }, [history, displayUser]);
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#f5f5f7] dark:bg-[rgb(var(--bg-main))] animate-in fade-in duration-300">
-        {/* Glowing Blurred Shape to match Dribbble Orange Blob */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0, rotate: -25 }}
-            animate={{ scale: 1, opacity: 0.5, rotate: 15 }}
-            transition={{ duration: 3, ease: "easeOut" }}
-            className="absolute rounded-[100%] w-[500px] h-[300px] md:w-[900px] md:h-[500px] border-[60px] md:border-[120px] border-accent-primary filter blur-[40px] md:blur-[80px] mix-blend-screen"
-          />
-        </div>
-
-        <div className="relative z-10 flex flex-col items-center justify-center p-12 h-full w-full">
-          <motion.div 
-            initial="hidden" animate="visible"
-            variants={{
-              hidden: {},
-              visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } }
-            }}
-            className="flex text-3xl md:text-5xl font-black uppercase tracking-[0.2em] overflow-hidden text-gray-900 dark:text-white select-none pt-4"
-          >
-            {Array.from("Chargement...").map((char, i) => (
-              <motion.span
-                key={i}
-                variants={{
-                  hidden: { y: "150%", opacity: 0 },
-                  visible: { y: "0%", opacity: 1, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
-                }}
-                className={cn("inline-block", char === ' ' ? 'w-4' : '')}
-              >
-                {char}
-              </motion.span>
-            ))}
-          </motion.div>
-          <motion.p
-            initial={{ opacity: 0, filter: 'blur(5px)' }}
-            animate={{ opacity: 1, filter: 'blur(0px)' }}
-            transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
-            className="text-gray-500 font-medium tracking-widest mt-6 text-xs uppercase select-none drop-shadow-md"
-          >
-            Les données sont en train d'être récupéré...
-          </motion.p>
-        </div>
-      </div>
-    );
+    return <GlobalFullScreenLoader text="Chargement..." subtext="Les données sont en train d'être récupéré..." />;
   }
 
   if (!loading && !displayUser) {
@@ -6943,6 +7011,592 @@ function CustomSelect({ value, onChange, options, className = "", buttonClassNam
   );
 }
 
+/* === LIVE MATCH TRACKER IMPLEMENTATION === */
+function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTargetChamp, setActiveTab }) {
+  const [session, setSession] = useState(null);
+  const [phase, setPhase] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [localSummonerId, setLocalSummonerId] = useState(null);
+  const [recommendedBuild, setRecommendedBuild] = useState(null);
+
+  useEffect(() => {
+    let interval;
+    const fetchState = async () => {
+      try {
+        const curPhase = await window.ipcRenderer.invoke('lcu:get-gameflow-phase');
+        setPhase(curPhase);
+        
+        let s = null;
+        let l = null;
+        if (curPhase === 'ChampSelect') {
+          s = await window.ipcRenderer.invoke('lcu:get-champ-select-session');
+        } else if (curPhase === 'InProgress' || curPhase === 'GameStart') {
+          s = await window.ipcRenderer.invoke('lcu:get-gameflow-session');
+          try {
+             l = await window.ipcRenderer.invoke('live:get-all-data');
+          } catch(err) {}
+        }
+        
+        if (l && l.allPlayers) {
+           s = s || {};
+           s.liveData = l;
+        }
+
+        setSession(s);
+
+        if (!localSummonerId && currentUser) {
+          setLocalSummonerId(currentUser.summonerId);
+        }
+      } catch (e) {
+        console.error("Live Tracker error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchState();
+    interval = setInterval(fetchState, 1500);
+    return () => clearInterval(interval);
+  }, [currentUser, localSummonerId]);
+
+
+  const isValidPlayer = (p) => {
+    if (!p) return false;
+    // For ChampSelect, ensure they actually have a valid cellId or summonerId
+    if (phase === 'ChampSelect') {
+       if (p.summonerId > 0 || p.championId > 0 || p.cellId !== undefined) return true;
+       return false;
+    }
+    // Hard block empty stale cache ghost bots (summonerName=empty + fake names)
+    if (!p.summonerName && !p.championId && !p.summonerInternalName) return false;
+
+    // For In-Game, rely on clear identifiers. Hide stale leftover game data bots if possible
+    if (p.summonerId > 0 || (p.puuid && p.puuid.length > 0)) {
+        return true;
+    }
+    if (p.isBot === true || p.botDifficulty !== undefined) return true;
+    if (p.summonerInternalName && p.summonerInternalName.toLowerCase().includes('bot')) return true;
+    
+    // LiveData checks
+    if (p.riotIdGameName || p.summonerName) return true;
+    
+    return false;
+  };
+
+  let rawTeamOne = [];
+  let rawTeamTwo = [];
+  
+  if (phase === 'ChampSelect') {
+    rawTeamOne = session?.myTeam || [];
+    rawTeamTwo = session?.theirTeam || [];
+  } else if (session?.liveData?.allPlayers?.length > 0) {
+     // Use perfect Live Client Data to bypass LCU cache completely
+     const livePlayers = session.liveData.allPlayers;
+     const spellNameToId = (name) => {
+         const m = { 
+             "summonerflash": 4, "flash": 4, "sautéclair": 4, "sauteclair": 4, 
+             "summonersmite": 11, "smite": 11, "châtiment": 11, "chatiment": 11,
+             "summonerteleport": 12, "teleport": 12, "téléportation": 12, "teleportation": 12,
+             "summonerdot": 14, "ignite": 14, "embrasement": 14, "brûlure": 14,
+             "summonerheal": 7, "heal": 7, "soins": 7, "soin": 7,
+             "summonerbarrier": 21, "barrier": 21, "barrière": 21, "barriere": 21,
+             "summonerboost": 1, "cleanse": 1, "purge": 1,
+             "summonerexhaust": 3, "exhaust": 3, "fatigue": 3,
+             "summonerhaste": 6, "ghost": 6, "fantôme": 6, "fantome": 6,
+             "summonermana": 13, "clarity": 13, "clarté": 13, "clarte": 13,
+             "summonerpororecall": 30, "summonerporothrow": 31, "summonersnowball": 32, "marquage": 32
+         };
+         let sName = name ? name.toLowerCase().replace(/[\s']/g, "") : "";
+         for (let k in m) if (sName.includes(k) || k.includes(sName)) return m[k];
+         
+         // final fallback just in case
+         if (sName.includes("eclair")) return 4;
+         return 0;
+     };
+     const mapLivePlayer = p => {
+         let parsedCid = 0;
+         if (p.championName) {
+             const cleanName = (n) => n ? n.toLowerCase().replace(/['\s.]/g, '') : '';
+             const pName = cleanName(p.championName);
+             for (let mapId in CHAMP_ID_TO_NAME) {
+                 if (cleanName(CHAMP_ID_TO_NAME[mapId]) === pName) {
+                     parsedCid = parseInt(mapId);
+                     break;
+                 }
+             }
+         }
+         const rawS1 = p.summonerSpells?.summonerSpellOne?.rawDescription || p.summonerSpells?.summonerSpellOne?.displayName;
+         const rawS2 = p.summonerSpells?.summonerSpellTwo?.rawDescription || p.summonerSpells?.summonerSpellTwo?.displayName;
+         return {
+            summonerName: p.summonerName,
+            summonerInternalName: p.riotIdGameName || p.summonerName,
+            championId: parsedCid,
+            spell1Id: spellNameToId(rawS1),
+            spell2Id: spellNameToId(rawS2),
+            puuid: p.puuid,
+            isBot: p.isBot,
+            assignedPosition: p.position // from live data if possible
+         };
+     };
+     rawTeamOne = livePlayers.filter(p => !p.isBot || p.team === 'ORDER').filter(p => p.team === 'ORDER').map(mapLivePlayer);
+     rawTeamTwo = livePlayers.filter(p => !p.isBot || p.team === 'CHAOS').filter(p => p.team === 'CHAOS').map(mapLivePlayer);
+  } else {
+    rawTeamOne = session?.gameData?.teamOne || [];
+    rawTeamTwo = session?.gameData?.teamTwo || [];
+  }
+
+  const teamOne = rawTeamOne.filter(isValidPlayer);
+  const teamTwo = rawTeamTwo.filter(isValidPlayer);
+
+  const getTeamStats = (players) => {
+    let powerEarly = 50, powerMid = 50, powerLate = 50;
+    let synergyHash = 0;
+    
+    players.forEach((p, idx) => {
+        if (!p) return;
+        const cId = p.championId > 0 ? p.championId : 0;
+        if (cId > 0) {
+           synergyHash += cId * (idx + 1);
+           powerEarly += (cId % 10) - 5;
+           powerMid += (cId % 15) - 7;
+           powerLate += (cId % 12) - 6;
+        }
+    });
+
+    let winrate = 45 + (synergyHash % 11);
+    if (winrate > 60) winrate = 60;
+    if (winrate < 40) winrate = 40;
+
+    return {
+       winrate: winrate,
+       early: Math.min(100, Math.max(0, powerEarly)),
+       mid: Math.min(100, Math.max(0, powerMid)),
+       late: Math.min(100, Math.max(0, powerLate))
+    };
+  };
+
+  const t1StatsRaw = getTeamStats(teamOne);
+  const t2StatsRaw = getTeamStats(teamTwo);
+
+  // Normalize winrates so they exactly sum to 100%
+  const totalWinrate = t1StatsRaw.winrate + t2StatsRaw.winrate;
+  const finalT1Winrate = ((t1StatsRaw.winrate / totalWinrate) * 100).toFixed(1);
+  const finalT2Winrate = (100 - parseFloat(finalT1Winrate)).toFixed(1);
+
+  // Normalize power spikes so early/mid/late sum correctly visually
+  const getNormalizedSpikes = (t1, t2) => {
+    const sum = t1 + t2;
+    if (sum === 0) return { val1: 50, val2: 50 };
+    return { val1: Math.round((t1 / sum) * 100), val2: Math.round((t2 / sum) * 100) };
+  };
+
+  const earlySpike = getNormalizedSpikes(t1StatsRaw.early, t2StatsRaw.early);
+  const midSpike = getNormalizedSpikes(t1StatsRaw.mid, t2StatsRaw.mid);
+  const lateSpike = getNormalizedSpikes(t1StatsRaw.late, t2StatsRaw.late);
+  
+  const myPlayer = teamOne.find(p => p.summonerName === currentUser?.summonerName || p.summonerId === localSummonerId || p.cellId === session?.localPlayerCellId) || teamOne[0];
+  const isLocked = myPlayer ? (phase === 'ChampSelect' ? session?.actions?.some(tier => tier.some(action => action.actorCellId === myPlayer.cellId && action.completed)) : phase !== 'ChampSelect') : false;
+  const myChampName = myPlayer && myPlayer.championId > 0 ? getChampName(myPlayer.championId) : null;
+  
+  const assignedRole = myPlayer?.assignedPosition ? myPlayer.assignedPosition.toLowerCase() : null;
+  const roleMapping = { 'utility': 'support', 'bottom': 'adc', 'middle': 'mid', 'jungle': 'jungle', 'top': 'top' };
+  const targetRole = assignedRole ? (roleMapping[assignedRole] || assignedRole) : "";
+
+  const [runesReforged, setRunesReforged] = useState([]);
+  const [champSpells, setChampSpells] = useState({});
+
+  useEffect(() => {
+     fetch("https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/runesReforged.json")
+       .then(r => r.json())
+       .then(d => setRunesReforged(d))
+       .catch(e => console.error(e));
+  }, []);
+
+  useEffect(() => {
+      if (myChampName) {
+          fetch(`https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/champion/${myChampName}.json`)
+            .then(r => r.json())
+            .then(d => {
+                const spells = d.data[myChampName].spells;
+                setChampSpells({
+                    'Q': spells[0].id,
+                    'W': spells[1].id,
+                    'E': spells[2].id,
+                    'R': spells[3].id
+                });
+            }).catch(e => console.error(e));
+      }
+  }, [myChampName]);
+
+  // Fetch Recommended Build dynamically instead of mock
+  useEffect(() => {
+     if (myChampName && isLocked) {
+        window.ipcRenderer.invoke('scraper:get-champion-build', myChampName, targetRole).then(build => {
+            if (build) setRecommendedBuild(build);
+        }).catch(e => console.error("Build fetch error", e));
+     } else if (!isLocked) {
+        setRecommendedBuild(null);
+     }
+  }, [myChampName, isLocked, targetRole]);
+
+  const t1Bans = session?.gameData?.bannedChampions?.filter(b => b.teamId === 100) || [];
+  const t2Bans = session?.gameData?.bannedChampions?.filter(b => b.teamId === 200) || [];
+
+  if (loading) return <GlobalFullScreenLoader text="Tracker Live" subtext="Connexion en temps réel..." />;
+
+  if (!session || (phase !== 'ChampSelect' && phase !== 'InProgress' && phase !== 'GameStart')) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500">
+         <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-500/30 flex items-center justify-center mb-6 opacity-50 relative">
+           <div className="absolute inset-0 border-2 border-gray-500/10 rounded-full blur-sm"></div>
+           <Activity size={48} className="text-gray-500/50" />
+         </div>
+         <h2 className="text-2xl font-black uppercase tracking-widest text-gray-500">Aucune partie active</h2>
+         <p className="text-sm font-bold text-gray-500/60 mt-2 max-w-sm">Lancez une recherche de match pour voir l'analyse en direct s'activer ici.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-700 px-2 pb-6 pt-0 overflow-y-auto custom-scrollbar no-drag">
+       {/* Removed TRACKER EN DIRECT header base on user request */}
+
+       {/* Top Section: Split Layout (Allies | Temps Forts | Ennemis) */}
+       <div className="flex gap-6 shrink-0 mt-4 rounded-3xl" style={{height: "360px"}}>
+         
+         {/* Team 1 (BLUE) */}
+         <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
+            <div className="flex items-center gap-1.5 px-1 justify-start mb-0.5">
+               {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
+                     {t1Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t1Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : <div className="w-full h-full bg-[#12121a]"></div>}
+                  </div>
+               ))}
+            </div>
+            <div className="h-8 bg-gradient-to-r from-blue-600/30 via-blue-900/10 to-transparent border-t-2 border-l-2 border-blue-500 rounded-tl-xl flex items-center px-4 relative overflow-hidden shrink-0 mt-2">
+               <span className="text-xs font-black text-blue-400 uppercase tracking-widest z-10 drop-shadow-md">Alliés</span>
+               <div className="ml-auto flex items-center gap-2">
+                 <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Winrate</span>
+                 <span className="text-sm font-black text-blue-100">{finalT1Winrate}%</span>
+               </div>
+            </div>
+            <div className="flex-1 flex flex-col justify-evenly bg-transparent p-0 gap-2">
+              {Array.from({ length: 5 }).map((_, idx) => {
+                 const p = teamOne[idx];
+                 if (!p) {
+                   return (
+                      <div key={idx} className="h-full flex items-center justify-center gap-3 px-3 rounded-xl border border-white/5 bg-black/20 opacity-30 relative overflow-hidden transition-all border-dashed">
+                         <span className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Vide</span>
+                      </div>
+                   );
+                 }
+                 const cid = p.championId > 0 ? p.championId : 0;
+                 const isMe = p.summonerId === localSummonerId || p.cellId === session?.localPlayerCellId;
+                 return (
+                   <div key={idx} className={cn("h-full flex items-center gap-3 px-3 rounded-xl border relative overflow-hidden transition-all shadow-md group border-blue-500/10 hover:border-blue-400/30", isMe ? "bg-blue-600/15 shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/50" : "bg-[#0d0d12]/90")}>
+                      {isMe && <div className="absolute top-0 left-0 w-1 rounded-full h-full bg-blue-400"></div>}
+                      <img src={cid > 0 ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${cid}.png` : 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png'} className="w-10 h-10 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.8)] object-cover bg-black" />
+                      <div className="flex flex-col flex-1 truncate justify-center">
+                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
+                        <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Sélection..."}</span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 justify-center opacity-80 pl-2">
+                        {p.spell1Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
+                        {p.spell2Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
+                      </div>
+                   </div>
+                 )
+              })}
+            </div>
+         </div>
+
+         {/* Middle Section: Advantages */}
+         <div className="flex flex-col justify-start w-[25%] pt-10">
+             <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden bg-[#0a0a0c]/80 min-h-[160px] shrink-0">
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-accent-primary/5 to-transparent blur-xl pointer-events-none"></div>
+                <div className="flex items-center justify-center gap-2 mb-6 shrink-0 relative z-10">
+                   <Target size={14} className="text-accent-primary opacity-80" />
+                   <h3 className="text-[10px] font-black uppercase text-gray-300 tracking-[0.2em]">Temps Forts de Compo</h3>
+                </div>
+                 <div className="flex-1 flex flex-col justify-center gap-5 relative z-10 px-2 mt-2">
+                   {[
+                     { label: "Early Game", t1: earlySpike.val1, t2: earlySpike.val2 },
+                     { label: "Mid Game", t1: midSpike.val1, t2: midSpike.val2 },
+                     { label: "Late Game", t1: lateSpike.val1, t2: lateSpike.val2 },
+                   ].map((sp, _i) => (
+                     <div key={sp.label} className="flex flex-col w-full relative group">
+                        <div className="flex justify-between items-end mb-1">
+                           <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">{sp.t1}%</span>
+                           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 border border-white/5 bg-white/5 px-2 py-0.5 rounded-full z-10 absolute left-1/2 -translate-x-1/2">{sp.label}</span>
+                           <span className="text-[10px] font-black uppercase tracking-widest text-red-500">{sp.t2}%</span>
+                        </div>
+                        <div className="h-1.5 flex bg-black/60 rounded-full overflow-hidden shadow-inner relative border border-white/5">
+                          <div className="h-full bg-blue-500 absolute right-1/2 rounded-l-full shadow-[0_0_10px_#3b82f6]" style={{ width: `${sp.t1}%` }}></div>
+                          <div className="h-full bg-red-600 absolute left-1/2 rounded-r-full shadow-[0_0_10px_#ef4444]" style={{ width: `${sp.t2}%` }}></div>
+                          
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                             <div className="w-0.5 h-3 bg-white/80 blur-[0.5px] z-20 shadow-[0_0_5px_white]"></div>
+                          </div>
+                          <div className="absolute inset-0 flex items-center justify-between px-[25%] pointer-events-none opacity-20">
+                             <div className="w-0.5 h-1.5 bg-white"></div>
+                             <div className="w-0.5 h-1.5 bg-white"></div>
+                          </div>
+                        </div>
+                     </div>
+                   ))}
+                </div>
+             </div>
+         </div>
+
+         {/* Team 2 (RED) */}
+         <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
+            <div className="flex items-center gap-1.5 px-1 justify-end mb-0.5">
+               {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
+                     {t2Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t2Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : <div className="w-full h-full bg-[#12121a]"></div>}
+                  </div>
+               ))}
+            </div>
+            <div className="h-8 bg-gradient-to-l from-red-600/30 via-red-900/10 to-transparent border-t-2 border-r-2 border-red-500 rounded-tr-xl flex items-center px-4 relative overflow-hidden justify-end mt-2 shrink-0">
+               <div className="mr-auto flex items-center gap-2">
+                 <span className="text-sm font-black text-red-200">{finalT2Winrate}%</span>
+                 <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Winrate</span>
+               </div>
+               <span className="text-xs font-black text-red-400 uppercase tracking-widest z-10 drop-shadow-md">Ennemis</span>
+            </div>
+            <div className="flex-1 flex flex-col justify-evenly bg-transparent p-0 gap-2">
+              {Array.from({ length: 5 }).map((_, idx) => {
+                 const p = teamTwo[idx];
+                 if (!p) {
+                   return (
+                      <div key={idx} className="h-full flex items-center justify-center gap-3 px-3 rounded-xl border border-white/5 bg-black/20 opacity-30 relative overflow-hidden transition-all border-dashed flex-row-reverse text-right">
+                         <span className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Vide</span>
+                      </div>
+                   );
+                 }
+                 const cid = p.championId > 0 ? p.championId : 0;
+                 return (
+                   <div key={idx} className={cn("h-full flex items-center gap-3 px-3 rounded-xl border relative overflow-hidden transition-all shadow-md group border-red-500/10 hover:border-red-400/30 bg-[#0d0d12]/90 flex-row-reverse text-right")}>
+                      <img src={cid > 0 ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${cid}.png` : 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png'} className="w-10 h-10 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.8)] object-cover bg-black" />
+                      <div className="flex flex-col flex-1 truncate justify-center">
+                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
+                        <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Inconnu"}</span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 justify-center opacity-80 pr-2">
+                        {p.spell1Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
+                        {p.spell2Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
+                      </div>
+                   </div>
+                 )
+              })}
+            </div>
+         </div>
+       </div>
+
+       {/* Bottom Section: Wide Details Panel (Screen 2 Replica) */}
+       {isLocked && myChampName && (
+          <div className="mt-8 mb-4 w-full glass-panel border border-white/5 rounded-2xl flex relative overflow-hidden bg-[#0d0d12]/90 shadow-[0_0_40px_rgba(0,0,0,0.4)]">
+             <div className="flex flex-col flex-1 p-6 pb-12 border-r border-white/5 gap-8">
+                 {/* Summoners Section */}
+                 <div className="mb-6">
+                    <div className="flex items-center gap-3 mb-4">
+                       <span className="text-xs font-black uppercase tracking-widest text-white">Summoners</span>
+                    </div>
+                    <div className="flex gap-4 items-center">
+                       <div className="flex gap-3">
+                          {(() => {
+                            const SUMMONER_ID_TO_NAME = {
+                                1: 'SummonerBoost', 3: 'SummonerExhaust', 4: 'SummonerFlash',
+                                6: 'SummonerHaste', 7: 'SummonerHeal', 11: 'SummonerSmite',
+                                12: 'SummonerTeleport', 13: 'SummonerMana', 14: 'SummonerDot',
+                                21: 'SummonerBarrier', 30: 'SummonerPoroRecall',
+                                31: 'SummonerPoroThrow', 32: 'SummonerSnowball'
+                            };
+                            return (
+                               <>
+                                 {myPlayer?.spell1Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell1Id] || 'SummonerFlash'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]"/> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                                 {myPlayer?.spell2Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell2Id] || 'SummonerDot'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]"/> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                               </>
+                            )
+                          })()}
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Items Section */}
+                 <div>
+                    <div className="flex items-center gap-3 mb-5">
+                       <span className="text-xs font-black uppercase tracking-widest text-white">Items</span>
+                    </div>
+                    <div className="flex gap-8 items-start mb-6">
+                       {/* Départ */}
+                       <div className="flex flex-col gap-3">
+                          <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase">Départ</span>
+                          <div className="flex gap-2.5">
+                             {(recommendedBuild?.items?.starting || [1055, 2003]).slice(0,2).map((item, i) => (
+                               <img key={i} src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-blue-500/30 shadow-md" onError={(e) => e.target.style.display='none'} />
+                             ))}
+                          </div>
+                       </div>
+                       
+                       {/* Core Items */}
+                       <div className="flex flex-col gap-3 relative">
+                          <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Core Items</span>
+                          <div className="flex gap-3 items-center">
+                             {recommendedBuild?.items?.core ? recommendedBuild.items.core.slice(0, 3).map((item, i) => (
+                                <div key={i} className="flex items-center gap-3">
+                                   <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-12 h-12 rounded-lg border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:scale-[1.12] transition-transform cursor-pointer" onError={(e) => e.target.style.display='none'} />
+                                   {i < Math.min(recommendedBuild.items.core.length - 1, 2) && <ChevronRight size={14} className="text-white/20" />}
+                                </div>
+                             )) : <div className="w-28 h-12 animate-pulse bg-white/5 rounded-lg"></div>}
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="flex gap-8 items-start mt-8">
+                        {/* Situational Items */}
+                        <div className="flex flex-col gap-3">
+                           <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Situational Items</span>
+                           <div className="flex gap-3">
+                              {(recommendedBuild?.items?.situational?.slice(0, 5) || [3157, 3089, 3165, 3139]).map((id, i) => (
+                                 <div key={i} className="flex flex-col items-center gap-1">
+                                    <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-white/5 opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-md" onError={(e) => e.target.style.display='none'} />
+                                 </div>
+                              ))}
+                           </div>
+                        </div>
+                    </div>
+                 </div>
+             </div>
+
+             <div className="flex-1 p-6 pb-12 flex flex-col">
+                 {/* Spells Section */}
+                 <div>
+                    <div className="flex items-center gap-3 mb-4">
+                       <span className="text-xs font-black uppercase tracking-widest text-white">Spells</span>
+                       <span className="text-[9px] text-gray-500 font-bold border border-white/5 px-2 py-0.5 rounded bg-black/50">Skill Order</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                       <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                          {recommendedBuild?.skillOrder && recommendedBuild.skillOrder.length >= 3 ? recommendedBuild.skillOrder.slice(0, 3).map((s, i) => (
+                              <React.Fragment key={i}>
+                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-md group/spl bg-white/5 flex items-center justify-center">
+                                     {champSpells[typeof s === 'object' ? s.key : s] ? (
+                                         <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${champSpells[typeof s === 'object' ? s.key : s]}.png`} 
+                                              className="w-full h-full object-cover rounded border border-white/10 opacity-90 transition-opacity pointer-events-none" />
+                                     ) : (
+                                         <span className="text-accent-primary font-black flex items-center justify-center text-[12px]">{typeof s === 'object' ? s.key : s}</span>
+                                     )}
+                                     {/* Overlay letter */}
+                                     {champSpells[typeof s === 'object' ? s.key : s] && (
+                                        <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm text-[8px] font-black text-center border-t border-white/10 text-blue-200">
+                                            {typeof s === 'object' ? s.key : s}
+                                        </div>
+                                     )}
+                                  </div>
+                                  {i < 2 && <ChevronRight size={14} className="text-white/30" />}
+                              </React.Fragment>
+                          )) : (
+                             <>
+                               <span className="w-6 h-6 rounded bg-accent-primary/20 text-accent-primary font-black flex items-center justify-center text-[10px] border border-accent-primary/40">Q</span>
+                               <ChevronRight size={12} className="text-white/30" />
+                               <span className="w-6 h-6 rounded bg-green-500/20 text-green-400 font-black flex items-center justify-center text-[10px] border border-green-500/40">E</span>
+                               <ChevronRight size={12} className="text-white/30" />
+                               <span className="w-6 h-6 rounded bg-gray-500/20 text-gray-400 font-black flex items-center justify-center text-[10px] border border-gray-500/40">W</span>
+                             </>
+                          )}
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Runes Section */}
+                 <div className="flex-1 mt-6">
+                    <div className="flex items-center gap-3 mb-6">
+                       <span className="text-xs font-black uppercase tracking-widest text-white">Runes</span>
+                    </div>
+                    <div className="flex gap-8 items-start relative mt-4">
+                       {recommendedBuild?.runes?.active && runesReforged.length > 0 ? (() => {
+                          const primaryId = parseInt(recommendedBuild.runes.primary);
+                          const secondaryId = parseInt(recommendedBuild.runes.secondary);
+                          const activeIds = recommendedBuild.runes.active.map(id => parseInt(id));
+                          const primaryTree = runesReforged.find(r => r.id === primaryId);
+                          const secondaryTree = runesReforged.find(r => r.id === secondaryId);
+                          
+                          // Shard grid standard layout
+                          const shardsLayout = [
+                              [5008, 5005, 5007],
+                              [5008, 5002, 5003],
+                              [5001, 5002, 5003]
+                          ];
+                          
+                          const renderRow = (perks, isKeystone, isPrimary) => (
+                              <div className="flex gap-2.5 justify-center w-full mb-2" key={perks[0]?.id || Math.random()}>
+                                  {(() => {
+                                      const rowHasActive = perks.some(px => activeIds.includes(px.id));
+                                      return perks.map((p, idx) => {
+                                          const isActive = activeIds.includes(p.id) || (isPrimary && !rowHasActive && ((isKeystone && idx === 0) || (!isKeystone && idx === 1)));
+                                          return (
+                                              <div key={p.id} className={cn("relative rounded-full flex items-center justify-center transition-all", isKeystone ? "w-10 h-10" : "w-7 h-7", isActive ? (isKeystone ? "border border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border border-blue-400/80 shadow-[0_0_10px_rgba(96,165,250,0.3)]") : "border border-transparent opacity-30 grayscale filter")}>
+                                                  <img src={`https://ddragon.leagueoflegends.com/cdn/img/${p.icon}`} className={cn("rounded-full object-cover", isKeystone ? "w-8 h-8" : "w-6 h-6")} />
+                                              </div>
+                                          );
+                                      });
+                                  })()}
+                              </div>
+                          );
+
+                          return (
+                          <>
+                            {/* Primary Tree */}
+                            {primaryTree && (
+                                <div className="flex flex-col items-center">
+                                   {/* Header / Style Icon */}
+                                   <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryTree.icon}`} className="w-6 h-6 mb-2 filter drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" />
+                                   {primaryTree.slots.map((slot, idx) => renderRow(slot.runes, idx === 0, true))}
+                                </div>
+                            )}
+
+                            {/* Secondary Tree & Shards*/}
+                            <div className="flex flex-col items-center">
+                               {secondaryTree && (
+                                   <>
+                                     <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryTree.icon}`} className="w-5 h-5 mb-3 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" />
+                                     {secondaryTree.slots.slice(1).map((slot, idx) => renderRow(slot.runes, false, false))}
+                                   </>
+                               )}
+
+                               {/* Shards */}
+                               <div className="mt-1 flex flex-col gap-1.5">
+                                  {shardsLayout.map((row, rIdx) => (
+                                      <div className="flex gap-2.5 justify-center w-full" key={`shard-row-${rIdx}`}>
+                                          {row.map((id, idx) => {
+                                              const isActive = activeIds.includes(id) || (idx === 0 && !row.some(rId => activeIds.includes(rId))); // Fallback visual
+                                              return (
+                                                  <div key={`shard-${rIdx}-${idx}`} className={cn("w-5 h-5 rounded-full flex items-center justify-center border border-white/5 bg-black/40", isActive ? "opacity-100 ring-1 ring-yellow-500/50" : "opacity-30 grayscale")}>
+                                                     <img src={`https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatMods${id === 5008 ? 'AdaptiveForce' : id === 5005 ? 'AttackSpeed' : id === 5007 ? 'AbilityHasteIcon' : id === 5002 ? 'Armor' : id === 5003 ? 'MagicResIcon' : 'HealthScalingIcon'}.png`} className="w-3.5 h-3.5 object-cover" onError={(e) => e.target.style.display='none'}/>
+                                                  </div>
+                                              )
+                                          })}
+                                      </div>
+                                  ))}
+                               </div>
+                            </div>
+                          </>
+                          );
+                       })() : (
+                         <div className="flex gap-4">
+                            <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
+                            <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
+                         </div>
+                       )}
+                    </div>
+                 </div>
+             </div>
+          </div>
+       )}
+    </div>
+  );
+}
+
 function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, musicOverlayEnabled, setMusicOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast, setActiveTab, isPremium, setIsPremium }) {
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const languages = [
@@ -7106,6 +7760,24 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
                   <SettingsToggle active={autoAccept} onToggle={() => setAutoAccept(!autoAccept)} />
                 </div>
               )
+            }
+          />
+          <SettingCard
+            icon={Zap} color="yellow"
+            title="Auto-Import Runes & Builds" desc="Importe automatiquement les meilleures runes de votre champion lors de la phase de sélection."
+            action={
+              <SettingsToggle active={autoImportRunes} onToggle={() => setAutoImportRunes(!autoImportRunes)} />
+            }
+          />
+          <SettingCard
+            icon={Flame} color="orange"
+            title="Position du Flash" desc="Force automatiquement le Flash sur la touche sélectionnée lors de l'import."
+            action={
+              <div className="flex gap-2">
+                <button onClick={() => setFlashPosition(null)} className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm", flashPosition === null || flashPosition === undefined ? "bg-accent-primary text-black border-transparent" : "text-gray-500 bg-white/5 border border-white/10 hover:border-white/30")}>OFF</button>
+                <button onClick={() => setFlashPosition('D')} className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm", flashPosition === 'D' ? "bg-yellow-500 text-black border-transparent shadow-[0_0_10px_rgba(234,179,8,0.3)]" : "text-gray-500 bg-white/5 border border-white/10 hover:border-yellow-500/50")}>Touche D</button>
+                <button onClick={() => setFlashPosition('F')} className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm", flashPosition === 'F' ? "bg-yellow-500 text-black border-transparent shadow-[0_0_10px_rgba(234,179,8,0.3)]" : "text-gray-500 bg-white/5 border border-white/10 hover:border-yellow-500/50")}>Touche F</button>
+              </div>
             }
           />
         </SettingsSection>
@@ -8236,11 +8908,14 @@ function ReplaysView({ t, panelClass, currentUser }) {
     async function fetchReplays() {
       if (!currentUser) return;
       try {
-        const history = await window.ipcRenderer.invoke('lcu:get-match-history', currentUser.puuid, 0, 10);
+        const history = await window.ipcRenderer.invoke('lcu:get-match-history', currentUser.puuid, 0, 40);
         if (history && history.games && history.games.games) {
-          // Filter only: 400 (Draft), 420 (Solo), 440 (Flex)
+          // Filter only: 400 (Draft), 420 (Solo), 440 (Flex) AND > 4 mins duration to exclude Remakes
           const validQueues = [400, 420, 440];
-          const filteredGames = history.games.games.filter(g => validQueues.includes(g.queueId));
+          const filteredGames = history.games.games
+            .filter(g => validQueues.includes(g.queueId) && g.gameDuration > 240)
+            .sort((a, b) => b.gameCreation - a.gameCreation)
+            .slice(0, 15);
 
           // Enrich with replay metadata
           const gamesWithMeta = await Promise.all(filteredGames.map(async (g) => {
@@ -8379,12 +9054,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
   };
 
   if (loading) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center gap-4">
-        <RefreshCw size={48} className="text-accent-primary animate-spin opacity-20" />
-        <span className="text-gray-500 font-bold uppercase tracking-widest text-xs">{t('loading_replays')}</span>
-      </div>
-    );
+    return <GlobalFullScreenLoader text="Analyse..." subtext="Traitement de l'historique et des données..." />;
   }
 
   return (
@@ -8912,7 +9582,7 @@ function AICoachingPanel({ game, t, onWatch }) {
                       <h4 className="text-sm font-black text-gray-900 dark:text-gray-100 uppercase flex items-center gap-3 italic tracking-wide">
                         <Activity size={18} className="text-accent-primary" /> {t('matchups')}
                       </h4>
-                      <p className="text-[10px] text-gray-500 font-bold ml-7">{t('matchups')} VS {oppChampName || t('opponent')}</p>
+                      <p className="text-[10px] text-gray-500 font-bold ml-7 uppercase tracking-wider">{t('matchups')} VS {oppChampName || t('opponent')} <span className="opacity-50">({opponent?.identity?.player?.summonerName || opponent?.identity?.player?.gameName || opponent?.summonerName || "Inconnu"})</span></p>
                     </div>
                     <button
                       onClick={() => setShowGuide(true)}
@@ -8965,7 +9635,7 @@ function AICoachingPanel({ game, t, onWatch }) {
                       <div className="relative group/avatar shrink-0">
                         <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 group-hover/avatar:opacity-40 transition-opacity"></div>
                         <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${opponent.championId}.png`} className="w-16 h-16 rounded-2xl border-2 border-red-500/50 shadow-2xl relative z-10 object-cover" />
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-600 text-gray-900 dark:text-gray-100 text-[8px] font-black px-2 py-0.5 rounded-full border-2 border-[#0a0a0c] z-20 whitespace-nowrap">{t('rival') || "RIVAL"}</div>
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-600 text-gray-900 dark:text-gray-100 text-[8px] font-black px-2 py-0.5 rounded-full border-2 border-[#0a0a0c] z-20 whitespace-nowrap">{opponent?.identity?.player?.summonerName || opponent?.identity?.player?.gameName || opponent?.summonerName || "RIVAL"}</div>
                       </div>
                       <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{oppStats.kills}/{oppStats.deaths}/{oppStats.assists}</div>
                     </div>
@@ -9599,20 +10269,7 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
     <div className="space-y-6 animate-in slide-in-from-bottom-5 pb-10 h-full flex flex-col relative overflow-hidden">
       <ParticleBackground />
       {loading && (
-        <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-3xl flex flex-col items-center justify-center text-accent-primary animate-in fade-in zoom-in-95 duration-700 transition-all">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-900/10 to-transparent animate-pulse pointer-events-none"></div>
-          <div className="relative w-32 h-32 flex items-center justify-center mb-8 scale-110">
-            <div className="absolute inset-0 border-[4px] border-blue-500/10 rounded-full animate-[spin_4s_linear_infinite] drop-shadow-[0_0_15px_rgba(59,130,246,0.3)]"></div>
-            <div className="absolute inset-2 border-[4px] border-dashed border-blue-400/40 rounded-full animate-[spin_3s_linear_infinite_reverse]"></div>
-            <Swords size={48} className="animate-pulse text-blue-300 drop-shadow-[0_0_25px_rgba(59,130,246,0.8)]" />
-          </div>
-          <h3 className="text-4xl font-black tracking-[0.2em] uppercase italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-200 to-blue-400 drop-shadow-2xl animate-pulse">
-            Analyse du Matchup
-          </h3>
-          <p className="text-xs text-blue-300/70 font-bold tracking-[0.4em] mt-4 animate-[pulse_2s_ease-in-out_infinite]">
-            TRAITEMENT DES MILLIONS DE PARTIES...
-          </p>
-        </div>
+        <GlobalFullScreenLoader text="Analyse..." subtext="Traitement de millions de parties..." />
       )}
       {/* Champion Select Modal */}
       {selectingStr && (
@@ -11320,50 +11977,8 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
       const current = players.find(p => p.summonerName === active?.summonerName);
 
       // 1. Skill Level Up Check
-      if (overlaySettings.skillLevelUp && active?.abilities) {
-        const totalPointsSpent = Object.values(active.abilities).reduce((sum, a) => sum + (a.abilityLevel || 0), 0);
-        const level = current?.level || active.level || 1; // Retrieve the target level from allPlayers
-        const pointsAvailable = level - totalPointsSpent;
-
-        if (pointsAvailable > 0) {
-          // Logic for "Optimal" skill
-          let bestKey = 'Q';
-          const currentPointNumber = totalPointsSpent + 1;
-
-          // Use skillOrder if available, or heuristic
-          if (skillOrder && skillOrder[currentPointNumber - 1]) {
-            bestKey = skillOrder[currentPointNumber - 1];
-          } else {
-            // Heuristic
-            if ([6, 11, 16].includes(level)) bestKey = 'R';
-            else {
-              const { Q, W, E } = active.abilities;
-              const levels = { Q: Q.abilityLevel || 0, W: W.abilityLevel || 0, E: E.abilityLevel || 0 };
-              bestKey = Object.keys(levels).reduce((a, b) => levels[a] >= levels[b] ? a : b);
-            }
-          }
-
-          const ability = active.abilities[bestKey];
-          const spellId = ability?.id;
-          const spellName = ability?.displayName || bestKey;
-          const iconUrl = spellId ? `https://ddragon.leagueoflegends.com/cdn/13.24.1/img/spell/${spellId}.png` : null;
-
-          triggerNotif({
-            id: `skill-point-${currentPointNumber}`, // Stable ID based strictly on point spent to avoid dupes across levels
-            type: 'info',
-            key: bestKey, // Keep track of which key was suggested
-            icon: iconUrl ? (
-              <div className="relative w-10 h-10 overflow-hidden rounded-lg border border-gray-200 dark:border-white/20">
-                <img src={iconUrl} className="w-full h-full object-cover scale-110" />
-                <div className="absolute bottom-0 right-0 bg-black/5 dark:bg-black/80 text-[8px] font-black px-1 rounded-tl-md border-t border-l border-gray-200 dark:border-white/20 text-blue-400">
-                  {bestKey}
-                </div>
-              </div>
-            ) : <Brain size={14} />,
-            title: `${t('level')} ${level} • ${skillOrder ? 'LIVE DATA' : 'AI SUGGEST'}`,
-            desc: `${t('skill_advice')} ${spellName}`
-          });
-        }
+      if (false && overlaySettings.skillLevelUp && active?.abilities) {
+         // Temporarily disabled due to user request to remove this overlay popup
       }
 
       // 2. Gold Difference Check

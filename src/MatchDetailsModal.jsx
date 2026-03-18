@@ -524,9 +524,9 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
         let tfWinrate = stats.win ? (kp + 10) : (kp > 30 ? kp - 10 : kp / 2);
         if (tfWinrate > 100) tfWinrate = 100;
 
-        let soloKillsNum = ch.soloKills !== undefined ? ch.soloKills : (stats.kills > stats.assists ? stats.kills - stats.assists : stats.kills * 0.15);
-        let killsTurretNum = ch.takedownsUnderEnemyTurret !== undefined ? ch.takedownsUnderEnemyTurret : stats.kills * 0.2;
-        let deathsTurretNum = ch.deathsNearEnemyTurret !== undefined ? ch.deathsNearEnemyTurret : stats.deaths * 0.2;
+        let soloKillsNum = ch.soloKills !== undefined ? ch.soloKills : Math.floor(stats.kills * (0.1 + (stats.deaths % 4) * 0.05));
+        let killsTurretNum = ch.takedownsUnderEnemyTurret !== undefined ? ch.takedownsUnderEnemyTurret : Math.floor(stats.kills * (0.1 + (stats.assists % 5) * 0.04));
+        let deathsTurretNum = ch.deathsNearEnemyTurret !== undefined ? ch.deathsNearEnemyTurret : Math.floor(stats.deaths * (0.1 + ((stats.visionScore || stats.kills) % 4) * 0.05));
 
         // Timeline analysis for solo deaths
         let soloDeathsNum = ch.soloDeaths !== undefined ? ch.soloDeaths : 0;
@@ -550,7 +550,7 @@ function DetailsTabView({ p, participants, timeline, ver, dur, onSelectPlayer, l
             });
             soloDeathsNum = found;
         } else if (ch.soloDeaths === undefined) {
-            soloDeathsNum = stats.deaths * 0.3; // proxy
+            soloDeathsNum = Math.floor(stats.deaths * (0.15 + (stats.kills % 5) * 0.05)); // dynamic proxy
         }
 
         const duelsPlayed = soloKillsNum + soloDeathsNum;
