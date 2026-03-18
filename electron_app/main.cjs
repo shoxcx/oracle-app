@@ -1055,6 +1055,15 @@ ipcMain.handle('app:install-update', () => {
     autoUpdater.quitAndInstall();
 });
 
+ipcMain.handle('app:check-updates', async () => {
+    try {
+        const res = await autoUpdater.checkForUpdates();
+        return { success: true, info: res ? res.updateInfo.version : 'Up-to-date' };
+    } catch(e) {
+        return { success: false, error: e.message };
+    }
+});
+
 ipcMain.handle('app:show-live', () => {
     if (!liveWindow) createLiveWindow();
     else {
