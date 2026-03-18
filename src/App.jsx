@@ -1445,6 +1445,12 @@ function App() {
       } catch (e) { console.error("DDragon version fetch failed", e); }
     };
     fetchVersion();
+
+    if (window.ipcRenderer && appMode === 'window') {
+      window.ipcRenderer.invoke('app:version').then(v => {
+        document.title = `Oracle (${v})`;
+      }).catch(() => {});
+    }
   }, []);
 
   // Translation Helper
@@ -4709,7 +4715,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
             if (gamesList.length > 0) {
               const recentGames = gamesList; // Use all 50
 
-              const gamesForTeammates = recentGames.slice(0, 5);
+              const gamesForTeammates = recentGames.filter(g => g.queueId !== 0).slice(0, 15);
 
               setHistory(recentGames.slice(0, 20)); // Show 20 in history list
               setFullHistory(recentGames); // All 50 for the rank estimators / graphs
@@ -4851,19 +4857,24 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                         if (p.teamId != myTeamId) return;
                         if (p.participantId == myPart.participantId) return; // Skip self
 
+                        // Detect and skip bots instantly
+                        const id = identities.find(i => i.participantId == p.participantId);
+                        let puuid = p.puuid || (id && id.player && id.player.puuid);
+                        
+                        // Only filter if we POSITIVELY know it's a bot. Missing PUUID does not mean bot in LCU match format.
+                        if (p.botDifficulty || puuid === "0" || puuid === "00000000-0000-0000-0000-000000000000") return;
+                        if (id && id.player && (id.player.summonerId === 0 || id.player.summonerId === "0" || id.player.summonerId === "")) return;
+
                         // Try to get Name + Tag
                         let name = p.gameName || p.riotIdGameName || p.summonerName;
                         let tag = p.riotIdTagLine || "";
                         let icon = p.profileIconId || 29;
 
-                        const id = identities.find(i => i.participantId == p.participantId);
                         if (id && id.player) {
                           name = id.player.gameName || id.player.summonerName || name;
                           tag = id.player.tagLine || tag;
                           icon = id.player.profileIcon || icon;
                         }
-
-                        let puuid = p.puuid || (id && id.player && id.player.puuid);
 
                         if (!name) return;
 
@@ -4901,19 +4912,9 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                     }
                   });
 
-                  const calculatedTeammates = Object.values(partnerCounts).sort((a, b) => b.lastSeen - a.lastSeen).slice(0, 6);
+                  const calculatedTeammates = Object.values(partnerCounts).sort((a, b) => b.count - a.count || b.lastSeen - a.lastSeen).slice(0, 6);
 
-                  if (calculatedTeammates.length > 0) {
-                    setTeammates(calculatedTeammates);
-                  } else {
-                    setTeammates([{
-                      name: `No recent players found`,
-                      count: 0,
-                      wins: 0,
-                      icon: 29,
-                      isInfo: true
-                    }]);
-                  }
+                  setTeammates(calculatedTeammates);
                 }).catch(err => console.error("Teammates error", err));
             } else {
               setHistory([]);
@@ -5539,7 +5540,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                   className="flex items-center justify-between group hover:bg-white dark:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <img src={`https://ddragon.leagueoflegends.com/cdn/16.1.1/img/profileicon/${p.icon || 29}.png`} className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10" />
+                    <img src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/profileicon/${p.icon || 29}.png`} onError={(e) => { e.target.onerror = null; e.target.src = `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/profileicon/29.png`; }} className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10" />
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate max-w-[80px]" title={p.name}>{p.name}</span>
                       <span className="text-[9px] text-gray-500">{p.count} {t('games_played')}</span>

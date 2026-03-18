@@ -569,6 +569,7 @@ ipcMain.handle('lcu:get-owned-icons', async (_, summonerId) => lcu.getOwnedIcons
 
 ipcMain.handle('live:get-all-data', async () => liveApi.getAllGameData());
 ipcMain.handle('live:get-active-player', async () => liveApi.getActivePlayer());
+ipcMain.handle('app:version', () => app.getVersion());
 ipcMain.handle('live:get-player-list', async () => liveApi.getPlayerList());
 
 ipcMain.handle('riot:get-match-history', async (_, { puuid, region, count }) => riotApi.getMatchHistory(puuid, region, count));

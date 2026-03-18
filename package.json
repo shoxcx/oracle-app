@@ -1,7 +1,7 @@
 {
   "name": "lol-tracker",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "main": "electron_app/main.cjs",
   "scripts": {
@@ -16,7 +16,7 @@
   "build": {
     "appId": "com.oracle.app",
     "productName": "Oracle",
-    "artifactName": "Oracle_Installer_0.0.0.exe",
+    "artifactName": "Oracle_Installer_${version}.exe",
     "icon": "electron_app/icon.png",
     "publish": [
       {
