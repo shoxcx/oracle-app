@@ -7340,8 +7340,18 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
      }
   }, [myChampName, isLocked, targetRole]);
 
-  const t1Bans = session?.gameData?.bannedChampions?.filter(b => b.teamId === 100) || [];
-  const t2Bans = session?.gameData?.bannedChampions?.filter(b => b.teamId === 200) || [];
+  const getChampSelectBans = (bansArray) => {
+      if (!bansArray) return [];
+      return bansArray.filter(id => id && id > 0).map(id => ({ championId: id }));
+  };
+
+  const t1Bans = phase === 'ChampSelect'
+      ? getChampSelectBans(session?.bans?.myTeamBans)
+      : (session?.gameData?.bannedChampions?.filter(b => b.teamId === 100) || []);
+      
+  const t2Bans = phase === 'ChampSelect'
+      ? getChampSelectBans(session?.bans?.theirTeamBans)
+      : (session?.gameData?.bannedChampions?.filter(b => b.teamId === 200) || []);
 
   if (loading) return <GlobalFullScreenLoader text="Tracker Live" subtext="Connexion en temps réel..." />;
 

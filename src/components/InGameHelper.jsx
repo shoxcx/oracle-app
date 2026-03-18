@@ -547,7 +547,7 @@ export function InGameHelper({ ddragonVersion }) {
                                 borderColor: color,
                                 letter: letter,
                                 imageUrl: imageUrl,
-                                duration: 8000
+                                duration: 5000
                             });
                         };
 
@@ -708,14 +708,15 @@ export function InGameHelper({ ddragonVersion }) {
             }
         }
 
-        // Auto-progress based on game time if the player deviates from the recommended build (buys other items)
-        if (highestMainAcquiredIndex < 0 && gameTime > 840) highestMainAcquiredIndex = 0; // 14 min -> skips 1st item
-        if (highestMainAcquiredIndex < 1 && gameTime > 1440) highestMainAcquiredIndex = 1; // 24 min -> skips 2nd item
-        if (highestMainAcquiredIndex < 2 && gameTime > 1920) highestMainAcquiredIndex = 2; // 32 min -> skips 3rd item
-        if (highestMainAcquiredIndex < 3 && gameTime > 2280) highestMainAcquiredIndex = 3; // 38 min -> skips 4th item
+        let nextMainItem = null;
+        for (const id of mainItems) {
+            if (!acquired.has(String(id))) {
+                nextMainItem = id;
+                break;
+            }
+        }
 
-        const targetMainItemIndex = highestMainAcquiredIndex + 1;
-        const nextMainItem = targetMainItemIndex < mainItems.length ? mainItems[targetMainItemIndex] : null;
+        const hasNoMainItems = highestMainAcquiredIndex === -1;
 
         // 1. Starting Items (Only early game, if no main item is finished)
         // Check if player has ANY standard starting item (Doran's, Jungle Pet, Support Item, Dark Seal, Cull, Tear)
@@ -723,7 +724,7 @@ export function InGameHelper({ ddragonVersion }) {
         const hasAStarter = Array.from(acquired).some(id => starterItemIds.includes(String(id)));
 
         // Propose starting items if it's early, no core items built, and no starter item detected yet
-        if (gameTime < 420 && highestMainAcquiredIndex === -1 && !hasAStarter) {
+        if (gameTime < 420 && hasNoMainItems && !hasAStarter) {
             let robustStarting = starting;
             if (!robustStarting || robustStarting.length === 0) {
                 // Determine generic lane starter fallback if missing
@@ -738,7 +739,7 @@ export function InGameHelper({ ddragonVersion }) {
 
         // 2. First Core Item Priority
         // Players usually build their first core item before finishing boots
-        if (targetMainItemIndex === 0 && nextMainItem) {
+        if (hasNoMainItems && nextMainItem) {
             return nextMainItem;
         }
 
@@ -768,9 +769,9 @@ export function InGameHelper({ ddragonVersion }) {
             inset: 0,
             pointerEvents: 'none'
         }}>
-            <DraggableWidget id="build_hud" defaultPosition={{ x: 24, y: 24 }} className="flex flex-col gap-4 items-start">
+            <DraggableWidget id="build_hud" defaultPosition={{ x: 24, y: 24 }} className="flex flex-col gap-4 items-start cursor-move opacity-90 hover:opacity-100 transition-opacity">
                 {showBuild && (
-                    <div className="w-[360px] bg-white/[0.02] backdrop-blur-[40px] border border-white/[0.08] rounded-[32px] p-6 flex flex-col gap-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] relative overflow-hidden pointer-events-none animate-in slide-in-from-left-8 fade-in duration-500">
+                    <div className="w-[360px] bg-white/[0.02] backdrop-blur-[40px] border border-white/[0.08] rounded-[32px] p-6 flex flex-col gap-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] relative overflow-hidden animate-in slide-in-from-left-8 fade-in duration-500">
                         {/* Light Reflections */}
                         <div className="absolute top-0 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
@@ -815,7 +816,25 @@ export function InGameHelper({ ddragonVersion }) {
                                 </div>
                             )}
 
-
+                            {(() => {
+                                const nextRecId = computeNextItem();
+                                if (!nextRecId) return null;
+                                return (
+                                    <div className="flex flex-col gap-1.5 mt-2 px-1">
+                                        <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest drop-shadow-sm flex items-center gap-1.5">
+                                            <Sparkles className="w-3 h-3" />
+                                            Prochain Achat Recommandé
+                                        </div>
+                                        <div className="flex items-center gap-3 bg-gradient-to-r from-amber-500/20 to-transparent p-2 rounded-xl ring-1 ring-amber-500/30">
+                                            <div className="w-11 h-11 rounded-xl border-2 border-amber-400 overflow-hidden shadow-[0_0_15px_rgba(245,158,11,0.6)] relative animate-pulse">
+                                                <div className="absolute inset-0 ring-1 ring-inset ring-white/30 rounded-xl" />
+                                                <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${nextRecId}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            </div>
+                                            <span className="text-white/90 text-[11px] font-bold drop-shadow-md">Concentrez vos golds sur cet objet</span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 )}
@@ -830,7 +849,7 @@ export function InGameHelper({ ddragonVersion }) {
                                 return (
                                     <div
                                         key={toast.id}
-                                        className={`w-[380px] bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] rounded-[36px] p-7 flex flex-col gap-6 relative overflow-hidden pointer-events-none shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 -translate-x-8 scale-95' : 'animate-in slide-in-from-left-8 fade-in'}`}
+                                        className={`w-[380px] bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] rounded-[36px] p-7 flex flex-col gap-6 relative overflow-hidden shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 -translate-x-8 scale-95' : 'animate-in slide-in-from-left-8 fade-in'}`}
                                     >
                                         {/* Intense Light Reflections for Liquid Glass */}
                                         <div className="absolute top-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
@@ -899,7 +918,7 @@ export function InGameHelper({ ddragonVersion }) {
                             return (
                                 <div
                                     key={toast.id}
-                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 -translate-x-8 scale-95' : 'animate-in slide-in-from-left-8 fade-in'}`}
+                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 relative overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 -translate-x-8 scale-95' : 'animate-in slide-in-from-left-8 fade-in'}`}
                                 >
                                     {/* Accent Glow instead of line */}
                                     <div className={`absolute -left-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
@@ -943,58 +962,57 @@ export function InGameHelper({ ddragonVersion }) {
             </DraggableWidget>
             
                  {/* Liquid Glass Dynamic Stats and Recommended Item Container */}
-            <DraggableWidget id="stats_hud" defaultPosition={{ x: window.innerWidth - 460 > 0 ? window.innerWidth - 460 : 1000, y: window.innerHeight - 300 > 0 ? window.innerHeight - 300 : 700 }} className="flex flex-col items-end gap-5">
+            {toasts && toasts.some(t => t.type === 'skill' || t.type === 'ward') && (
+                <DraggableWidget id="notifs_hud_v7" defaultPosition={{ x: window.innerWidth - 670 > 0 ? window.innerWidth - 670 : 800, y: window.innerHeight - 480 > 0 ? window.innerHeight - 480 : 300 }} className="flex flex-col gap-3 items-end mb-2 cursor-move opacity-90 hover:opacity-100 transition-opacity">
+                    {toasts.filter(toast => toast.type === 'skill' || toast.type === 'ward').map(toast => {
+                        const Icon = toast.icon || AlertCircle;
+                        return (
+                            <div
+                                key={toast.id}
+                                className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 relative overflow-hidden shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] flex-row-reverse transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 translate-x-8 scale-95' : 'animate-in slide-in-from-right-8 fade-in'}`}
+                            >
+                                {/* Accent Glow */}
+                                <div className={`absolute -right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 pointer-events-none ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
 
-                {toasts && toasts.some(t => t.type === 'skill' || t.type === 'ward') && (
-                    <div className="flex flex-col gap-3 items-end mb-2 pointer-events-none">
-                        {toasts.filter(toast => toast.type === 'skill' || toast.type === 'ward').map(toast => {
-                            const Icon = toast.icon || AlertCircle;
-                            return (
-                                <div
-                                    key={toast.id}
-                                    className={`w-[320px] bg-white/[0.03] backdrop-blur-[30px] border border-white/10 rounded-[24px] p-4 flex items-center gap-4 relative overflow-hidden pointer-events-none shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)] flex-row-reverse transition-all duration-500 ease-out ${toast.isLeaving ? 'opacity-0 translate-x-8 scale-95' : 'animate-in slide-in-from-right-8 fade-in'}`}
-                                >
-                                    {/* Accent Glow */}
-                                    <div className={`absolute -right-10 top-1/2 -translate-y-1/2 w-20 h-20 rounded-full blur-[30px] opacity-30 pointer-events-none ${toast.iconColor ? toast.iconColor : 'bg-white'}`} />
+                                {/* Avatar / Icon Container */}
+                                <div className={`relative shrink-0 w-12 h-12 rounded-[18px] flex items-center justify-center shadow-inner ring-1 ring-white/10 overflow-hidden pointer-events-none ${toast.imageUrl ? 'bg-transparent' : toast.iconColor}`}>
+                                    {toast.imageUrl ? (
+                                        <img src={toast.imageUrl} alt="" className="w-[115%] h-[115%] object-cover absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" onError={(e) => { e.target.style.display = 'none'; }} />
+                                    ) : toast.letter ? (
+                                        <span className="text-white font-black text-xl drop-shadow-md pointer-events-none">{toast.letter}</span>
+                                    ) : (
+                                        <Icon className="w-6 h-6 text-white drop-shadow-md pointer-events-none" />
+                                    )}
+                                </div>
 
-                                    {/* Avatar / Icon Container */}
-                                    <div className={`relative shrink-0 w-12 h-12 rounded-[18px] flex items-center justify-center shadow-inner ring-1 ring-white/10 overflow-hidden pointer-events-none ${toast.imageUrl ? 'bg-transparent' : toast.iconColor}`}>
-                                        {toast.imageUrl ? (
-                                            <img src={toast.imageUrl} alt="" className="w-[115%] h-[115%] object-cover absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" onError={(e) => { e.target.style.display = 'none'; }} />
-                                        ) : toast.letter ? (
-                                            <span className="text-white font-black text-xl drop-shadow-md pointer-events-none">{toast.letter}</span>
-                                        ) : (
-                                            <Icon className="w-6 h-6 text-white drop-shadow-md pointer-events-none" />
-                                        )}
+                                {/* Text Content */}
+                                <div className="flex-1 min-w-0 pl-2 z-10 text-right pointer-events-none">
+                                    <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mb-1 pointer-events-none">
+                                        {toast.title || "SYSTEM"}
                                     </div>
-
-                                    {/* Text Content */}
-                                    <div className="flex-1 min-w-0 pl-2 z-10 text-right pointer-events-none">
-                                        <div className="text-[9px] font-black text-white/40 uppercase tracking-[0.25em] mb-1 pointer-events-none">
-                                            {toast.title || "SYSTEM"}
-                                        </div>
-                                        <div className="text-[14px] font-bold text-white/95 truncate leading-tight mb-0.5 drop-shadow-sm pointer-events-none">
-                                            {toast.name}
-                                        </div>
-                                        <div className="text-[11px] text-white/60 font-medium leading-snug break-words whitespace-normal text-right pointer-events-none">
-                                            {toast.status}
-                                        </div>
+                                    <div className="text-[14px] font-bold text-white/95 truncate leading-tight mb-0.5 drop-shadow-sm pointer-events-none">
+                                        {toast.name}
                                     </div>
-
-                                    {/* Progress / Lifetime Bar */}
-                                    <div className="absolute bottom-0 right-0 h-[3px] bg-transparent w-full pointer-events-none">
-                                        <div
-                                            className={`h-full opacity-40 rounded-full pointer-events-none ${toast.iconColor ? toast.iconColor.replace('bg-', 'text-') : 'text-white'}`}
-                                            style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards`, backgroundColor: 'currentColor', float: 'right' }}
-                                        />
+                                    <div className="text-[11px] text-white/60 font-medium leading-snug break-words whitespace-normal text-right pointer-events-none">
+                                        {toast.status}
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
 
-                {stats && (
+                                {/* Progress / Lifetime Bar */}
+                                <div className="absolute bottom-0 right-0 h-[3px] bg-transparent w-full pointer-events-none">
+                                    <div
+                                        className={`h-full opacity-40 rounded-full pointer-events-none ${toast.iconColor ? toast.iconColor.replace('bg-', 'text-') : 'text-white'}`}
+                                        style={{ width: '100%', animation: `toastProgress ${toast.duration || 8000}ms linear forwards`, backgroundColor: 'currentColor', float: 'right' }}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </DraggableWidget>
+            )}
+
+            {stats && (
+                <DraggableWidget id="stats_hud_v8" defaultPosition={{ x: window.innerWidth - 570 > 0 ? window.innerWidth - 570 : 800, y: window.innerHeight - 350 > 0 ? window.innerHeight - 350 : 500 }} className="flex flex-col items-end gap-5 cursor-move opacity-90 hover:opacity-100 transition-opacity">
                     <div className="bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[32px] p-6 flex flex-col gap-4 select-none relative overflow-hidden w-[220px]">
                         {/* Light Reflections */}
                         <div className="absolute top-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
@@ -1032,8 +1050,8 @@ export function InGameHelper({ ddragonVersion }) {
                             </div>
                         </div>
                     </div>
-                )}
-            </DraggableWidget>
+                </DraggableWidget>
+            )}
         </div>
     );
 }
