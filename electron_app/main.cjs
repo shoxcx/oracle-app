@@ -999,46 +999,72 @@ async function monitorSocialLoop() {
     }
 }
 
-let activeWindowTrackerInterval = null;
-async function startActiveWindowTracker() {
+let activeWindowTrackerProcess = null;
+
+function startActiveWindowTracker() {
+    const { spawn } = require('child_process');
+    const path = require('path');
+    const psScriptPath = path.join(__dirname, 'active_tracker.ps1');
+
     try {
-        const activeWinPkg = await import('active-win');
-        const activeWin = activeWinPkg.default;
-        
-        activeWindowTrackerInterval = setInterval(async () => {
-            try {
-                const win = await activeWin();
-                if (!win || !win.owner || typeof win.owner.name !== 'string') return;
+        activeWindowTrackerProcess = spawn('powershell.exe', [
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-File', psScriptPath,
+            '-ParentPid', process.pid.toString()
+        ]);
+
+        activeWindowTrackerProcess.stdout.on('data', (data) => {
+            const output = data.toString().trim();
+            if (!output) return;
+
+            const lines = output.split('\n');
+            let shouldShow = false;
+
+            for (const line of lines) {
+                const cleanLine = line.trim();
+                if (!cleanLine) continue;
                 
-                const name = win.owner.name.toLowerCase();
-                const title = (win.title || '').toLowerCase();
-                
+                const parts = cleanLine.split('|');
+                const name = (parts[0] || '').toLowerCase();
+                const title = (parts[1] || '').toLowerCase();
+
                 const isLeague = name.includes('league') || name.includes('riot');
                 const isOracle = name.includes('oracle') || name.includes('electron') || title.includes('oracle');
-                
-                const shouldShow = isLeague || isOracle;
-                
-                if (ingameWindow && !ingameWindow.isDestroyed()) {
-                    const isVisible = ingameWindow.isVisible();
-                    if (['InProgress', 'GameStart'].includes(lastPhase)) {
-                        if (shouldShow && !isVisible) {
-                            ingameWindow.showInactive();
-                        } else if (!shouldShow && isVisible) {
-                            // Don't hide using fadeOutAndHide because it takes time, just hide immediately for alt-tab speed
-                            ingameWindow.hide();
-                        }
-                    }
-                }
 
-                if (liveWindow && !liveWindow.isDestroyed()) {
-                    if (!shouldShow && liveWindow.isVisible()) {
-                        liveWindow.hide();
+                if (isLeague || isOracle) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+
+            if (ingameWindow && !ingameWindow.isDestroyed()) {
+                const isVisible = ingameWindow.isVisible();
+                if (['InProgress', 'GameStart'].includes(lastPhase)) {
+                    if (shouldShow && !isVisible) {
+                        ingameWindow.showInactive();
+                    } else if (!shouldShow && isVisible) {
+                        ingameWindow.hide();
                     }
                 }
-            } catch (err) {}
-        }, 1000);
-    } catch(e) {
-        console.error("Failed to init active-win", e);
+            }
+
+            if (liveWindow && !liveWindow.isDestroyed()) {
+                if (!shouldShow && liveWindow.isVisible()) {
+                    liveWindow.hide();
+                }
+            }
+        });
+
+        activeWindowTrackerProcess.stderr.on('data', (err) => {
+            // console.error("PS Tracker error:", err.toString());
+        });
+
+        activeWindowTrackerProcess.on('error', (err) => {
+            console.error('Failed to start active window tracker:', err);
+        });
+    } catch (err) {
+        console.error('Failed to init active tracker', err);
     }
 }
 
