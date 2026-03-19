@@ -2201,7 +2201,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     premiumUsers.some(p => currentUser.gameName?.toLowerCase() === p.name && currentUser.tagLine?.toLowerCase() === p.tag) ||
     currentUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e'
   );
-  const isPremium = isPremiumState || isPremiumProfile;
+  const isPremium = true; // Override to allow all features
 
   useEffect(() => {
     if (!currentUser) return; // Wait for LCU profile to load before wiping settings
@@ -7295,7 +7295,17 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   const midSpike = getNormalizedSpikes(t1StatsRaw.mid, t2StatsRaw.mid);
   const lateSpike = getNormalizedSpikes(t1StatsRaw.late, t2StatsRaw.late);
   
-  const myPlayer = teamOne.find(p => p.summonerName === currentUser?.summonerName || p.summonerId === localSummonerId || p.cellId === session?.localPlayerCellId) || teamOne[0];
+    const matchCurrentPlayer = (p) => {
+      if (phase === 'ChampSelect') {
+         if (p.cellId !== undefined && session?.localPlayerCellId !== undefined && p.cellId === session.localPlayerCellId) return true;
+      }
+      if (session?.liveData?.activePlayer?.summonerName) {
+         if (p.summonerName === session.liveData.activePlayer.summonerName || p.summonerInternalName === session.liveData.activePlayer.summonerName) return true;
+      }
+      if (p.summonerId > 0 && p.summonerId === localSummonerId) return true;
+      return false;
+  };
+  const myPlayer = teamOne.find(matchCurrentPlayer) || teamOne[0];
   const isLocked = myPlayer ? (phase === 'ChampSelect' ? session?.actions?.some(tier => tier.some(action => action.actorCellId === myPlayer.cellId && action.completed)) : phase !== 'ChampSelect') : false;
   const myChampName = myPlayer && myPlayer.championId > 0 ? getChampName(myPlayer.championId) : null;
   
@@ -7377,13 +7387,15 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
          
          {/* Team 1 (BLUE) */}
          <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
+            {t1Bans && t1Bans.length > 0 && (
             <div className="flex items-center gap-1.5 px-1 justify-start mb-0.5">
                {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
-                     {t1Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t1Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : <div className="w-full h-full bg-[#12121a]"></div>}
+                     {t1Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t1Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : null}
                   </div>
                ))}
             </div>
+            )}
             <div className="h-8 bg-gradient-to-r from-blue-600/30 via-blue-900/10 to-transparent border-t-2 border-l-2 border-blue-500 rounded-tl-xl flex items-center px-4 relative overflow-hidden shrink-0 mt-2">
                <span className="text-xs font-black text-blue-400 uppercase tracking-widest z-10 drop-shadow-md">Alliés</span>
                <div className="ml-auto flex items-center gap-2">
@@ -7411,10 +7423,12 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                         <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
                         <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Sélection..."}</span>
                       </div>
+                      {(p.spell1Id > 0 || p.spell2Id > 0) && (
                       <div className="flex flex-col gap-0.5 justify-center opacity-80 pl-2">
-                        {p.spell1Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
-                        {p.spell2Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
+                        {p.spell1Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" />}
+                        {p.spell2Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" />}
                       </div>
+                      )}
                    </div>
                  )
               })}
@@ -7457,17 +7471,30 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                    ))}
                 </div>
              </div>
+            {/* Matchup Tip Box (Orange Area) */}
+            <div className="w-full mt-auto mb-2 p-4 rounded-2xl bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/20 shadow-inner flex flex-col gap-2 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-16 h-16 bg-orange-400/10 rounded-full blur-2xl"></div>
+               <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+                  <span className="text-[10px] font-black uppercase text-orange-400 tracking-widest z-10">Analyse de Matchup</span>
+               </div>
+               <p className="text-[11px] font-medium text-orange-100/70 leading-relaxed z-10 italic">
+                  {earlySpike.val1 > earlySpike.val2 ? "Votre composition est dominante en début de partie. Jouez agressivement pour prendre l'avantage." : "Soyez prudent en phase de ligne, privilégiez le farm et atteignez votre pic de puissance en fin de partie."}
+               </p>
+            </div>
          </div>
 
          {/* Team 2 (RED) */}
          <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
+            {t2Bans && t2Bans.length > 0 && (
             <div className="flex items-center gap-1.5 px-1 justify-end mb-0.5">
                {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
-                     {t2Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t2Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : <div className="w-full h-full bg-[#12121a]"></div>}
+                     {t2Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t2Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : null}
                   </div>
                ))}
             </div>
+            )}
             <div className="h-8 bg-gradient-to-l from-red-600/30 via-red-900/10 to-transparent border-t-2 border-r-2 border-red-500 rounded-tr-xl flex items-center px-4 relative overflow-hidden justify-end mt-2 shrink-0">
                <div className="mr-auto flex items-center gap-2">
                  <span className="text-sm font-black text-red-200">{finalT2Winrate}%</span>
@@ -7493,10 +7520,12 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                         <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
                         <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Inconnu"}</span>
                       </div>
+                      {(p.spell1Id > 0 || p.spell2Id > 0) && (
                       <div className="flex flex-col gap-0.5 justify-center opacity-80 pr-2">
-                        {p.spell1Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
-                        {p.spell2Id > 0 ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" /> : <div className="w-4 h-4 bg-black/50 rounded" />}
+                        {p.spell1Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" />}
+                        {p.spell2Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" />}
                       </div>
+                      )}
                    </div>
                  )
               })}
