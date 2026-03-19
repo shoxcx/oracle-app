@@ -10978,11 +10978,11 @@ function EsportsView({ t, prefetchedData }) {
         <div className="col-span-8 flex flex-col gap-6 h-full overflow-y-auto custom-scrollbar pr-2 pb-6">
           {/* Twitch Embed */}
           <div className="min-h-[500px] flex-1 bg-black rounded-2xl border border-gray-200 dark:border-white/10 overflow-hidden relative shadow-2xl group shrink-0">
-            <iframe
+            <webview
               src={`https://player.twitch.tv/?channel=${activeChannel}&parent=localhost`}
               className="w-full h-full"
-              allowFullScreen
-            ></iframe>
+              allowpopups="true"
+            ></webview>
 
             {/* Overlay Controls */}
             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

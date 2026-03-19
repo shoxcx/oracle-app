@@ -612,6 +612,10 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
 
         const action = () => {
             console.log(`Shortcut pressed!`);
+            if (lastPhase !== 'InProgress') {
+                console.log(`[Shortcut] Ignored: Not in game (phase: ${lastPhase})`);
+                return;
+            }
             if (!ingameWindow || ingameWindow.isDestroyed()) {
                 createInGameWindow();
                 ingameWindow.webContents.once('did-finish-load', () => {
@@ -651,6 +655,10 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
 
         const action = () => {
             console.log(`Shortcut pressed!`);
+            if (lastPhase !== 'InProgress') {
+                console.log(`[Shortcut] Ignored: Not in game (phase: ${lastPhase})`);
+                return;
+            }
             if (!ingameWindow || ingameWindow.isDestroyed()) {
                 createInGameWindow();
                 ingameWindow.webContents.once('did-finish-load', () => {
