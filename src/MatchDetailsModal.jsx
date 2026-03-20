@@ -143,6 +143,29 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
     }, [initialGame?.gameId, isOpen, isExternal]);
 
     useEffect(() => {
+        const globalContent = document.getElementById('main-scroll-container');
+        const containers = document.querySelectorAll('#profile-scroll-container');
+
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+            if (globalContent) globalContent.style.overflow = 'hidden';
+            containers.forEach(c => c.style.overflow = 'hidden');
+        } else {
+            document.body.style.overflow = 'auto';
+            if (globalContent) globalContent.style.overflow = 'auto';
+            containers.forEach(c => c.style.overflow = 'auto');
+        }
+
+        return () => {
+            document.body.style.overflow = 'auto';
+            const gContainer = document.getElementById('main-scroll-container');
+            if (gContainer) gContainer.style.overflow = 'auto';
+            const containersQuery = document.querySelectorAll('#profile-scroll-container');
+            containersQuery.forEach(c => c.style.overflow = 'auto');
+        };
+    }, [isOpen]);
+
+    useEffect(() => {
         if (!isOpen) return;
         fetch("https://ddragon.leagueoflegends.com/api/versions.json")
             .then(r => r.json())

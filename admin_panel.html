@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORACLE ADMIN PANEL</title>
+    <style>
+        body { margin: 0; background: #0f0f13; color: white; font-family: 'Inter', system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: #1a1a20; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 32px; width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        h1 { margin: 0 0 24px 0; font-size: 20px; font-weight: 900; color: #818cf8; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px; }
+        .group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-size: 11px; font-weight: bold; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; }
+        input, textarea, select { width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 16px; border-radius: 12px; outline: none; transition: border-color 0.2s; font-family: inherit; font-size: 14px; }
+        input:focus, textarea:focus, select:focus { border-color: #818cf8; }
+        button { width: 100%; background: #6366f1; color: white; border: none; padding: 16px; border-radius: 12px; font-weight: 900; font-size: 14px; cursor: pointer; transition: background 0.2s; text-transform: uppercase; letter-spacing: 0.1em; }
+        button:hover { background: #4f46e5; }
+        .status { margin-top: 16px; font-size: 12px; text-align: center; color: #10b981; font-weight: bold; opacity: 0; transition: opacity 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>ORACLE ADMIN</h1>
+        <form id="broadcastForm">
+            <div class="group">
+                <label>Titre de la notification</label>
+                <input type="text" id="title" placeholder="Ex: ANNONCE SYSTEME" value="MESSAGE OFFICIEL">
+            </div>
+            <div class="group">
+                <label>Contenu du message</label>
+                <textarea id="message" rows="4" placeholder="Tapez votre message ici..." required></textarea>
+            </div>
+            <div class="group">
+                <label>Tag (Ex: MAJ, ANNONCE, ALERTE)</label>
+                <input type="text" id="tag" placeholder="Ex: MAJ" value="ANNONCE">
+            </div>
+            <div class="group">
+                <label>Couleur d'accent (Optionnel)</label>
+                <select id="color">
+                    <option value="bg-indigo-500 shadow-indigo-500/50">Indigo (Défaut)</option>
+                    <option value="bg-purple-500 shadow-purple-500/50">Violet</option>
+                    <option value="bg-red-500 shadow-red-500/50">Rouge</option>
+                    <option value="bg-green-500 shadow-green-500/50">Vert</option>
+                    <option value="bg-yellow-500 shadow-yellow-500/50">Or</option>
+                    <option value="bg-cyan-500 shadow-cyan-500/50">Cyan</option>
+                </select>
+            </div>
+            <div class="group">
+                <label>Image URL (Pour Header de l'Article)</label>
+                <input type="text" id="image" placeholder="https://...">
+            </div>
+            <div class="group">
+                <label>Lien de redirection complet (URL)</label>
+                <input type="text" id="url" placeholder="https://...">
+            </div>
+            <div class="group">
+                <label>Icône (Miniature de liste)</label>
+                <select id="icon">
+                    <option value="Bell">Cloche</option>
+                    <option value="Sparkles">Étoiles</option>
+                    <option value="AlertCircle">Alerte</option>
+                    <option value="Target">Cible</option>
+                    <option value="Activity">Activité</option>
+                </select>
+            </div>
+            <button type="submit">Envoyer au Tracker</button>
+            <div id="status" class="status">Message envoyé avec succès !</div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('broadcastForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                id: Date.now(), // Force explicit ID generation from frontend
+                title: document.getElementById('title').value,
+                message: document.getElementById('message').value,
+                tag: document.getElementById('tag').value,
+                color: document.getElementById('color').value,
+                imageUrl: document.getElementById('image').value || null,
+                url: document.getElementById('url').value || null,
+                lucideName: document.getElementById('icon').value,
+                status: 'Message reçu'
+            };
+
+            try {
+                // Essai d'envoi direct vers FIREBASE (Serveur Mondial)
+                const fireRes = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/broadcast.json', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!fireRes.ok) throw new Error("Erreur serveur mondial");
+
+                // Essai d'envoi vers l'app locale (pour voir ta notification instantanément sur ton propre PC)
+                fetch('http://127.0.0.1:31337/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).catch(() => console.log("Tracker local fermé, mais envoyé au monde entier !"));
+                
+                showSuccess();
+            } catch (err) {
+                console.error(err);
+                alert("Erreur de connexion internet ! Ou la base de données Firebase est en restriction d'accès.");
+            }
+
+            function showSuccess() {
+                const status = document.getElementById('status');
+                status.style.opacity = '1';
+                setTimeout(() => status.style.opacity = '0', 3000);
+                document.getElementById('message').value = '';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+const fs = require('fs');
+const content = fs.readFileSync('electron_app/scraper.cjs', 'utf-8');
+const searchSplit = content.split('async getMatchHistory');
+const match = searchSplit[1].match(/executeJavaScript\(`([\s\S]*?)`\)/);
+const scriptTemplate = match[1];
+const region = 'euw';
+const name = 'dangerawa1ts#EUW';
+const puuid_or_name = 'ext~dangerawa1ts~EUW';
+const finalScript = eval('`' + scriptTemplate.replace(/\\/g, '\\\\') + '`');
+console.log(finalScript);

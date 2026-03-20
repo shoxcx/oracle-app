@@ -99,14 +99,28 @@ export function InGameHelper({ ddragonVersion }) {
     }, [ddragonVersion]);
 
     const pushToast = (toast) => {
-        const id = Date.now() + Math.random();
-        setToasts(prev => [...prev, { id, isLeaving: false, ...toast }]);
-        setTimeout(() => {
-            setToasts(prev => prev.map(t => t.id === id ? { ...t, isLeaving: true } : t));
-            setTimeout(() => {
-                setToasts(prev => prev.filter(t => t.id !== id));
-            }, 500);
-        }, toast.duration || 8000); // 8 seconds default
+        if (window.ipcRenderer) {
+            let sIcon = null;
+            if (toast.icon && toast.icon.render) {
+                // Approximate lucide component name from the type string
+                if (toast.type === 'objective') sIcon = 'Target';
+                else if (toast.type === 'winrate') sIcon = 'Activity';
+                else if (toast.type === 'test') sIcon = 'Sparkles';
+                else if (toast.type === 'warning') sIcon = 'AlertCircle';
+                else sIcon = 'Skull';
+            }
+            window.ipcRenderer.invoke('social:trigger-toast', {
+                type: toast.type || 'system',
+                title: toast.title,
+                name: toast.name,
+                status: toast.status,
+                lucideName: sIcon,
+                letter: toast.letter,
+                imageUrl: toast.imageUrl,
+                iconColor: toast.iconColor,
+                borderColor: toast.borderColor
+            });
+        }
     };
 
     useEffect(() => {

@@ -205,10 +205,10 @@ class Scraper {
                         const levelEl = document.querySelector('.level') || document.querySelector('.summoner-level');
                         const level = levelEl ? parseInt(clean(levelEl).replace(/[^0-9]/g, '')) : 0;
                         
-                        const iconImg = document.querySelector('.profile-icon img') || document.querySelector('.summoner-icon img');
+                        const iconImg = document.querySelector('.profile-icon img') || document.querySelector('.summoner-icon img') || document.querySelector('img[src*="profileIcon"]');
                         let iconId = 29;
                         if(iconImg && iconImg.src) {
-                            const match = iconImg.src.match(/profileIcon(\\d+)/) || iconImg.src.match(/(\\d+)\\.png/);
+                            const match = iconImg.src.match(/profileIcon(\\d+)/i) || iconImg.src.match(/\\/(\\d+)\\.(jpg|png)/i);
                             if(match) iconId = parseInt(match[1]);
                         }
 
@@ -315,10 +315,10 @@ class Scraper {
                         const level = levelEl ? parseInt(clean(levelEl)) : 0;
                         
                         // Icon
-                        const iconImg = document.querySelector('.profile-icon-image img') || document.querySelector('.profile-icon img');
+                        const iconImg = document.querySelector('.profile-icon-image img') || document.querySelector('.profile-icon img') || document.querySelector('img[src*="profileicon"]');
                         let iconId = 29;
                         if(iconImg && iconImg.src) {
-                            const m = iconImg.src.match(/(\\d+)\\.png/);
+                            const m = iconImg.src.match(/\\/(\\d+)\\.(png|jpg)/i) || iconImg.src.match(/profileicon\\/(\\d+)/i);
                             if(m) iconId = parseInt(m[1]);
                         }
 
@@ -441,10 +441,11 @@ class Scraper {
                         }
                         
                         // Icon
-                        const iconImg = document.querySelector('.img-profile-icon img');
+                        const iconImg = document.querySelector('.img-profile-icon img') || document.querySelector('link[rel="apple-touch-icon"]') || document.querySelector('img[src*="summonerIcons"]');
                         let iconId = 29;
-                        if(iconImg && iconImg.src) {
-                             const m = iconImg.src.match(/\\/(\\d+)\\.jpg/);
+                        if(iconImg && (iconImg.src || iconImg.href)) {
+                             const urlStr = iconImg.src || iconImg.href;
+                             const m = urlStr.match(/\\/(\\d+)\\.(jpg|png)/i);
                              if(m) iconId = parseInt(m[1]);
                         }
 
@@ -506,9 +507,12 @@ class Scraper {
                          const name = clean(document.querySelector('.summoner-name'));
                          const tag = clean(document.querySelector('.tag-line')).replace('#','');
                          const level = parseInt(clean(document.querySelector('.level'))) || 0;
-                         const iconImg = document.querySelector('.icon-img');
+                         const iconImg = document.querySelector('.icon-img') || document.querySelector('img[src*="profileicon"]');
                          let iconId = 29;
-                         if(iconImg && iconImg.src.match(/(\\d+)\\.png/)) iconId = parseInt(iconImg.src.match(/(\\d+)\\.png/)[1]);
+                         if(iconImg && iconImg.src) {
+                              const match = iconImg.src.match(/\\/(\\d+)\\.(jpg|png)/i);
+                              if(match) iconId = parseInt(match[1]);
+                         }
 
                          // DeepLol Rank
                          const rankBox = document.querySelector('.tier-info');
@@ -639,8 +643,8 @@ class Scraper {
 
         this.statsCache.set(fakePuuid, {
             queueMap: {
-                'RANKED_SOLO_5x5': { ...data.ranks.solo, queueType: 'RANKED_SOLO_5x5' },
-                'RANKED_FLEX_SR': { ...data.ranks.flex, queueType: 'RANKED_FLEX_SR' }
+                'RANKED_SOLO_5x5': { tier: data.ranks.solo.tier, division: data.ranks.solo.division, leaguePoints: data.ranks.solo.lp, wins: data.ranks.solo.wins, losses: data.ranks.solo.losses, queueType: 'RANKED_SOLO_5x5' },
+                'RANKED_FLEX_SR': { tier: data.ranks.flex.tier, division: data.ranks.flex.division, leaguePoints: data.ranks.flex.lp, wins: data.ranks.flex.wins, losses: data.ranks.flex.losses, queueType: 'RANKED_FLEX_SR' }
             },
             topChamps: []
         });
@@ -1791,7 +1795,7 @@ class Scraper {
             name = decodeURIComponent(parts[1]);
             region = parts[2] || region;
         }
-        const { slug } = this.parseName(name);
+        const { slug } = this.parseName(name, region);
 
         const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br' };
         const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
@@ -1805,16 +1809,24 @@ class Scraper {
                 if (status !== 'READY') return { games: { games: [] } };
 
                 const games = await win.webContents.executeJavaScript(`
-                    (() => {
-                        const clean = t => t ? t.innerText.trim() : "";
-                        const region = \`${region}\`;
-                        const name = \`${name.replace(/\\r?\\n/g, '')}\`;
-                        const puuid = \`${puuid_or_name}\`;
-                        
-                        let rows = Array.from(document.querySelectorAll('.recentGamesTable tbody tr'));
-                        // Filter to valid game rows only (must contain kills stats or match specific structure)
-                        rows = rows.filter(r => r.querySelector('.kills') && r.querySelector('.deaths'));
-                        rows = rows.slice(0, 15); // get up to 15 recent games
+                    (async () => {
+                        try {
+                            const clean = t => t ? t.innerText.trim() : "";
+                            const region = ${JSON.stringify(region)};
+                            const name = ${JSON.stringify(name.replace(/\r?\n/g, ''))};
+                            const puuid_str = ${JSON.stringify(puuid_or_name)};
+                            
+                            // Try to click "See More" if it exists to get 20 games!
+                            const seeMoreBtn = document.querySelector('.see_more_ajax_button');
+                            if (seeMoreBtn) {
+                                seeMoreBtn.click();
+                                await new Promise(r => setTimeout(r, 1500));
+                            }
+                            
+                            let rows = Array.from(document.querySelectorAll('.recentGamesTable tbody tr'));
+                            // Filter to valid game rows only (must contain kills stats or match specific structure)
+                            rows = rows.filter(r => r.querySelector('.kills') && r.querySelector('.deaths'));
+                            rows = rows.slice(0, 20); // get up to 20 recent games
 
                         return rows.map((row, idx) => {
                             // Win or loss
@@ -1886,13 +1898,18 @@ class Scraper {
                                     
                                     const entries = Array.from(col.querySelectorAll('.img-align-block-right, .img-align-block, .selected, :scope > a'));
                                     
-                                    entries.forEach(el => {
+                                    entries.forEach((el, entryIdx) => {
                                         let pName = "Unknown";
                                         let pChamp = "Unknown";
+                                        let pChampId = 0;
                                         
                                         const imgEl = el.querySelector('img');
                                         if(imgEl) {
                                             pChamp = imgEl.getAttribute('title') || imgEl.alt || "Unknown";
+                                            if (imgEl.className) {
+                                                const classMatch = imgEl.className.match(/champion-(\\d+)-/);
+                                                if (classMatch) pChampId = parseInt(classMatch[1]);
+                                            }
                                         }
 
                                         const txtEl = el.querySelector('.txt a');
@@ -1930,13 +1947,18 @@ class Scraper {
                                             champLevel: (isSelected ? level : 12)
                                         };
 
+                                        const roleMap = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
+                                        const derivedRole = entries.length === 5 ? roleMap[entryIdx] : '';
+
                                         parsedPlayers.push({
                                             participantId: pIndex,
                                             teamId: teamId,
                                             championName: pChamp,
+                                            championId: pChampId,
                                             stats: stats,
-                                            puuid: isSelected ? puuid_or_name : \`ext~\${encodeURIComponent(pName)}~\${region}\`,
+                                            puuid: isSelected ? puuid_str : \`ext~\${encodeURIComponent(pName)}~\${region}\`,
                                             summonerName: pName,
+                                            teamPosition: derivedRole,
                                             kp: isSelected ? kp : 0
                                         });
 
@@ -1944,26 +1966,28 @@ class Scraper {
                                     });
                                 });
                             } catch (err) {
-                                parsedPlayers = [{ participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid_or_name, summonerName: name, kp: kp, playerError: err.message }];
+                                parsedPlayers = [{ participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid_str, summonerName: name, kp: kp, playerError: err.message }];
                             }
 
                             // Fallback if parsing failed
                             if(parsedPlayers.length === 0) {
                                 parsedPlayers = [
-                                    { participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid_or_name, summonerName: name, kp: kp, playerError: "None found in DOM" }
+                                    { participantId: 1, teamId: 100, championName: champName, stats: { win: isWin, kills, deaths, assists, totalMinionsKilled: cs, neutralMinionsKilled: 0, goldEarned: estGold, champLevel: level }, puuid: puuid_str, summonerName: name, kp: kp, playerError: "None found in DOM" }
                                 ];
                             }
 
                             const participants = parsedPlayers.map(p => ({
                                 participantId: p.participantId,
-                                championId: 0,
+                                championId: p.championId || 0,
                                 championName: p.championName,
                                 teamId: p.teamId,
                                 puuid: p.puuid,
                                 stats: p.stats,
-                                timeline: { lane: "", role: "" },
+                                teamPosition: p.teamPosition || "",
+                                timeline: { lane: p.teamPosition || "", role: "" },
                                 kp: p.kp,
-                                playerError: p.playerError
+                                playerError: p.playerError,
+                                summonerName: p.summonerName
                             }));
 
                             const participantIdentities = parsedPlayers.map(p => ({
@@ -2009,6 +2033,9 @@ class Scraper {
                                 platformId: region
                             };
                         });
+                        } catch(e) {
+                            return [{ executeError: e.message, stack: e.stack }];
+                        }
                     })()
                 `);
                 return { games: { games: games || [] } };
@@ -2124,20 +2151,20 @@ class Scraper {
                 const lpData = await win.webContents.executeJavaScript(`
                     (() => {
                         const results = [];
-                        const rows = document.querySelectorAll('tr');
+                        const rows = document.querySelectorAll('.recentGamesTable tbody tr');
                         rows.forEach(row => {
-                            const killsEl = row.querySelector('.kda .kills');
-                            const deathsEl = row.querySelector('.kda .deaths');
-                            const assistsEl = row.querySelector('.kda .assists');
+                            const killsEl = row.querySelector('.kills');
+                            const deathsEl = row.querySelector('.deaths');
+                            const assistsEl = row.querySelector('.assists');
                             let kda = null;
                             if (killsEl && deathsEl && assistsEl) {
                                 kda = \`\${killsEl.innerText.trim()} / \${deathsEl.innerText.trim()} / \${assistsEl.innerText.trim()}\`;
                             }
 
-                            const lpEl = row.querySelector('.lpChange');
+                            const lpSpan = Array.from(row.querySelectorAll('span, div')).find(el => el.innerText && el.innerText.includes('LP'));
                             let lpStr = null;
-                            if (lpEl && lpEl.innerText.includes('LP')) {
-                                const match = lpEl.innerText.match(/(-?\\+?\\d+\\s+LP)/);
+                            if (lpSpan) {
+                                const match = lpSpan.innerText.match(/(-?\\+?\\d+\\s+LP)/i);
                                 if (match) lpStr = match[1];
                             }
 
@@ -2156,9 +2183,8 @@ class Scraper {
             }
         });
 
-        if (result && result.length > 0) {
-            this.setCachedData(cacheKey, result);
-        }
+        this.setCachedData(cacheKey, result || []); // Always cache even if empty
+        return result || [];
         return result || [];
     }
 

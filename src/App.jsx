@@ -62,6 +62,7 @@ import {
   Flame,
   X,
   Bell,
+  Skull,
   ExternalLink,
   ArrowDown,
   Wrench,
@@ -1380,7 +1381,7 @@ function GlobalFullScreenLoader({ text = "Chargement...", subtext = "Les donnée
       </div>
       <div className="relative z-10 flex flex-col items-center justify-center p-12 w-full">
         <RefreshCw size={36} className="text-accent-primary/80 animate-spin mb-8 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
-        <motion.div 
+        <motion.div
           initial="hidden" animate="visible"
           variants={{
             hidden: {},
@@ -1458,7 +1459,7 @@ function App() {
     if (window.ipcRenderer && appMode === 'window') {
       window.ipcRenderer.invoke('app:version').then(v => {
         document.title = `Oracle (${v})`;
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, []);
 
@@ -1615,8 +1616,8 @@ function App() {
       window.ipcRenderer.on('show-update-modal', updateHandler);
 
       return () => {
-        try { 
-          window.ipcRenderer.removeListener('show-quit-modal', handler); 
+        try {
+          window.ipcRenderer.removeListener('show-quit-modal', handler);
           window.ipcRenderer.removeListener('show-update-modal', updateHandler);
         } catch (e) { }
       };
@@ -2102,28 +2103,59 @@ function SocialToastOverlay({ ddragonVersion }) {
     }}>
       <div className="flex flex-col gap-3 items-end">
         {toasts.map(toast => {
-          const borderColor = toast.type === 'disconnect' ? "bg-red-500 shadow-red-500/50" :
-            toast.type === 'game' ? "bg-blue-500 shadow-blue-500/50" :
-              "bg-accent-primary shadow-accent-primary/50";
+          let borderColor = "bg-accent-primary shadow-accent-primary/50";
+          let statusColor = "bg-green-500 shadow-green-500/50";
 
-          const statusColor = toast.type === 'disconnect' ? "bg-gray-500 shadow-gray-500/50" : "bg-green-500 shadow-green-500/50";
+          if (toast.type === 'disconnect') {
+            borderColor = "bg-red-500 shadow-red-500/50";
+            statusColor = "bg-gray-500 shadow-gray-500/50";
+          } else if (toast.type === 'game') {
+            borderColor = "bg-blue-500 shadow-blue-500/50";
+            statusColor = "bg-green-500 shadow-green-500/50";
+          } else if (toast.borderColor) {
+            borderColor = toast.borderColor;
+            statusColor = toast.statusColor || toast.iconColor || "bg-accent-primary";
+          }
+
+          const LucideIconMap = {
+            'Target': Target, 'Activity': Activity, 'Sparkles': Sparkles, 'Skull': Skull, 'AlertCircle': AlertTriangle
+          };
+          const MappedIcon = toast.lucideName ? LucideIconMap[toast.lucideName] || Target : null;
 
           return (
             <div
               key={toast.id}
               className="w-[320px] bg-black/50 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-auto shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
             >
-              {/* Vertical Accent Line */}
-              <div className={`absolute left - 0 top - 0 bottom - 0 w - 1.5 ${borderColor} `} />
+              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${borderColor} `} />
 
               <div className="relative shrink-0">
-                <img
-                  src={toast.icon || `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || '14.2.1'}/img/profileicon/29.png`}
-                  className="w-14 h-14 rounded-xl border border-white/10 shadow-lg object-cover bg-gray-900"
-                  alt="Avatar"
-                  onError={(e) => { e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg" }}
-                />
-                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-black shadow-lg ${statusColor}`} />
+                {toast.imageUrl ? (
+                  <img
+                    src={toast.imageUrl}
+                    className="w-14 h-14 rounded-xl border border-white/10 shadow-lg object-cover bg-gray-900"
+                    alt="Icon"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : toast.lucideName && MappedIcon ? (
+                  <div className={`w-14 h-14 rounded-xl border border-white/10 shadow-lg flex items-center justify-center ${toast.iconColor || 'bg-gray-900'}`}>
+                      <MappedIcon size={24} className="text-white" />
+                  </div>
+                ) : toast.letter ? (
+                  <div className={`w-14 h-14 rounded-xl border border-white/10 shadow-lg flex items-center justify-center ${toast.iconColor || 'bg-gray-900'}`}>
+                      <span className="text-2xl font-black text-white">{toast.letter}</span>
+                  </div>
+                ) : (
+                  <img
+                    src={toast.icon || `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || '14.2.1'}/img/profileicon/29.png`}
+                    className="w-14 h-14 rounded-xl border border-white/10 shadow-lg object-cover bg-gray-900"
+                    alt="Avatar"
+                    onError={(e) => { e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg" }}
+                  />
+                )}
+                {!toast.lucideName && !toast.letter && (
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-black shadow-lg ${statusColor}`} />
+                )}
               </div >
 
               <div className="flex-1 min-w-0">
@@ -2134,7 +2166,6 @@ function SocialToastOverlay({ ddragonVersion }) {
                 <div className="text-xs text-gray-400 font-medium truncate italic">{toast.status}</div>
               </div>
 
-              {/* Progress Bar Animation */}
               <div className="absolute bottom-0 left-0 h-1 bg-white/5 w-full">
                 <div
                   className="h-full bg-accent-primary opacity-50 shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.5)]"
@@ -2158,6 +2189,77 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+
+  const [adminMessages, setAdminMessages] = useState(() => {
+    try { const saved = localStorage.getItem('oracle_admin_messages'); return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
+  });
+
+  const deleteAdminMessage = (id) => {
+    setAdminMessages(prev => {
+      const next = prev.filter(m => m.id !== id);
+      localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  // Global Admin Broadcast Fetcher (Firebase)
+  useEffect(() => {
+    let interval;
+    const fetchGlobalBroadcast = async () => {
+      try {
+        const res = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/broadcast.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.id) {
+            const globalMsg = {
+              id: data.id,
+              type: 'system',
+              title: data.title || 'ORACLE ADMIN',
+              name: data.name || data.message || 'Nouvelle notification',
+              status: data.status || 'Message système',
+              tag: data.tag || 'ANNONCE',
+              lucideName: data.lucideName || 'Bell',
+              duration: data.duration || 10000,
+              iconColor: data.color || 'bg-indigo-500 shadow-indigo-500/50',
+              borderColor: data.color || 'bg-indigo-500 shadow-indigo-500/50',
+              imageUrl: data.imageUrl || null,
+              url: data.url || null
+            };
+
+            setAdminMessages(prev => {
+              // Vérifier si on a déjà ce message
+              if (prev.some(m => m.id === globalMsg.id)) return prev;
+              const next = [globalMsg, ...prev].slice(0, 50);
+              localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
+              return next;
+            });
+          }
+        }
+      } catch (e) {
+        // Silent block
+      }
+    };
+
+    fetchGlobalBroadcast();
+    interval = setInterval(fetchGlobalBroadcast, 60000);
+
+    // Keep Local IPC for direct instant previews from Local Admin Panel
+    if (window.ipcRenderer) {
+      const handler = (_, msg) => setAdminMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev;
+        const next = [msg, ...prev].slice(0, 50);
+        localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
+        return next;
+      });
+      window.ipcRenderer.on('admin:broadcast', handler);
+      return () => {
+        clearInterval(interval);
+        window.ipcRenderer.removeListener('admin:broadcast', handler);
+      };
+    }
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const [isConnected, setIsConnected] = useState(false);
   const { patchNotes, championList, prefetchedData } = useCommonData();
@@ -2607,7 +2709,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
       <div className="absolute inset-0 z-0 transition-colors duration-700 overflow-hidden bg-[#f5f5f7] dark:bg-[#0b0c10]">
         {/* Soft, beautiful radial highlight from the top, matching the accent-primary exactly */}
         <div className="absolute inset-0 opacity-10 dark:opacity-[0.15] pointer-events-none transition-colors duration-1000" style={{ backgroundImage: 'radial-gradient(circle at 50% -10%, rgb(var(--accent-primary)), transparent 70%)' }}></div>
-        
+
         {/* Very subtle secondary highlight at bottom to give depth */}
         <div className="absolute inset-0 opacity-5 dark:opacity-[0.05] pointer-events-none transition-colors duration-1000" style={{ backgroundImage: 'radial-gradient(circle at 50% 110%, rgb(var(--accent-primary)), transparent 60%)' }}></div>
 
@@ -2627,7 +2729,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
       )}>
         {/* Minimalist Loading Screen */}
         <div className="absolute inset-0 bg-[#f5f5f7] dark:bg-[rgb(var(--bg-main))]" />
-        
+
         {/* Glowing Blurred Shape to match Dribbble Orange Blob */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
           <motion.div
@@ -2639,7 +2741,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
         </div>
 
         <div className={cn("relative z-10 flex flex-col items-center justify-center h-full w-full transition-all duration-700 transform", showSplash ? "scale-100 outline-none" : "scale-95 opacity-0")}>
-          <motion.div 
+          <motion.div
             initial="hidden" animate="visible"
             variants={{
               hidden: {},
@@ -2718,21 +2820,21 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
           {/* Bottom Profile Widget */}
           <div className="mt-auto px-4 w-full relative pb-4">
             {(gamePhase === 'ChampSelect' || gamePhase === 'InProgress' || gamePhase === 'GameStart') && (
-              <button 
+              <button
                 onClick={() => setActiveTab('livematch')}
                 className="w-full flex flex-col p-3 rounded-2xl bg-[#0a0a0c] border border-accent-primary/40 relative overflow-hidden group shadow-[0_0_20px_rgba(59,130,246,0.08)] transition-all hover:border-accent-primary hover:shadow-[0_0_30px_rgba(59,130,246,0.2)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/20 via-transparent to-transparent opacity-70 group-hover:opacity-100 transition-opacity"></div>
                 <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-accent-primary/40 to-transparent blur-xl"></div>
                 <div className="flex items-center justify-between relative z-10 w-full mb-1">
-                   <div className="flex items-center gap-2">
-                     <div className="relative flex items-center justify-center">
-                       <span className="absolute inline-flex h-full w-full rounded-full bg-accent-primary opacity-50 animate-ping"></span>
-                       <span className="relative inline-flex rounded-full h-2 bg-accent-primary shadow-[0_0_10px_rgba(59,130,246,1)] w-2"></span>
-                     </div>
-                     <span className="text-[10px] font-black text-white uppercase tracking-[0.2em] leading-none mt-0.5">{gamePhase === 'ChampSelect' ? "Draft Live" : "Match Live"}</span>
-                   </div>
-                   <Swords size={12} className="text-accent-primary" />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex items-center justify-center">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-accent-primary opacity-50 animate-ping"></span>
+                      <span className="relative inline-flex rounded-full h-2 bg-accent-primary shadow-[0_0_10px_rgba(59,130,246,1)] w-2"></span>
+                    </div>
+                    <span className="text-[10px] font-black text-white uppercase tracking-[0.2em] leading-none mt-0.5">{gamePhase === 'ChampSelect' ? "Draft Live" : "Match Live"}</span>
+                  </div>
+                  <Swords size={12} className="text-accent-primary" />
                 </div>
                 <div className="text-[8px] text-gray-400 font-bold uppercase tracking-[0.1em] text-left w-full relative z-10 opacity-70">
                   Vue Tracker Dynamique <ChevronRight size={10} className="inline opacity-50" />
@@ -2930,7 +3032,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 onClick={() => {
                   try {
                     require('electron').shell.openExternal('https://discord.gg/tUn9USj5pq');
-                  } catch(e) { window.open('https://discord.gg/tUn9USj5pq', '_blank'); }
+                  } catch (e) { window.open('https://discord.gg/tUn9USj5pq', '_blank'); }
                 }}
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300",
@@ -2939,7 +3041,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 title="Rejoindre le Discord d'Oracle"
               >
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/>
+                  <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z" />
                 </svg>
               </button>
               <button
@@ -3106,6 +3208,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   setActiveTab={(tab) => { setActiveTab(tab); setShowNotifPanel(false); }}
                   patchNotes={patchNotes}
                   prefetchedData={prefetchedData}
+                  adminMessages={adminMessages}
+                  onDeleteAdminMessage={deleteAdminMessage}
                   onShowNews={(article) => { setSelectedArticle(article); setShowNotifPanel(false); }}
                   onClose={() => setShowNotifPanel(false)}
                 />
@@ -3134,13 +3238,15 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 <p className="text-sm text-gray-400 leading-relaxed">
                   {selectedArticle.summary || selectedArticle.description || "Aucun résumé disponible pour cet article."}
                 </p>
-                <button
-                  onClick={() => window.ipcRenderer.invoke('app:open-url', selectedArticle.url)}
-                  className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 transition-all group"
-                >
-                  Lire l'article complet
-                  <ExternalLink size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </button>
+                {selectedArticle.url && (
+                  <button
+                    onClick={() => window.ipcRenderer.invoke('app:open-url', selectedArticle.url)}
+                    className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 transition-all group"
+                  >
+                    Lire l'article complet
+                    <ExternalLink size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -4389,13 +4495,13 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   const [history, setHistory] = useState([]);
   const [fullHistory, setFullHistory] = useState([]);
   const [teammates, setTeammates] = useState([]);
+  const fetchedIconCache = useRef({});
   const [topChamps, setTopChamps] = useState([]);
   const [roleStats, setRoleStats] = useState({ TOP: 0, JUNGLE: 0, MIDDLE: 0, BOTTOM: 0, SUPPORT: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [lastChampId, setLastChampId] = useState(null);
   const [selectedGame, setSelectedGame] = useState(null);
 
-  // New State for Filters and Live Game & Debug
   const [filter, setFilter] = useState('All');
   const [activeGame, setActiveGame] = useState(null);
   const [error, setError] = useState(null);
@@ -4403,8 +4509,61 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   const [championMap, setChampionMap] = useState({});
   const [presenceStatus, setPresenceStatus] = useState('offline');
   const [lpGains, setLpGains] = useState([]);
-  // Mock Behavioral Data Init
   const [behavioral, setBehavioral] = useState({ consistency: 'A', tilt: 'Resilient', objective: 'Controller', synergy: 'High', vision: 'Top 10%', aggression: 'Medium' });
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!teammates || teammates.length === 0) return;
+      
+      const top20 = teammates.slice(0, 20);
+      let mapChangedCache = false;
+      const cachedRecovery = top20.map(t => {
+          if (t.icon === 29 && t.searchName in fetchedIconCache.current) {
+              if (fetchedIconCache.current[t.searchName] !== 29) mapChangedCache = true;
+              return { ...t, icon: fetchedIconCache.current[t.searchName] };
+          }
+          return t;
+      });
+      if (mapChangedCache) {
+          setTeammates(cachedRecovery);
+          return;
+      }
+
+      const needed = cachedRecovery.filter(t => t.icon === 29 && !(t.searchName in fetchedIconCache.current));
+      if (needed.length === 0) return;
+      
+      const logFrontend = (msg) => { window.ipcRenderer.invoke('scraper:log', `[Frontend FastIcon] ${msg}`).catch(()=>{}); };
+      logFrontend(`Attempting to fetch ${needed.length} icons...`);
+
+      const newMap = {};
+      const newAttempted = new Map();
+      for (const t of needed) {
+        if (!active) break;
+        try {
+          const region = displayUser?.region || currentUser?.region || 'euw';
+          const res = await window.ipcRenderer.invoke('scraper:fast-icon-fetch', t.searchName, region);
+          newAttempted.set(t.searchName, res || 29);
+          if (res && res !== 29) {
+            logFrontend(`Success for ${t.searchName}: ${res}`);
+            newMap[t.name] = res;
+          }
+        } catch(e) {
+          logFrontend(`Error for ${t.searchName}: ${e}`);
+          newAttempted.set(t.searchName, 29);
+        }
+      }
+
+      if (active) {
+        newAttempted.forEach((id, name) => { fetchedIconCache.current[name] = id; });
+        if (Object.keys(newMap).length > 0) {
+          console.log(`[FastIcon] Updating UI with ${Object.keys(newMap).length} new icons.`);
+          setTeammates(prev => [...prev].map(p => newMap[p.name] ? { ...p, icon: newMap[p.name] } : p));
+        }
+      }
+    })();
+    return () => { active = false; };
+  }, [teammates, displayUser?.region]);
 
   useEffect(() => {
     const defaults = { consistency: '-', tilt: '-', objective: '-', synergy: '-', vision: '-', aggression: '-' };
@@ -4777,7 +4936,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                 const champStats = {};
                 const roleCounts = { TOP: 0, JUNGLE: 0, MIDDLE: 0, BOTTOM: 0, SUPPORT: 0, total: 0 };
 
-                recentGames.slice(0, 20).forEach(g => {
+                recentGames.slice(0, 50).forEach(g => {
                   // Find self in summary
                   const iden = g.participantIdentities.find(i => i.player.puuid === user.puuid);
                   if (!iden) return;
@@ -4803,25 +4962,38 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                     s.a += part.stats.assists || 0;
                   }
 
-                  // Role Stats
-                  // Timeline role/lane are often unreliable in summary, but it's what we have.
-                  // Sometimes it's in `timeline` object, sometimes `part.lane`/`part.role` directly in older APIs.
-                  // LCU summary typically has `timeline: { lane, role }`.
-                  const lane = (part.timeline?.lane || part.lane || "").toUpperCase();
-                  const role = (part.timeline?.role || part.role || "").toUpperCase();
+                  // Role Stats - User exactly requested Draft, SoloQ, Flex
+                  const qId = parseInt(g.queueId);
+                  const isSR = [400, 420, 440].includes(qId);
 
-                  if (lane === 'JUNGLE' || lane === 'JGL') roleCounts.JUNGLE++;
-                  else if (lane === 'TOP') roleCounts.TOP++;
-                  else if (lane === 'MIDDLE' || lane === 'MID') roleCounts.MIDDLE++;
-                  else if (lane === 'BOTTOM' || lane === 'BOT') {
-                    // Check role for support vs carry
-                    if (role === 'DUO_SUPPORT' || role === 'SUPPORT') roleCounts.SUPPORT++;
-                    else roleCounts.BOTTOM++;
+                  if (isSR) {
+                    const explicitTeamPos = (part.teamPosition || part.individualPosition || part.position || "").toUpperCase();
+                    const pos = explicitTeamPos || (part.timeline?.lane || part.lane || "").toUpperCase();
+                    const subRole = (part.timeline?.role || part.role || "").toUpperCase();
+                    const hasSmite = part.spell1Id === 11 || part.spell2Id === 11;
+
+                    let validRole = true;
+                    if (explicitTeamPos === 'UTILITY' || subRole === 'DUO_SUPPORT' || subRole === 'SUPPORT' || pos === 'UTILITY' || pos === 'SUPPORT') {
+                      roleCounts.SUPPORT++;
+                    } else if (explicitTeamPos === 'BOTTOM' || explicitTeamPos === 'BOT' || subRole === 'DUO_CARRY' || pos === 'BOTTOM' || pos === 'BOT') {
+                      roleCounts.BOTTOM++;
+                    } else if (explicitTeamPos === 'JUNGLE' || explicitTeamPos === 'JGL' || ((pos === 'JUNGLE' || pos === 'JGL') && hasSmite)) {
+                      roleCounts.JUNGLE++;
+                    } else if (explicitTeamPos === 'TOP' || pos === 'TOP') {
+                      roleCounts.TOP++;
+                    } else if (explicitTeamPos === 'MIDDLE' || explicitTeamPos === 'MID' || pos === 'MIDDLE' || pos === 'MID') {
+                      roleCounts.MIDDLE++;
+                    } else {
+                      validRole = false;
+                    }
+
+                    if (validRole) {
+                      roleCounts.total++;
+                    }
                   }
-                  roleCounts.total++;
                 });
 
-                const sortedChamps = Object.values(champStats).sort((a, b) => b.count - a.count).slice(0, 6);
+                const sortedChamps = Object.values(champStats).sort((a, b) => b.count - a.count).slice(0, 7);
                 setTopChamps(sortedChamps);
                 setRoleStats(roleCounts);
               } catch (e) {
@@ -4836,8 +5008,11 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                 .catch(err => console.log('LP error', err));
 
               // Fetch full games parallel for TEAMMATES
-              Promise.all(gamesForTeammates.map(g => window.ipcRenderer.invoke('lcu:get-game', g.gameId)))
-                .then(fullGames => {
+              Promise.all(gamesForTeammates.map(g => 
+                window.ipcRenderer.invoke('lcu:get-game', g.gameId)
+                  .then(res => (res && res.participants) ? res : g)
+                  .catch(() => g)
+              )).then(fullGames => {
                   const validGames = fullGames.filter(g => g && g.participants && g.participants.length > 1);
                   const partnerCounts = {};
 
@@ -4904,7 +5079,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                         // Detect and skip bots instantly
                         const id = identities.find(i => i.participantId == p.participantId);
                         let puuid = p.puuid || (id && id.player && id.player.puuid);
-                        
+
                         // Only filter if we POSITIVELY know it's a bot. Missing PUUID does not mean bot in LCU match format.
                         if (p.botDifficulty || puuid === "0" || puuid === "00000000-0000-0000-0000-000000000000") return;
                         if (id && id.player && (id.player.summonerId === 0 || id.player.summonerId === "0" || id.player.summonerId === "")) return;
@@ -4939,6 +5114,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                             name: displayName,      // Visual Name
                             searchName: searchName, // Actual ID for API
                             puuid: puuid,
+                            championId: p.championId,
                             count: 0,
                             wins: 0,
                             icon: icon,
@@ -4956,7 +5132,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                     }
                   });
 
-                  const calculatedTeammates = Object.values(partnerCounts).sort((a, b) => b.count - a.count || b.lastSeen - a.lastSeen).slice(0, 6);
+                  const calculatedTeammates = Object.values(partnerCounts).sort((a, b) => b.count - a.count || b.lastSeen - a.lastSeen).slice(0, 7);
 
                   setTeammates(calculatedTeammates);
                 }).catch(err => console.error("Teammates error", err));
@@ -5021,7 +5197,9 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         if (p.stats.kills > mk) mk = p.stats.kills;
         if (p.stats.totalDamageDealtToChampions > md) md = p.stats.totalDamageDealtToChampions;
         if (p.stats.visionScore > mv) mv = p.stats.visionScore;
-        const durationMin = Math.max(1, g.gameDuration) / 60;
+        let durationSec = g.gameDuration || 1200;
+        if (durationSec > 10000) durationSec = durationSec / 1000;
+        const durationMin = Math.max(1, durationSec) / 60;
         const csm = (p.stats.totalMinionsKilled + p.stats.neutralMinionsKilled) / durationMin;
         if (csm > mc) mc = csm;
       }
@@ -5051,7 +5229,8 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         totalAssists += (p.stats.assists || 0);
         totalVision += (p.stats.visionScore || 0);
         totalCS += ((p.stats.totalMinionsKilled || 0) + (p.stats.neutralMinionsKilled || 0));
-        totalTime += g.gameDuration;
+        const durationSec = g.gameDuration > 10000 ? g.gameDuration / 1000 : g.gameDuration;
+        totalTime += durationSec;
         totalObjDmg += (p.stats.damageDealtToObjectives || 0);
       }
     });
@@ -5114,8 +5293,11 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
     const csmList = history.map(g => {
       const id = g.participantIdentities?.find(i => i.player.puuid === displayUser?.puuid)?.participantId;
       const p = g.participants?.find(part => part.participantId === id);
-      const min = g.gameDuration / 60;
-      return (p?.stats?.totalMinionsKilled || 0) / (min || 20);
+      let durationSec = g.gameDuration || 1200;
+      if (durationSec > 10000) durationSec = durationSec / 1000; // handle milliseconds
+      const min = Math.max(1, durationSec) / 60;
+      const totalCS = (p?.stats?.totalMinionsKilled || 0) + (p?.stats?.neutralMinionsKilled || 0);
+      return totalCS / min;
     });
     const avgCSM = csmList.reduce((a, b) => a + b, 0) / (csmList.length || 1);
     const variance = csmList.reduce((a, b) => a + Math.pow(b - avgCSM, 2), 0) / (csmList.length || 1);
@@ -5269,9 +5451,18 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
     );
   }
 
-  // Determines if the avatar should have the Golden aesthetic (only if it's the current user)
+  // Determines if the avatar should have the Golden aesthetic (Premium Users)
   const isDisplayUserPremium = displayUser && (
-    premiumUsers.some(p => displayUser.gameName?.toLowerCase() === p.name && displayUser.tagLine?.toLowerCase() === p.tag) ||
+    premiumUsers.some(p => {
+      const uName = (displayUser.gameName || displayUser.displayName || displayUser.summonerName || "").toLowerCase().replace(/\s/g, '');
+      const pName = p.name.toLowerCase().replace(/\s/g, '');
+      const uTag = (displayUser.tagLine || "").toLowerCase();
+      if (!uName) return false;
+      if (uName === pName) {
+        if (!uTag || uTag === 'euw' || uTag === p.tag) return true;
+      }
+      return false;
+    }) ||
     displayUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e'
   );
 
@@ -5290,7 +5481,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         <div className="relative h-full flex items-center px-8 z-10">
           <div className="flex items-start gap-6">
             <div className="relative group">
-              <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${displayUser?.profileIconId || 29}.jpg`} className={cn("w-28 h-28 rounded-[2rem] border-4 shadow-2xl relative z-10 transition-all", isDisplayUserPremium ? "border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border-[#1e1e24]")} />
+              <img src={`https://ddragon.leagueoflegends.com/cdn/15.4.1/img/profileicon/${displayUser?.profileIconId || 29}.png`} onError={(e) => { e.target.onerror = null; e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${displayUser?.profileIconId || 29}.jpg` }} className={cn("w-28 h-28 rounded-[2rem] border-4 shadow-2xl relative z-10 transition-all", isDisplayUserPremium ? "border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border-[#1e1e24]")} />
               <div className="absolute -top-3 -left-3 bg-[#5c7ce5] text-white font-bold px-2 py-0.5 rounded-lg text-xs shadow-lg z-20 uppercase">{displayUser?.region || "EUW"}</div>
               {isDisplayUserPremium && (
                 <div className="absolute -top-3 -right-3 z-20 animate-in zoom-in duration-300">
@@ -5421,7 +5612,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
           </div>
           <div className="flex-1 flex flex-col h-full min-h-0">
             {/* Match History Container - Rounded Frame with internal scrolling */}
-            <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-4 flex flex-col gap-3 h-[625px] overflow-hidden shadow-2xl">
+            <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-4 flex flex-col gap-3 h-[675px] overflow-hidden shadow-2xl">
               <div className="shrink-0 flex items-center justify-between">
                 <h3 className="text-gray-600 dark:text-gray-400 text-xs font-bold uppercase flex items-center gap-2">
                   <Clock size={12} /> {t('recent_matches')}
@@ -5508,7 +5699,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
           </div>
 
           {/* Records Card (Modern Style) */}
-          <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-6 relative overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[300px] hover:border-yellow-500/20 transition-all duration-500" >
+          <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-3xl border border-gray-200 dark:border-white/10 p-6 relative overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[350px] hover:border-yellow-500/20 transition-all duration-500" >
             {/* Background Glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-yellow-500/10 transition-all duration-700"></div>
 
@@ -5587,7 +5778,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                   className="flex items-center justify-between group hover:bg-white dark:bg-white/5 p-2 rounded-xl transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <img src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/profileicon/${p.icon || 29}.png`} onError={(e) => { e.target.onerror = null; e.target.src = `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/profileicon/29.png`; }} className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10" />
+                    <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${p.icon || 29}.jpg`} onError={(e) => { e.target.onerror = null; e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg"; }} className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 shadow-sm" />
                     <div className="flex flex-col">
                       <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate max-w-[80px]" title={p.name}>{p.name}</span>
                       <span className="text-[9px] text-gray-500">{p.count} {t('games_played')}</span>
@@ -5651,10 +5842,10 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
             <div className="flex justify-between items-center text-center">
               {['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'SUPPORT'].map((r, i) => {
                 const count = roleStats[r] || 0;
-                
+
                 // Calculate total based only on matched structured roles so percentages reflect exact distribution
                 const validTotal = Math.max(1, ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'SUPPORT'].reduce((acc, curr) => acc + (roleStats[curr] || 0), 0));
-                
+
                 const pct = Math.round((count / validTotal) * 100);
 
                 // Map to icon names
@@ -6055,19 +6246,25 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
       }).catch(() => setLoadingHistory(false));
     }
 
-    const mainContent = document.getElementById('profile-scroll-container');
+    const containers = document.querySelectorAll('#profile-scroll-container');
+    const globalContent = document.getElementById('main-scroll-container');
+    
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      if (mainContent) mainContent.style.overflow = 'hidden';
+      containers.forEach(c => c.style.overflow = 'hidden');
+      if (globalContent) globalContent.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto'; // default
-      if (mainContent) mainContent.style.overflow = 'auto';
+      containers.forEach(c => c.style.overflow = 'auto');
+      if (globalContent) globalContent.style.overflow = 'auto';
     }
 
     return () => {
       document.body.style.overflow = 'auto';
-      const container = document.getElementById('profile-scroll-container');
-      if (container) container.style.overflow = 'auto';
+      const containersQuery = document.querySelectorAll('#profile-scroll-container');
+      const gContainer = document.getElementById('main-scroll-container');
+      containersQuery.forEach(c => c.style.overflow = 'auto');
+      if (gContainer) gContainer.style.overflow = 'auto';
     };
   }, [isOpen, puuid]);
 
@@ -6126,6 +6323,17 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
     const matchCount = relevantGames.length;
     let runningLp = currentAbsLp;
 
+    const availableLpGains = [...(lpGains || [])];
+    let sumWin = 0, countWin = 0, sumLoss = 0, countLoss = 0;
+    availableLpGains.forEach(lp => {
+      if (!lp.lpStr) return;
+      const val = parseInt(lp.lpStr.replace(/[^0-9-]/g, ''));
+      if (val > 0) { sumWin += val; countWin++; }
+      else if (val < 0) { sumLoss += Math.abs(val); countLoss++; }
+    });
+    const avgWin = countWin > 0 ? Math.round(sumWin / countWin) : 21;
+    const avgLoss = countLoss > 0 ? Math.round(sumLoss / countLoss) : 19;
+
     for (let i = 0; i < matchCount; i++) {
       const g = relevantGames[i];
       const identity = g.participantIdentities?.find(id => id.player.puuid === puuid);
@@ -6140,20 +6348,22 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
         if (g.lpDelta != null) {
           diff = isWin ? Math.abs(g.lpDelta) : -Math.abs(g.lpDelta);
         } else if (g.lpChange && typeof g.lpChange === 'string') {
-          diff = parseInt(g.lpChange.replace(/[^0-9-]/g, '')) || (isWin ? 20 : -20);
-        } else if (lpGains && lpGains.length > 0 && part?.stats) {
-          const matched = lpGains.find(lp => {
+          diff = parseInt(g.lpChange.replace(/[^0-9-]/g, '')) || (isWin ? avgWin : -avgLoss);
+        } else if (availableLpGains.length > 0 && part?.stats) {
+          const matchedIdx = availableLpGains.findIndex(lp => {
             if (!lp.kda) return false;
             const parts = lp.kda.split('/').map(v => parseInt(v.trim(), 10));
             return parts[0] === part.stats.kills && parts[1] === part.stats.deaths && parts[2] === part.stats.assists;
           });
-          if (matched && matched.lpStr) {
-            diff = parseInt(matched.lpStr.replace(/[^0-9-]/g, '')) || (isWin ? 20 : -20);
+          if (matchedIdx !== -1) {
+            const matched = availableLpGains[matchedIdx];
+            diff = parseInt(matched.lpStr.replace(/[^0-9-]/g, '')) || (isWin ? avgWin : -avgLoss);
+            availableLpGains.splice(matchedIdx, 1);
           } else {
-            diff = isWin ? 20 : -20;
+            diff = isWin ? avgWin : -avgLoss;
           }
         } else {
-          diff = isWin ? 20 : -20;
+          diff = isWin ? avgWin : -avgLoss;
         }
       }
 
@@ -6215,12 +6425,10 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
       }
 
       const realPoints = filteredScraped.map((p, idx) => {
-        // Rank string to Tier/Div/LP
-        let abs = p.lp;
-        if (p.rankStr && !p.lp) {
-          // Rough estimate if LP is 0 but rank is say GOLD III
+        let abs = currentAbsLp;
+        if (p.rankStr) {
           const parts = p.rankStr.split(' ');
-          abs = getAbsLp(parts[0].toUpperCase(), parts[1] || 'IV', 0);
+          abs = getAbsLp(parts[0].toUpperCase(), parts[1] || 'IV', p.lp || 0);
         }
         return {
           lp: abs,
@@ -6278,17 +6486,17 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
     if (ticks.length < 2) {
       ticks.push(minAbs + (range / 2));
     }
-    
+
     // Filter duplicates by label names to avoid visual clutter
     const uniqueLabels = new Set();
     const filteredTicks = [];
     for (let i = ticks.length - 1; i >= 0; i--) {
-        const rank = getRankFromAbs(ticks[i]);
-        const label = `${rank.tier} ${rank.div}`;
-        if (!uniqueLabels.has(label)) {
-            uniqueLabels.add(label);
-            filteredTicks.unshift(ticks[i]);
-        }
+      const rank = getRankFromAbs(ticks[i]);
+      const label = `${rank.tier} ${rank.div}`;
+      if (!uniqueLabels.has(label)) {
+        uniqueLabels.add(label);
+        filteredTicks.unshift(ticks[i]);
+      }
     }
     return filteredTicks;
   }, [minAbs, maxAbs, range, mockPoints.length, getRankFromAbs]);
@@ -6403,9 +6611,13 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Total période</span>
                   <div className="flex gap-2 text-base font-black items-center">
-                    <span className="text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]">{filterWins}W</span>
-                    <span className="text-gray-600">-</span>
-                    <span className="text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.4)]">{filterLosses}L</span>
+                    {(filterWins > 0 || filterLosses > 0 || filter === '20_games') && (
+                      <>
+                        <span className="text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.4)]">{filterWins}W</span>
+                        <span className="text-gray-600">-</span>
+                        <span className="text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.4)]">{filterLosses}L</span>
+                      </>
+                    )}
                     <span className={cn("ml-2 px-2 py-0.5 rounded-md font-bold text-[11px] flex items-center w-fit backdrop-blur-sm border", lpDiff >= 0 ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
                       {lpDiff > 0 ? '+' : ''}{lpDiff} LP
                     </span>
@@ -6475,24 +6687,24 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
                     )}
 
                     {/* Clean Smooth Fill Area */}
-                    <motion.path 
+                    <motion.path
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-                      d={`${pathData} L ${width} ${height} L 0 ${height} Z`} 
-                      fill="url(#gradientLP)" 
+                      d={`${pathData} L ${width} ${height} L 0 ${height} Z`}
+                      fill="url(#gradientLP)"
                     />
 
                     {/* Glowing Smooth Curve */}
-                    <motion.path 
+                    <motion.path
                       initial={{ pathLength: 0 }}
                       animate={{ pathLength: 1 }}
                       transition={{ duration: 1.5, ease: "easeInOut" }}
-                      d={pathData} 
-                      fill="none" 
-                      stroke={themeAccentColor} 
-                      strokeWidth="3" 
-                      style={{ filter: `drop-shadow(0 4px 6px ${themeAccentColor.replace('rgb', 'rgba').replace(')', ', 0.4)')})` }} 
+                      d={pathData}
+                      fill="none"
+                      stroke={themeAccentColor}
+                      strokeWidth="3"
+                      style={{ filter: `drop-shadow(0 4px 6px ${themeAccentColor.replace('rgb', 'rgba').replace(')', ', 0.4)')})` }}
                     />
 
                     {/* Crosshair Vertical Line */}
@@ -6924,10 +7136,10 @@ function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
                 }
               }
             }
-            
-            // Only fall back to No data if there is genuinely no data AND we are in ranked queue
-            if (!lpToDisplay && (game.queueId === 420 || game.queueId === 440)) {
-               lpToDisplay = 'No data';
+
+            // Only fall back to No data if there is genuinely no data AND we are in ranked queue AND it is not external
+            if (!lpToDisplay && (game.queueId === 420 || game.queueId === 440) && !game.isExternal) {
+              lpToDisplay = 'No data';
             }
 
             if (!lpToDisplay) return null;
@@ -6935,7 +7147,7 @@ function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
             return (
               <div className={cn("text-[10px] font-black px-1.5 py-0.5 rounded border shadow-sm",
                 lpToDisplay === 'No data' ? "text-gray-400 border-gray-400/20 bg-gray-500/10" :
-                lpToDisplay.includes('+') ? "text-blue-400 border-blue-400/20 bg-blue-500/10" : "text-red-400 border-red-400/20 bg-red-500/10")}>
+                  lpToDisplay.includes('+') ? "text-blue-400 border-blue-400/20 bg-blue-500/10" : "text-red-400 border-red-400/20 bg-red-500/10")}>
                 {lpToDisplay}
               </div>
             );
@@ -7021,7 +7233,7 @@ function SettingCard({ icon: Icon, title, desc, action, color = "blue" }) {
 
   return (
     <div className={cn(
-      "group relative p-6 rounded-[32px] bg-gradient-to-br transition-all duration-500 border shadow-xl flex flex-col",
+      "group relative z-[1] hover:z-[50] p-6 rounded-[32px] bg-gradient-to-br transition-all duration-500 border shadow-xl flex flex-col",
       theme.from, theme.to, theme.border, "hover:scale-[1.02] hover:shadow-2xl", theme.glow
     )}>
       {/* Decorative background element now isolated with overflow-hidden */}
@@ -7127,7 +7339,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
       try {
         const curPhase = await window.ipcRenderer.invoke('lcu:get-gameflow-phase');
         setPhase(curPhase);
-        
+
         let s = null;
         let l = null;
         if (curPhase === 'ChampSelect') {
@@ -7135,13 +7347,13 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
         } else if (curPhase === 'InProgress' || curPhase === 'GameStart') {
           s = await window.ipcRenderer.invoke('lcu:get-gameflow-session');
           try {
-             l = await window.ipcRenderer.invoke('live:get-all-data');
-          } catch(err) {}
+            l = await window.ipcRenderer.invoke('live:get-all-data');
+          } catch (err) { }
         }
-        
+
         if (l && l.allPlayers) {
-           s = s || {};
-           s.liveData = l;
+          s = s || {};
+          s.liveData = l;
         }
 
         setSession(s);
@@ -7165,82 +7377,82 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
     if (!p) return false;
     // For ChampSelect, ensure they actually have a valid cellId or summonerId
     if (phase === 'ChampSelect') {
-       if (p.summonerId > 0 || p.championId > 0 || p.cellId !== undefined) return true;
-       return false;
+      if (p.summonerId > 0 || p.championId > 0 || p.cellId !== undefined) return true;
+      return false;
     }
     // Hard block empty stale cache ghost bots (summonerName=empty + fake names)
     if (!p.summonerName && !p.championId && !p.summonerInternalName) return false;
 
     // For In-Game, rely on clear identifiers. Hide stale leftover game data bots if possible
     if (p.summonerId > 0 || (p.puuid && p.puuid.length > 0)) {
-        return true;
+      return true;
     }
     if (p.isBot === true || p.botDifficulty !== undefined) return true;
     if (p.summonerInternalName && p.summonerInternalName.toLowerCase().includes('bot')) return true;
-    
+
     // LiveData checks
     if (p.riotIdGameName || p.summonerName) return true;
-    
+
     return false;
   };
 
   let rawTeamOne = [];
   let rawTeamTwo = [];
-  
+
   if (phase === 'ChampSelect') {
     rawTeamOne = session?.myTeam || [];
     rawTeamTwo = session?.theirTeam || [];
   } else if (session?.liveData?.allPlayers?.length > 0) {
-     // Use perfect Live Client Data to bypass LCU cache completely
-     const livePlayers = session.liveData.allPlayers;
-     const spellNameToId = (name) => {
-         const m = { 
-             "summonerflash": 4, "flash": 4, "sautéclair": 4, "sauteclair": 4, 
-             "summonersmite": 11, "smite": 11, "châtiment": 11, "chatiment": 11,
-             "summonerteleport": 12, "teleport": 12, "téléportation": 12, "teleportation": 12,
-             "summonerdot": 14, "ignite": 14, "embrasement": 14, "brûlure": 14,
-             "summonerheal": 7, "heal": 7, "soins": 7, "soin": 7,
-             "summonerbarrier": 21, "barrier": 21, "barrière": 21, "barriere": 21,
-             "summonerboost": 1, "cleanse": 1, "purge": 1,
-             "summonerexhaust": 3, "exhaust": 3, "fatigue": 3,
-             "summonerhaste": 6, "ghost": 6, "fantôme": 6, "fantome": 6,
-             "summonermana": 13, "clarity": 13, "clarté": 13, "clarte": 13,
-             "summonerpororecall": 30, "summonerporothrow": 31, "summonersnowball": 32, "marquage": 32
-         };
-         let sName = name ? name.toLowerCase().replace(/[\s']/g, "") : "";
-         for (let k in m) if (sName.includes(k) || k.includes(sName)) return m[k];
-         
-         // final fallback just in case
-         if (sName.includes("eclair")) return 4;
-         return 0;
-     };
-     const mapLivePlayer = p => {
-         let parsedCid = 0;
-         if (p.championName) {
-             const cleanName = (n) => n ? n.toLowerCase().replace(/['\s.]/g, '') : '';
-             const pName = cleanName(p.championName);
-             for (let mapId in CHAMP_ID_TO_NAME) {
-                 if (cleanName(CHAMP_ID_TO_NAME[mapId]) === pName) {
-                     parsedCid = parseInt(mapId);
-                     break;
-                 }
-             }
-         }
-         const rawS1 = p.summonerSpells?.summonerSpellOne?.rawDescription || p.summonerSpells?.summonerSpellOne?.displayName;
-         const rawS2 = p.summonerSpells?.summonerSpellTwo?.rawDescription || p.summonerSpells?.summonerSpellTwo?.displayName;
-         return {
-            summonerName: p.summonerName,
-            summonerInternalName: p.riotIdGameName || p.summonerName,
-            championId: parsedCid,
-            spell1Id: spellNameToId(rawS1),
-            spell2Id: spellNameToId(rawS2),
-            puuid: p.puuid,
-            isBot: p.isBot,
-            assignedPosition: p.position // from live data if possible
-         };
-     };
-     rawTeamOne = livePlayers.filter(p => !p.isBot || p.team === 'ORDER').filter(p => p.team === 'ORDER').map(mapLivePlayer);
-     rawTeamTwo = livePlayers.filter(p => !p.isBot || p.team === 'CHAOS').filter(p => p.team === 'CHAOS').map(mapLivePlayer);
+    // Use perfect Live Client Data to bypass LCU cache completely
+    const livePlayers = session.liveData.allPlayers;
+    const spellNameToId = (name) => {
+      const m = {
+        "summonerflash": 4, "flash": 4, "sautéclair": 4, "sauteclair": 4,
+        "summonersmite": 11, "smite": 11, "châtiment": 11, "chatiment": 11,
+        "summonerteleport": 12, "teleport": 12, "téléportation": 12, "teleportation": 12,
+        "summonerdot": 14, "ignite": 14, "embrasement": 14, "brûlure": 14,
+        "summonerheal": 7, "heal": 7, "soins": 7, "soin": 7,
+        "summonerbarrier": 21, "barrier": 21, "barrière": 21, "barriere": 21,
+        "summonerboost": 1, "cleanse": 1, "purge": 1,
+        "summonerexhaust": 3, "exhaust": 3, "fatigue": 3,
+        "summonerhaste": 6, "ghost": 6, "fantôme": 6, "fantome": 6,
+        "summonermana": 13, "clarity": 13, "clarté": 13, "clarte": 13,
+        "summonerpororecall": 30, "summonerporothrow": 31, "summonersnowball": 32, "marquage": 32
+      };
+      let sName = name ? name.toLowerCase().replace(/[\s']/g, "") : "";
+      for (let k in m) if (sName.includes(k) || k.includes(sName)) return m[k];
+
+      // final fallback just in case
+      if (sName.includes("eclair")) return 4;
+      return 0;
+    };
+    const mapLivePlayer = p => {
+      let parsedCid = 0;
+      if (p.championName) {
+        const cleanName = (n) => n ? n.toLowerCase().replace(/['\s.]/g, '') : '';
+        const pName = cleanName(p.championName);
+        for (let mapId in CHAMP_ID_TO_NAME) {
+          if (cleanName(CHAMP_ID_TO_NAME[mapId]) === pName) {
+            parsedCid = parseInt(mapId);
+            break;
+          }
+        }
+      }
+      const rawS1 = p.summonerSpells?.summonerSpellOne?.rawDescription || p.summonerSpells?.summonerSpellOne?.displayName;
+      const rawS2 = p.summonerSpells?.summonerSpellTwo?.rawDescription || p.summonerSpells?.summonerSpellTwo?.displayName;
+      return {
+        summonerName: p.summonerName,
+        summonerInternalName: p.riotIdGameName || p.summonerName,
+        championId: parsedCid,
+        spell1Id: spellNameToId(rawS1),
+        spell2Id: spellNameToId(rawS2),
+        puuid: p.puuid,
+        isBot: p.isBot,
+        assignedPosition: p.position // from live data if possible
+      };
+    };
+    rawTeamOne = livePlayers.filter(p => !p.isBot || p.team === 'ORDER').filter(p => p.team === 'ORDER').map(mapLivePlayer);
+    rawTeamTwo = livePlayers.filter(p => !p.isBot || p.team === 'CHAOS').filter(p => p.team === 'CHAOS').map(mapLivePlayer);
   } else {
     rawTeamOne = session?.gameData?.teamOne || [];
     rawTeamTwo = session?.gameData?.teamTwo || [];
@@ -7252,16 +7464,16 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   const getTeamStats = (players) => {
     let powerEarly = 50, powerMid = 50, powerLate = 50;
     let synergyHash = 0;
-    
+
     players.forEach((p, idx) => {
-        if (!p) return;
-        const cId = p.championId > 0 ? p.championId : 0;
-        if (cId > 0) {
-           synergyHash += cId * (idx + 1);
-           powerEarly += (cId % 10) - 5;
-           powerMid += (cId % 15) - 7;
-           powerLate += (cId % 12) - 6;
-        }
+      if (!p) return;
+      const cId = p.championId > 0 ? p.championId : 0;
+      if (cId > 0) {
+        synergyHash += cId * (idx + 1);
+        powerEarly += (cId % 10) - 5;
+        powerMid += (cId % 15) - 7;
+        powerLate += (cId % 12) - 6;
+      }
     });
 
     let winrate = 45 + (synergyHash % 11);
@@ -7269,10 +7481,10 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
     if (winrate < 40) winrate = 40;
 
     return {
-       winrate: winrate,
-       early: Math.min(100, Math.max(0, powerEarly)),
-       mid: Math.min(100, Math.max(0, powerMid)),
-       late: Math.min(100, Math.max(0, powerLate))
+      winrate: winrate,
+      early: Math.min(100, Math.max(0, powerEarly)),
+      mid: Math.min(100, Math.max(0, powerMid)),
+      late: Math.min(100, Math.max(0, powerLate))
     };
   };
 
@@ -7294,21 +7506,21 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   const earlySpike = getNormalizedSpikes(t1StatsRaw.early, t2StatsRaw.early);
   const midSpike = getNormalizedSpikes(t1StatsRaw.mid, t2StatsRaw.mid);
   const lateSpike = getNormalizedSpikes(t1StatsRaw.late, t2StatsRaw.late);
-  
-    const matchCurrentPlayer = (p) => {
-      if (phase === 'ChampSelect') {
-         if (p.cellId !== undefined && session?.localPlayerCellId !== undefined && p.cellId === session.localPlayerCellId) return true;
-      }
-      if (session?.liveData?.activePlayer?.summonerName) {
-         if (p.summonerName === session.liveData.activePlayer.summonerName || p.summonerInternalName === session.liveData.activePlayer.summonerName) return true;
-      }
-      if (p.summonerId > 0 && p.summonerId === localSummonerId) return true;
-      return false;
+
+  const matchCurrentPlayer = (p) => {
+    if (phase === 'ChampSelect') {
+      if (p.cellId !== undefined && session?.localPlayerCellId !== undefined && p.cellId === session.localPlayerCellId) return true;
+    }
+    if (session?.liveData?.activePlayer?.summonerName) {
+      if (p.summonerName === session.liveData.activePlayer.summonerName || p.summonerInternalName === session.liveData.activePlayer.summonerName) return true;
+    }
+    if (p.summonerId > 0 && p.summonerId === localSummonerId) return true;
+    return false;
   };
   const myPlayer = teamOne.find(matchCurrentPlayer) || teamOne[0];
   const isLocked = myPlayer ? (phase === 'ChampSelect' ? session?.actions?.some(tier => tier.some(action => action.actorCellId === myPlayer.cellId && action.completed)) : phase !== 'ChampSelect') : false;
   const myChampName = myPlayer && myPlayer.championId > 0 ? getChampName(myPlayer.championId) : null;
-  
+
   const assignedRole = myPlayer?.assignedPosition ? myPlayer.assignedPosition.toLowerCase() : null;
   const roleMapping = { 'utility': 'support', 'bottom': 'adc', 'middle': 'mid', 'jungle': 'jungle', 'top': 'top' };
   const targetRole = assignedRole ? (roleMapping[assignedRole] || assignedRole) : "";
@@ -7317,423 +7529,423 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   const [champSpells, setChampSpells] = useState({});
 
   useEffect(() => {
-     fetch("https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/runesReforged.json")
-       .then(r => r.json())
-       .then(d => setRunesReforged(d))
-       .catch(e => console.error(e));
+    fetch("https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/runesReforged.json")
+      .then(r => r.json())
+      .then(d => setRunesReforged(d))
+      .catch(e => console.error(e));
   }, []);
 
   useEffect(() => {
-      if (myChampName) {
-          fetch(`https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/champion/${myChampName}.json`)
-            .then(r => r.json())
-            .then(d => {
-                const spells = d.data[myChampName].spells;
-                setChampSpells({
-                    'Q': spells[0].id,
-                    'W': spells[1].id,
-                    'E': spells[2].id,
-                    'R': spells[3].id
-                });
-            }).catch(e => console.error(e));
-      }
+    if (myChampName) {
+      fetch(`https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/champion/${myChampName}.json`)
+        .then(r => r.json())
+        .then(d => {
+          const spells = d.data[myChampName].spells;
+          setChampSpells({
+            'Q': spells[0].id,
+            'W': spells[1].id,
+            'E': spells[2].id,
+            'R': spells[3].id
+          });
+        }).catch(e => console.error(e));
+    }
   }, [myChampName]);
 
   // Fetch Recommended Build dynamically instead of mock
   useEffect(() => {
-     if (myChampName && isLocked) {
-        window.ipcRenderer.invoke('scraper:get-champion-build', myChampName, targetRole).then(build => {
-            if (build) setRecommendedBuild(build);
-        }).catch(e => console.error("Build fetch error", e));
-     } else if (!isLocked) {
-        setRecommendedBuild(null);
-     }
+    if (myChampName && isLocked) {
+      window.ipcRenderer.invoke('scraper:get-champion-build', myChampName, targetRole).then(build => {
+        if (build) setRecommendedBuild(build);
+      }).catch(e => console.error("Build fetch error", e));
+    } else if (!isLocked) {
+      setRecommendedBuild(null);
+    }
   }, [myChampName, isLocked, targetRole]);
 
   const getChampSelectBans = (bansArray) => {
-      if (!bansArray) return [];
-      return bansArray.filter(id => id && id > 0).map(id => ({ championId: id }));
+    if (!bansArray) return [];
+    return bansArray.filter(id => id && id > 0).map(id => ({ championId: id }));
   };
 
   const t1Bans = phase === 'ChampSelect'
-      ? getChampSelectBans(session?.bans?.myTeamBans)
-      : (session?.gameData?.bannedChampions?.filter(b => b.teamId === 100) || []);
-      
+    ? getChampSelectBans(session?.bans?.myTeamBans)
+    : (session?.gameData?.bannedChampions?.filter(b => b.teamId === 100) || []);
+
   const t2Bans = phase === 'ChampSelect'
-      ? getChampSelectBans(session?.bans?.theirTeamBans)
-      : (session?.gameData?.bannedChampions?.filter(b => b.teamId === 200) || []);
+    ? getChampSelectBans(session?.bans?.theirTeamBans)
+    : (session?.gameData?.bannedChampions?.filter(b => b.teamId === 200) || []);
 
   if (loading) return <GlobalFullScreenLoader text="Tracker Live" subtext="Connexion en temps réel..." />;
 
   if (!session || (phase !== 'ChampSelect' && phase !== 'InProgress' && phase !== 'GameStart')) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500">
-         <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-500/30 flex items-center justify-center mb-6 opacity-50 relative">
-           <div className="absolute inset-0 border-2 border-gray-500/10 rounded-full blur-sm"></div>
-           <Activity size={48} className="text-gray-500/50" />
-         </div>
-         <h2 className="text-2xl font-black uppercase tracking-widest text-gray-500">Aucune partie active</h2>
-         <p className="text-sm font-bold text-gray-500/60 mt-2 max-w-sm">Lancez une recherche de match pour voir l'analyse en direct s'activer ici.</p>
+        <div className="w-32 h-32 rounded-full border-2 border-dashed border-gray-500/30 flex items-center justify-center mb-6 opacity-50 relative">
+          <div className="absolute inset-0 border-2 border-gray-500/10 rounded-full blur-sm"></div>
+          <Activity size={48} className="text-gray-500/50" />
+        </div>
+        <h2 className="text-2xl font-black uppercase tracking-widest text-gray-500">Aucune partie active</h2>
+        <p className="text-sm font-bold text-gray-500/60 mt-2 max-w-sm">Lancez une recherche de match pour voir l'analyse en direct s'activer ici.</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-700 px-2 pb-6 pt-0 overflow-y-auto custom-scrollbar no-drag">
-       {/* Removed TRACKER EN DIRECT header base on user request */}
+      {/* Removed TRACKER EN DIRECT header base on user request */}
 
-       {/* Top Section: Split Layout (Allies | Temps Forts | Ennemis) */}
-       <div className="flex gap-6 shrink-0 mt-4 rounded-3xl" style={{height: "360px"}}>
-         
-         {/* Team 1 (BLUE) */}
-         <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
-            {t1Bans && t1Bans.length > 0 && (
+      {/* Top Section: Split Layout (Allies | Temps Forts | Ennemis) */}
+      <div className="flex gap-6 shrink-0 mt-4 rounded-3xl" style={{ height: "360px" }}>
+
+        {/* Team 1 (BLUE) */}
+        <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
+          {t1Bans && t1Bans.length > 0 && (
             <div className="flex items-center gap-1.5 px-1 justify-start mb-0.5">
-               {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
-                     {t1Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t1Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : null}
-                  </div>
-               ))}
-            </div>
-            )}
-            <div className="h-8 bg-gradient-to-r from-blue-600/30 via-blue-900/10 to-transparent border-t-2 border-l-2 border-blue-500 rounded-tl-xl flex items-center px-4 relative overflow-hidden shrink-0 mt-2">
-               <span className="text-xs font-black text-blue-400 uppercase tracking-widest z-10 drop-shadow-md">Alliés</span>
-               <div className="ml-auto flex items-center gap-2">
-                 <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Winrate</span>
-                 <span className="text-sm font-black text-blue-100">{finalT1Winrate}%</span>
-               </div>
-            </div>
-            <div className="flex-1 flex flex-col justify-evenly bg-transparent p-0 gap-2">
-              {Array.from({ length: 5 }).map((_, idx) => {
-                 const p = teamOne[idx];
-                 if (!p) {
-                   return (
-                      <div key={idx} className="h-full flex items-center justify-center gap-3 px-3 rounded-xl border border-white/5 bg-black/20 opacity-30 relative overflow-hidden transition-all border-dashed">
-                         <span className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Vide</span>
-                      </div>
-                   );
-                 }
-                 const cid = p.championId > 0 ? p.championId : 0;
-                 const isMe = p.summonerId === localSummonerId || p.cellId === session?.localPlayerCellId;
-                 return (
-                   <div key={idx} className={cn("h-full flex items-center gap-3 px-3 rounded-xl border relative overflow-hidden transition-all shadow-md group border-blue-500/10 hover:border-blue-400/30", isMe ? "bg-blue-600/15 shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/50" : "bg-[#0d0d12]/90")}>
-                      {isMe && <div className="absolute top-0 left-0 w-1 rounded-full h-full bg-blue-400"></div>}
-                      <img src={cid > 0 ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${cid}.png` : 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png'} className="w-10 h-10 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.8)] object-cover bg-black" />
-                      <div className="flex flex-col flex-1 truncate justify-center">
-                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
-                        <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Sélection..."}</span>
-                      </div>
-                      {(p.spell1Id > 0 || p.spell2Id > 0) && (
-                      <div className="flex flex-col gap-0.5 justify-center opacity-80 pl-2">
-                        {p.spell1Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" />}
-                        {p.spell2Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" />}
-                      </div>
-                      )}
-                   </div>
-                 )
-              })}
-            </div>
-         </div>
-
-         {/* Middle Section: Advantages */}
-         <div className="flex flex-col justify-start w-[25%] pt-10">
-             <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden bg-[#0a0a0c]/80 min-h-[160px] shrink-0">
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-accent-primary/5 to-transparent blur-xl pointer-events-none"></div>
-                <div className="flex items-center justify-center gap-2 mb-6 shrink-0 relative z-10">
-                   <Target size={14} className="text-accent-primary opacity-80" />
-                   <h3 className="text-[10px] font-black uppercase text-gray-300 tracking-[0.2em]">Temps Forts de Compo</h3>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
+                  {t1Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t1Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display = 'none'} /> : null}
                 </div>
-                 <div className="flex-1 flex flex-col justify-center gap-5 relative z-10 px-2 mt-2">
-                   {[
-                     { label: "Early Game", t1: earlySpike.val1, t2: earlySpike.val2 },
-                     { label: "Mid Game", t1: midSpike.val1, t2: midSpike.val2 },
-                     { label: "Late Game", t1: lateSpike.val1, t2: lateSpike.val2 },
-                   ].map((sp, _i) => (
-                     <div key={sp.label} className="flex flex-col w-full relative group">
-                        <div className="flex justify-between items-end mb-1">
-                           <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">{sp.t1}%</span>
-                           <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 border border-white/5 bg-white/5 px-2 py-0.5 rounded-full z-10 absolute left-1/2 -translate-x-1/2">{sp.label}</span>
-                           <span className="text-[10px] font-black uppercase tracking-widest text-red-500">{sp.t2}%</span>
-                        </div>
-                        <div className="h-1.5 flex bg-black/60 rounded-full overflow-hidden shadow-inner relative border border-white/5">
-                          <div className="h-full bg-blue-500 absolute right-1/2 rounded-l-full shadow-[0_0_10px_#3b82f6]" style={{ width: `${sp.t1}%` }}></div>
-                          <div className="h-full bg-red-600 absolute left-1/2 rounded-r-full shadow-[0_0_10px_#ef4444]" style={{ width: `${sp.t2}%` }}></div>
-                          
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                             <div className="w-0.5 h-3 bg-white/80 blur-[0.5px] z-20 shadow-[0_0_5px_white]"></div>
-                          </div>
-                          <div className="absolute inset-0 flex items-center justify-between px-[25%] pointer-events-none opacity-20">
-                             <div className="w-0.5 h-1.5 bg-white"></div>
-                             <div className="w-0.5 h-1.5 bg-white"></div>
-                          </div>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-             </div>
-            {/* Matchup Tip Box (Orange Area) */}
-            <div className="w-full mt-auto mb-2 p-4 rounded-2xl bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/20 shadow-inner flex flex-col gap-2 relative overflow-hidden">
-               <div className="absolute top-0 right-0 w-16 h-16 bg-orange-400/10 rounded-full blur-2xl"></div>
-               <div className="flex items-center gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-                  <span className="text-[10px] font-black uppercase text-orange-400 tracking-widest z-10">Analyse de Matchup</span>
-               </div>
-               <p className="text-[11px] font-medium text-orange-100/70 leading-relaxed z-10 italic">
-                  {earlySpike.val1 > earlySpike.val2 ? "Votre composition est dominante en début de partie. Jouez agressivement pour prendre l'avantage." : "Soyez prudent en phase de ligne, privilégiez le farm et atteignez votre pic de puissance en fin de partie."}
-               </p>
+              ))}
             </div>
-         </div>
-
-         {/* Team 2 (RED) */}
-         <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
-            {t2Bans && t2Bans.length > 0 && (
-            <div className="flex items-center gap-1.5 px-1 justify-end mb-0.5">
-               {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
-                     {t2Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t2Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display='none'} /> : null}
-                  </div>
-               ))}
+          )}
+          <div className="h-8 bg-gradient-to-r from-blue-600/30 via-blue-900/10 to-transparent border-t-2 border-l-2 border-blue-500 rounded-tl-xl flex items-center px-4 relative overflow-hidden shrink-0 mt-2">
+            <span className="text-xs font-black text-blue-400 uppercase tracking-widest z-10 drop-shadow-md">Alliés</span>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Winrate</span>
+              <span className="text-sm font-black text-blue-100">{finalT1Winrate}%</span>
             </div>
-            )}
-            <div className="h-8 bg-gradient-to-l from-red-600/30 via-red-900/10 to-transparent border-t-2 border-r-2 border-red-500 rounded-tr-xl flex items-center px-4 relative overflow-hidden justify-end mt-2 shrink-0">
-               <div className="mr-auto flex items-center gap-2">
-                 <span className="text-sm font-black text-red-200">{finalT2Winrate}%</span>
-                 <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Winrate</span>
-               </div>
-               <span className="text-xs font-black text-red-400 uppercase tracking-widest z-10 drop-shadow-md">Ennemis</span>
-            </div>
-            <div className="flex-1 flex flex-col justify-evenly bg-transparent p-0 gap-2">
-              {Array.from({ length: 5 }).map((_, idx) => {
-                 const p = teamTwo[idx];
-                 if (!p) {
-                   return (
-                      <div key={idx} className="h-full flex items-center justify-center gap-3 px-3 rounded-xl border border-white/5 bg-black/20 opacity-30 relative overflow-hidden transition-all border-dashed flex-row-reverse text-right">
-                         <span className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Vide</span>
-                      </div>
-                   );
-                 }
-                 const cid = p.championId > 0 ? p.championId : 0;
-                 return (
-                   <div key={idx} className={cn("h-full flex items-center gap-3 px-3 rounded-xl border relative overflow-hidden transition-all shadow-md group border-red-500/10 hover:border-red-400/30 bg-[#0d0d12]/90 flex-row-reverse text-right")}>
-                      <img src={cid > 0 ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${cid}.png` : 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png'} className="w-10 h-10 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.8)] object-cover bg-black" />
-                      <div className="flex flex-col flex-1 truncate justify-center">
-                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
-                        <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Inconnu"}</span>
-                      </div>
-                      {(p.spell1Id > 0 || p.spell2Id > 0) && (
-                      <div className="flex flex-col gap-0.5 justify-center opacity-80 pr-2">
-                        {p.spell1Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" />}
-                        {p.spell2Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" />}
-                      </div>
-                      )}
-                   </div>
-                 )
-              })}
-            </div>
-         </div>
-       </div>
-
-       {/* Bottom Section: Wide Details Panel (Screen 2 Replica) */}
-       {isLocked && myChampName && (
-          <div className="mt-8 mb-4 w-full glass-panel border border-white/5 rounded-2xl flex relative overflow-hidden bg-[#0d0d12]/90 shadow-[0_0_40px_rgba(0,0,0,0.4)]">
-             <div className="flex flex-col flex-1 p-6 pb-12 border-r border-white/5 gap-8">
-                 {/* Summoners Section */}
-                 <div className="mb-6">
-                    <div className="flex items-center gap-3 mb-4">
-                       <span className="text-xs font-black uppercase tracking-widest text-white">Summoners</span>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                       <div className="flex gap-3">
-                          {(() => {
-                            const SUMMONER_ID_TO_NAME = {
-                                1: 'SummonerBoost', 3: 'SummonerExhaust', 4: 'SummonerFlash',
-                                6: 'SummonerHaste', 7: 'SummonerHeal', 11: 'SummonerSmite',
-                                12: 'SummonerTeleport', 13: 'SummonerMana', 14: 'SummonerDot',
-                                21: 'SummonerBarrier', 30: 'SummonerPoroRecall',
-                                31: 'SummonerPoroThrow', 32: 'SummonerSnowball'
-                            };
-                            return (
-                               <>
-                                 {myPlayer?.spell1Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell1Id] || 'SummonerFlash'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]"/> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
-                                 {myPlayer?.spell2Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell2Id] || 'SummonerDot'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]"/> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
-                               </>
-                            )
-                          })()}
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* Items Section */}
-                 <div>
-                    <div className="flex items-center gap-3 mb-5">
-                       <span className="text-xs font-black uppercase tracking-widest text-white">Items</span>
-                    </div>
-                    <div className="flex gap-8 items-start mb-6">
-                       {/* Départ */}
-                       <div className="flex flex-col gap-3">
-                          <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase">Départ</span>
-                          <div className="flex gap-2.5">
-                             {(recommendedBuild?.items?.starting || [1055, 2003]).slice(0,2).map((item, i) => (
-                               <img key={i} src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-blue-500/30 shadow-md" onError={(e) => e.target.style.display='none'} />
-                             ))}
-                          </div>
-                       </div>
-                       
-                       {/* Core Items */}
-                       <div className="flex flex-col gap-3 relative">
-                          <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Core Items</span>
-                          <div className="flex gap-3 items-center">
-                             {recommendedBuild?.items?.core ? recommendedBuild.items.core.slice(0, 3).map((item, i) => (
-                                <div key={i} className="flex items-center gap-3">
-                                   <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-12 h-12 rounded-lg border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:scale-[1.12] transition-transform cursor-pointer" onError={(e) => e.target.style.display='none'} />
-                                   {i < Math.min(recommendedBuild.items.core.length - 1, 2) && <ChevronRight size={14} className="text-white/20" />}
-                                </div>
-                             )) : <div className="w-28 h-12 animate-pulse bg-white/5 rounded-lg"></div>}
-                          </div>
-                       </div>
-                    </div>
-
-                    <div className="flex gap-8 items-start mt-8">
-                        {/* Situational Items */}
-                        <div className="flex flex-col gap-3">
-                           <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Situational Items</span>
-                           <div className="flex gap-3">
-                              {(recommendedBuild?.items?.situational?.slice(0, 5) || [3157, 3089, 3165, 3139]).map((id, i) => (
-                                 <div key={i} className="flex flex-col items-center gap-1">
-                                    <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-white/5 opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-md" onError={(e) => e.target.style.display='none'} />
-                                 </div>
-                              ))}
-                           </div>
-                        </div>
-                    </div>
-                 </div>
-             </div>
-
-             <div className="flex-1 p-6 pb-12 flex flex-col">
-                 {/* Spells Section */}
-                 <div>
-                    <div className="flex items-center gap-3 mb-4">
-                       <span className="text-xs font-black uppercase tracking-widest text-white">Spells</span>
-                       <span className="text-[9px] text-gray-500 font-bold border border-white/5 px-2 py-0.5 rounded bg-black/50">Skill Order</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
-                          {recommendedBuild?.skillOrder && recommendedBuild.skillOrder.length >= 3 ? recommendedBuild.skillOrder.slice(0, 3).map((s, i) => (
-                              <React.Fragment key={i}>
-                                  <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-md group/spl bg-white/5 flex items-center justify-center">
-                                     {champSpells[typeof s === 'object' ? s.key : s] ? (
-                                         <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${champSpells[typeof s === 'object' ? s.key : s]}.png`} 
-                                              className="w-full h-full object-cover rounded border border-white/10 opacity-90 transition-opacity pointer-events-none" />
-                                     ) : (
-                                         <span className="text-accent-primary font-black flex items-center justify-center text-[12px]">{typeof s === 'object' ? s.key : s}</span>
-                                     )}
-                                     {/* Overlay letter */}
-                                     {champSpells[typeof s === 'object' ? s.key : s] && (
-                                        <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm text-[8px] font-black text-center border-t border-white/10 text-blue-200">
-                                            {typeof s === 'object' ? s.key : s}
-                                        </div>
-                                     )}
-                                  </div>
-                                  {i < 2 && <ChevronRight size={14} className="text-white/30" />}
-                              </React.Fragment>
-                          )) : (
-                             <>
-                               <span className="w-6 h-6 rounded bg-accent-primary/20 text-accent-primary font-black flex items-center justify-center text-[10px] border border-accent-primary/40">Q</span>
-                               <ChevronRight size={12} className="text-white/30" />
-                               <span className="w-6 h-6 rounded bg-green-500/20 text-green-400 font-black flex items-center justify-center text-[10px] border border-green-500/40">E</span>
-                               <ChevronRight size={12} className="text-white/30" />
-                               <span className="w-6 h-6 rounded bg-gray-500/20 text-gray-400 font-black flex items-center justify-center text-[10px] border border-gray-500/40">W</span>
-                             </>
-                          )}
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* Runes Section */}
-                 <div className="flex-1 mt-6">
-                    <div className="flex items-center gap-3 mb-6">
-                       <span className="text-xs font-black uppercase tracking-widest text-white">Runes</span>
-                    </div>
-                    <div className="flex gap-8 items-start relative mt-4">
-                       {recommendedBuild?.runes?.active && runesReforged.length > 0 ? (() => {
-                          const primaryId = parseInt(recommendedBuild.runes.primary);
-                          const secondaryId = parseInt(recommendedBuild.runes.secondary);
-                          const activeIds = recommendedBuild.runes.active.map(id => parseInt(id));
-                          const primaryTree = runesReforged.find(r => r.id === primaryId);
-                          const secondaryTree = runesReforged.find(r => r.id === secondaryId);
-                          
-                          // Shard grid standard layout
-                          const shardsLayout = [
-                              [5008, 5005, 5007],
-                              [5008, 5002, 5003],
-                              [5001, 5002, 5003]
-                          ];
-                          
-                          const renderRow = (perks, isKeystone, isPrimary) => (
-                              <div className="flex gap-2.5 justify-center w-full mb-2" key={perks[0]?.id || Math.random()}>
-                                  {(() => {
-                                      const rowHasActive = perks.some(px => activeIds.includes(px.id));
-                                      return perks.map((p, idx) => {
-                                          const isActive = activeIds.includes(p.id) || (isPrimary && !rowHasActive && ((isKeystone && idx === 0) || (!isKeystone && idx === 1)));
-                                          return (
-                                              <div key={p.id} className={cn("relative rounded-full flex items-center justify-center transition-all", isKeystone ? "w-10 h-10" : "w-7 h-7", isActive ? (isKeystone ? "border border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border border-blue-400/80 shadow-[0_0_10px_rgba(96,165,250,0.3)]") : "border border-transparent opacity-30 grayscale filter")}>
-                                                  <img src={`https://ddragon.leagueoflegends.com/cdn/img/${p.icon}`} className={cn("rounded-full object-cover", isKeystone ? "w-8 h-8" : "w-6 h-6")} />
-                                              </div>
-                                          );
-                                      });
-                                  })()}
-                              </div>
-                          );
-
-                          return (
-                          <>
-                            {/* Primary Tree */}
-                            {primaryTree && (
-                                <div className="flex flex-col items-center">
-                                   {/* Header / Style Icon */}
-                                   <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryTree.icon}`} className="w-6 h-6 mb-2 filter drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" />
-                                   {primaryTree.slots.map((slot, idx) => renderRow(slot.runes, idx === 0, true))}
-                                </div>
-                            )}
-
-                            {/* Secondary Tree & Shards*/}
-                            <div className="flex flex-col items-center">
-                               {secondaryTree && (
-                                   <>
-                                     <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryTree.icon}`} className="w-5 h-5 mb-3 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" />
-                                     {secondaryTree.slots.slice(1).map((slot, idx) => renderRow(slot.runes, false, false))}
-                                   </>
-                               )}
-
-                               {/* Shards */}
-                               <div className="mt-1 flex flex-col gap-1.5">
-                                  {shardsLayout.map((row, rIdx) => (
-                                      <div className="flex gap-2.5 justify-center w-full" key={`shard-row-${rIdx}`}>
-                                          {row.map((id, idx) => {
-                                              const isActive = activeIds.includes(id) || (idx === 0 && !row.some(rId => activeIds.includes(rId))); // Fallback visual
-                                              return (
-                                                  <div key={`shard-${rIdx}-${idx}`} className={cn("w-5 h-5 rounded-full flex items-center justify-center border border-white/5 bg-black/40", isActive ? "opacity-100 ring-1 ring-yellow-500/50" : "opacity-30 grayscale")}>
-                                                     <img src={`https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatMods${id === 5008 ? 'AdaptiveForce' : id === 5005 ? 'AttackSpeed' : id === 5007 ? 'AbilityHasteIcon' : id === 5002 ? 'Armor' : id === 5003 ? 'MagicResIcon' : 'HealthScalingIcon'}.png`} className="w-3.5 h-3.5 object-cover" onError={(e) => e.target.style.display='none'}/>
-                                                  </div>
-                                              )
-                                          })}
-                                      </div>
-                                  ))}
-                               </div>
-                            </div>
-                          </>
-                          );
-                       })() : (
-                         <div className="flex gap-4">
-                            <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
-                            <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
-                         </div>
-                       )}
-                    </div>
-                 </div>
-             </div>
           </div>
-       )}
+          <div className="flex-1 flex flex-col justify-evenly bg-transparent p-0 gap-2">
+            {Array.from({ length: 5 }).map((_, idx) => {
+              const p = teamOne[idx];
+              if (!p) {
+                return (
+                  <div key={idx} className="h-full flex items-center justify-center gap-3 px-3 rounded-xl border border-white/5 bg-black/20 opacity-30 relative overflow-hidden transition-all border-dashed">
+                    <span className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Vide</span>
+                  </div>
+                );
+              }
+              const cid = p.championId > 0 ? p.championId : 0;
+              const isMe = p.summonerId === localSummonerId || p.cellId === session?.localPlayerCellId;
+              return (
+                <div key={idx} className={cn("h-full flex items-center gap-3 px-3 rounded-xl border relative overflow-hidden transition-all shadow-md group border-blue-500/10 hover:border-blue-400/30", isMe ? "bg-blue-600/15 shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/50" : "bg-[#0d0d12]/90")}>
+                  {isMe && <div className="absolute top-0 left-0 w-1 rounded-full h-full bg-blue-400"></div>}
+                  <img src={cid > 0 ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${cid}.png` : 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png'} className="w-10 h-10 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.8)] object-cover bg-black" />
+                  <div className="flex flex-col flex-1 truncate justify-center">
+                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
+                    <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Sélection..."}</span>
+                  </div>
+                  {(p.spell1Id > 0 || p.spell2Id > 0) && (
+                    <div className="flex flex-col gap-0.5 justify-center opacity-80 pl-2">
+                      {p.spell1Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" />}
+                      {p.spell2Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" />}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Middle Section: Advantages */}
+        <div className="flex flex-col justify-start w-[25%] pt-10">
+          <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden bg-[#0a0a0c]/80 min-h-[160px] shrink-0">
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-accent-primary/5 to-transparent blur-xl pointer-events-none"></div>
+            <div className="flex items-center justify-center gap-2 mb-6 shrink-0 relative z-10">
+              <Target size={14} className="text-accent-primary opacity-80" />
+              <h3 className="text-[10px] font-black uppercase text-gray-300 tracking-[0.2em]">Temps Forts de Compo</h3>
+            </div>
+            <div className="flex-1 flex flex-col justify-center gap-5 relative z-10 px-2 mt-2">
+              {[
+                { label: "Early Game", t1: earlySpike.val1, t2: earlySpike.val2 },
+                { label: "Mid Game", t1: midSpike.val1, t2: midSpike.val2 },
+                { label: "Late Game", t1: lateSpike.val1, t2: lateSpike.val2 },
+              ].map((sp, _i) => (
+                <div key={sp.label} className="flex flex-col w-full relative group">
+                  <div className="flex justify-between items-end mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">{sp.t1}%</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 border border-white/5 bg-white/5 px-2 py-0.5 rounded-full z-10 absolute left-1/2 -translate-x-1/2">{sp.label}</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-red-500">{sp.t2}%</span>
+                  </div>
+                  <div className="h-1.5 flex bg-black/60 rounded-full overflow-hidden shadow-inner relative border border-white/5">
+                    <div className="h-full bg-blue-500 absolute right-1/2 rounded-l-full shadow-[0_0_10px_#3b82f6]" style={{ width: `${sp.t1}%` }}></div>
+                    <div className="h-full bg-red-600 absolute left-1/2 rounded-r-full shadow-[0_0_10px_#ef4444]" style={{ width: `${sp.t2}%` }}></div>
+
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-0.5 h-3 bg-white/80 blur-[0.5px] z-20 shadow-[0_0_5px_white]"></div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-between px-[25%] pointer-events-none opacity-20">
+                      <div className="w-0.5 h-1.5 bg-white"></div>
+                      <div className="w-0.5 h-1.5 bg-white"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Matchup Tip Box (Orange Area) */}
+          <div className="w-full mt-auto mb-2 p-4 rounded-2xl bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/20 shadow-inner flex flex-col gap-2 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-orange-400/10 rounded-full blur-2xl"></div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+              <span className="text-[10px] font-black uppercase text-orange-400 tracking-widest z-10">Analyse de Matchup</span>
+            </div>
+            <p className="text-[11px] font-medium text-orange-100/70 leading-relaxed z-10 italic">
+              {earlySpike.val1 > earlySpike.val2 ? "Votre composition est dominante en début de partie. Jouez agressivement pour prendre l'avantage." : "Soyez prudent en phase de ligne, privilégiez le farm et atteignez votre pic de puissance en fin de partie."}
+            </p>
+          </div>
+        </div>
+
+        {/* Team 2 (RED) */}
+        <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
+          {t2Bans && t2Bans.length > 0 && (
+            <div className="flex items-center gap-1.5 px-1 justify-end mb-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-6 h-6 rounded bg-black/40 border border-white/5 overflow-hidden flex items-center justify-center opacity-80">
+                  {t2Bans[i] ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${t2Bans[i].championId}.png`} className="w-full h-full grayscale brightness-75 object-cover" onError={(e) => e.target.style.display = 'none'} /> : null}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="h-8 bg-gradient-to-l from-red-600/30 via-red-900/10 to-transparent border-t-2 border-r-2 border-red-500 rounded-tr-xl flex items-center px-4 relative overflow-hidden justify-end mt-2 shrink-0">
+            <div className="mr-auto flex items-center gap-2">
+              <span className="text-sm font-black text-red-200">{finalT2Winrate}%</span>
+              <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Winrate</span>
+            </div>
+            <span className="text-xs font-black text-red-400 uppercase tracking-widest z-10 drop-shadow-md">Ennemis</span>
+          </div>
+          <div className="flex-1 flex flex-col justify-evenly bg-transparent p-0 gap-2">
+            {Array.from({ length: 5 }).map((_, idx) => {
+              const p = teamTwo[idx];
+              if (!p) {
+                return (
+                  <div key={idx} className="h-full flex items-center justify-center gap-3 px-3 rounded-xl border border-white/5 bg-black/20 opacity-30 relative overflow-hidden transition-all border-dashed flex-row-reverse text-right">
+                    <span className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em]">Vide</span>
+                  </div>
+                );
+              }
+              const cid = p.championId > 0 ? p.championId : 0;
+              return (
+                <div key={idx} className={cn("h-full flex items-center gap-3 px-3 rounded-xl border relative overflow-hidden transition-all shadow-md group border-red-500/10 hover:border-red-400/30 bg-[#0d0d12]/90 flex-row-reverse text-right")}>
+                  <img src={cid > 0 ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${cid}.png` : 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png'} className="w-10 h-10 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.8)] object-cover bg-black" />
+                  <div className="flex flex-col flex-1 truncate justify-center">
+                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
+                    <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Inconnu"}</span>
+                  </div>
+                  {(p.spell1Id > 0 || p.spell2Id > 0) && (
+                    <div className="flex flex-col gap-0.5 justify-center opacity-80 pr-2">
+                      {p.spell1Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell1Id}.png`} className="w-4 h-4 rounded object-cover" />}
+                      {p.spell2Id > 0 && <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells/${p.spell2Id}.png`} className="w-4 h-4 rounded object-cover" />}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Section: Wide Details Panel (Screen 2 Replica) */}
+      {isLocked && myChampName && (
+        <div className="mt-8 mb-4 w-full glass-panel border border-white/5 rounded-2xl flex relative overflow-hidden bg-[#0d0d12]/90 shadow-[0_0_40px_rgba(0,0,0,0.4)]">
+          <div className="flex flex-col flex-1 p-6 pb-12 border-r border-white/5 gap-8">
+            {/* Summoners Section */}
+            <div className="mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-xs font-black uppercase tracking-widest text-white">Summoners</span>
+              </div>
+              <div className="flex gap-4 items-center">
+                <div className="flex gap-3">
+                  {(() => {
+                    const SUMMONER_ID_TO_NAME = {
+                      1: 'SummonerBoost', 3: 'SummonerExhaust', 4: 'SummonerFlash',
+                      6: 'SummonerHaste', 7: 'SummonerHeal', 11: 'SummonerSmite',
+                      12: 'SummonerTeleport', 13: 'SummonerMana', 14: 'SummonerDot',
+                      21: 'SummonerBarrier', 30: 'SummonerPoroRecall',
+                      31: 'SummonerPoroThrow', 32: 'SummonerSnowball'
+                    };
+                    return (
+                      <>
+                        {myPlayer?.spell1Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell1Id] || 'SummonerFlash'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                        {myPlayer?.spell2Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell2Id] || 'SummonerDot'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                      </>
+                    )
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Items Section */}
+            <div>
+              <div className="flex items-center gap-3 mb-5">
+                <span className="text-xs font-black uppercase tracking-widest text-white">Items</span>
+              </div>
+              <div className="flex gap-8 items-start mb-6">
+                {/* Départ */}
+                <div className="flex flex-col gap-3">
+                  <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase">Départ</span>
+                  <div className="flex gap-2.5">
+                    {(recommendedBuild?.items?.starting || [1055, 2003]).slice(0, 2).map((item, i) => (
+                      <img key={i} src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-blue-500/30 shadow-md" onError={(e) => e.target.style.display = 'none'} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Core Items */}
+                <div className="flex flex-col gap-3 relative">
+                  <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Core Items</span>
+                  <div className="flex gap-3 items-center">
+                    {recommendedBuild?.items?.core ? recommendedBuild.items.core.slice(0, 3).map((item, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-12 h-12 rounded-lg border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:scale-[1.12] transition-transform cursor-pointer" onError={(e) => e.target.style.display = 'none'} />
+                        {i < Math.min(recommendedBuild.items.core.length - 1, 2) && <ChevronRight size={14} className="text-white/20" />}
+                      </div>
+                    )) : <div className="w-28 h-12 animate-pulse bg-white/5 rounded-lg"></div>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-8 items-start mt-8">
+                {/* Situational Items */}
+                <div className="flex flex-col gap-3">
+                  <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Situational Items</span>
+                  <div className="flex gap-3">
+                    {(recommendedBuild?.items?.situational?.slice(0, 5) || [3157, 3089, 3165, 3139]).map((id, i) => (
+                      <div key={i} className="flex flex-col items-center gap-1">
+                        <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-white/5 opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-md" onError={(e) => e.target.style.display = 'none'} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 p-6 pb-12 flex flex-col">
+            {/* Spells Section */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-xs font-black uppercase tracking-widest text-white">Spells</span>
+                <span className="text-[9px] text-gray-500 font-bold border border-white/5 px-2 py-0.5 rounded bg-black/50">Skill Order</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                  {recommendedBuild?.skillOrder && recommendedBuild.skillOrder.length >= 3 ? recommendedBuild.skillOrder.slice(0, 3).map((s, i) => (
+                    <React.Fragment key={i}>
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-md group/spl bg-white/5 flex items-center justify-center">
+                        {champSpells[typeof s === 'object' ? s.key : s] ? (
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${champSpells[typeof s === 'object' ? s.key : s]}.png`}
+                            className="w-full h-full object-cover rounded border border-white/10 opacity-90 transition-opacity pointer-events-none" />
+                        ) : (
+                          <span className="text-accent-primary font-black flex items-center justify-center text-[12px]">{typeof s === 'object' ? s.key : s}</span>
+                        )}
+                        {/* Overlay letter */}
+                        {champSpells[typeof s === 'object' ? s.key : s] && (
+                          <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm text-[8px] font-black text-center border-t border-white/10 text-blue-200">
+                            {typeof s === 'object' ? s.key : s}
+                          </div>
+                        )}
+                      </div>
+                      {i < 2 && <ChevronRight size={14} className="text-white/30" />}
+                    </React.Fragment>
+                  )) : (
+                    <>
+                      <span className="w-6 h-6 rounded bg-accent-primary/20 text-accent-primary font-black flex items-center justify-center text-[10px] border border-accent-primary/40">Q</span>
+                      <ChevronRight size={12} className="text-white/30" />
+                      <span className="w-6 h-6 rounded bg-green-500/20 text-green-400 font-black flex items-center justify-center text-[10px] border border-green-500/40">E</span>
+                      <ChevronRight size={12} className="text-white/30" />
+                      <span className="w-6 h-6 rounded bg-gray-500/20 text-gray-400 font-black flex items-center justify-center text-[10px] border border-gray-500/40">W</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Runes Section */}
+            <div className="flex-1 mt-6">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-xs font-black uppercase tracking-widest text-white">Runes</span>
+              </div>
+              <div className="flex gap-8 items-start relative mt-4">
+                {recommendedBuild?.runes?.active && runesReforged.length > 0 ? (() => {
+                  const primaryId = parseInt(recommendedBuild.runes.primary);
+                  const secondaryId = parseInt(recommendedBuild.runes.secondary);
+                  const activeIds = recommendedBuild.runes.active.map(id => parseInt(id));
+                  const primaryTree = runesReforged.find(r => r.id === primaryId);
+                  const secondaryTree = runesReforged.find(r => r.id === secondaryId);
+
+                  // Shard grid standard layout
+                  const shardsLayout = [
+                    [5008, 5005, 5007],
+                    [5008, 5002, 5003],
+                    [5001, 5002, 5003]
+                  ];
+
+                  const renderRow = (perks, isKeystone, isPrimary) => (
+                    <div className="flex gap-2.5 justify-center w-full mb-2" key={perks[0]?.id || Math.random()}>
+                      {(() => {
+                        const rowHasActive = perks.some(px => activeIds.includes(px.id));
+                        return perks.map((p, idx) => {
+                          const isActive = activeIds.includes(p.id) || (isPrimary && !rowHasActive && ((isKeystone && idx === 0) || (!isKeystone && idx === 1)));
+                          return (
+                            <div key={p.id} className={cn("relative rounded-full flex items-center justify-center transition-all", isKeystone ? "w-10 h-10" : "w-7 h-7", isActive ? (isKeystone ? "border border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border border-blue-400/80 shadow-[0_0_10px_rgba(96,165,250,0.3)]") : "border border-transparent opacity-30 grayscale filter")}>
+                              <img src={`https://ddragon.leagueoflegends.com/cdn/img/${p.icon}`} className={cn("rounded-full object-cover", isKeystone ? "w-8 h-8" : "w-6 h-6")} />
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  );
+
+                  return (
+                    <>
+                      {/* Primary Tree */}
+                      {primaryTree && (
+                        <div className="flex flex-col items-center">
+                          {/* Header / Style Icon */}
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryTree.icon}`} className="w-6 h-6 mb-2 filter drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" />
+                          {primaryTree.slots.map((slot, idx) => renderRow(slot.runes, idx === 0, true))}
+                        </div>
+                      )}
+
+                      {/* Secondary Tree & Shards*/}
+                      <div className="flex flex-col items-center">
+                        {secondaryTree && (
+                          <>
+                            <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryTree.icon}`} className="w-5 h-5 mb-3 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" />
+                            {secondaryTree.slots.slice(1).map((slot, idx) => renderRow(slot.runes, false, false))}
+                          </>
+                        )}
+
+                        {/* Shards */}
+                        <div className="mt-1 flex flex-col gap-1.5">
+                          {shardsLayout.map((row, rIdx) => (
+                            <div className="flex gap-2.5 justify-center w-full" key={`shard-row-${rIdx}`}>
+                              {row.map((id, idx) => {
+                                const isActive = activeIds.includes(id) || (idx === 0 && !row.some(rId => activeIds.includes(rId))); // Fallback visual
+                                return (
+                                  <div key={`shard-${rIdx}-${idx}`} className={cn("w-5 h-5 rounded-full flex items-center justify-center border border-white/5 bg-black/40", isActive ? "opacity-100 ring-1 ring-yellow-500/50" : "opacity-30 grayscale")}>
+                                    <img src={`https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatMods${id === 5008 ? 'AdaptiveForce' : id === 5005 ? 'AttackSpeed' : id === 5007 ? 'AbilityHasteIcon' : id === 5002 ? 'Armor' : id === 5003 ? 'MagicResIcon' : 'HealthScalingIcon'}.png`} className="w-3.5 h-3.5 object-cover" onError={(e) => e.target.style.display = 'none'} />
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })() : (
+                  <div className="flex gap-4">
+                    <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
+                    <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -10956,8 +11168,12 @@ function EsportsView({ t, prefetchedData }) {
     'g2-esports': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/77/G2_Esportslogo_square.png',
     'c9': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/88/Cloud9logo_square.png',
     'cloud9': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/88/Cloud9logo_square.png',
-    'fnatic': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/84/Fnaticlogo_square.png',
-    'fnc': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/84/Fnaticlogo_square.png',
+    'tl': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/f4/Team_Liquidlogo_square.png',
+    'bds': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9e/Team_BDSlogo_square.png',
+    'kdf': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/79/Kwangdong_Freecslogo_square.png',
+    'fnatic': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/fc/Fnaticlogo_square.png',
+    'fnc': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/fc/Fnaticlogo_square.png',
+    'psg': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/4/48/PSG_Talonlogo_square.png',
     'blg': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/91/Bilibili_Gaminglogo_square.png',
     'hle': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a6/Hanwha_Life_Esportslogo_square.png',
     'al': 'https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/2/25/Anyone%27s_Legendlogo_square.png',
@@ -12095,7 +12311,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
 
       // 1. Skill Level Up Check
       if (false && overlaySettings.skillLevelUp && active?.abilities) {
-         // Temporarily disabled due to user request to remove this overlay popup
+        // Temporarily disabled due to user request to remove this overlay popup
       }
 
       // 2. Gold Difference Check
@@ -12259,7 +12475,7 @@ function LoadingOverlay({ t, visualMode, theme }) {
 
 
 
-function NotificationsView({ panelClass, setActiveTab, patchNotes, prefetchedData, onShowNews, onClose }) {
+function NotificationsView({ panelClass, setActiveTab, patchNotes, prefetchedData, adminMessages = [], onDeleteAdminMessage, onShowNews, onClose }) {
   const latestPatch = patchNotes?.[0];
   const newsList = prefetchedData?.esportsNews || [];
 
@@ -12278,6 +12494,57 @@ function NotificationsView({ panelClass, setActiveTab, patchNotes, prefetchedDat
 
       <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
 
+        {adminMessages.map((msg, idx) => {
+          const MappedIcon = Sparkles; // Default
+          const safeDate = msg.id && !isNaN(new Date(msg.id).getTime()) ? new Date(msg.id).toLocaleString() : "Date Inconnue";
+          return (
+            <div 
+              key={`admin-${msg.id || idx}`} 
+              className="p-3 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 cursor-pointer transition-colors rounded-2xl flex items-center gap-4 shadow-sm shrink-0 group relative w-full overflow-hidden"
+            >
+              <div 
+                className="flex items-center gap-4 flex-1 min-w-0"
+                onClick={() => onShowNews({
+                  title: msg.title || "ORACLE SYSTEM",
+                  summary: msg.name || msg.message || "",
+                  description: msg.name || msg.message || "",
+                  image: msg.imageUrl || null,
+                  date: safeDate,
+                  tag: msg.tag || "ANNONCE",
+                  url: msg.url || null
+                })}
+              >
+                <div className="w-10 h-10 bg-indigo-500/20 group-hover:bg-indigo-500/40 transition-colors rounded-full flex items-center justify-center shrink-0">
+                  <MappedIcon size={16} className="text-indigo-400" />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <div className="font-bold text-sm text-indigo-300 flex items-center gap-2 w-full pr-1">
+                    <span className="truncate flex-1 min-w-0">{msg.title || "ORACLE SYSTEM"}</span>
+                    {(msg.tag || "ANNONCE") && (
+                      <span className="bg-indigo-500/20 text-indigo-400 text-[8px] px-1.5 py-0.5 rounded font-black shrink-0 uppercase">
+                        {msg.tag || "ANNONCE"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[12px] text-white/90 truncate mt-0.5 leading-snug pr-4">{msg.name || msg.message}</div>
+                  <div className="text-[10px] text-indigo-400/50 mt-1 uppercase font-bold tracking-widest">{safeDate}</div>
+                </div>
+                {msg.imageUrl && (
+                  <div className="shrink-0 w-16 h-10 rounded-lg overflow-hidden border border-indigo-500/20 ml-2">
+                    <img src={msg.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  </div>
+                )}
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); if(onDeleteAdminMessage) onDeleteAdminMessage(msg.id); }}
+                className="absolute right-2 top-2 p-1.5 bg-black/40 hover:bg-red-500/80 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10 text-white"
+                title="Supprimer cette notification"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )
+        })}
 
         {latestPatch && (
           <div className="p-3 bg-[#1a1a20] border border-white/5 rounded-2xl flex items-center gap-4 shadow-sm group hover:bg-white/5 transition cursor-pointer shrink-0" onClick={() => onShowNews(latestPatch)}>

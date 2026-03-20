@@ -136,9 +136,9 @@ function createToastWindow() {
 
     toastWindow = new BrowserWindow({
         width: 350,
-        height: 600, // Slightly taller for more toasts
+        height: 800, // Significantly taller for more toasts
         x: width - 360,
-        y: 40,
+        y: Math.max(10, height - 850),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -417,7 +417,7 @@ function createInGameWindow() {
         type: 'toolbar'
     });
 
-    ingameWindow.setIgnoreMouseEvents(true);
+    ingameWindow.setIgnoreMouseEvents(true, { forward: true });
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev ? 'http://localhost:5173?mode=ingame' : `file://${path.join(__dirname, '../dist/index.html')}?mode=ingame`;
@@ -451,6 +451,46 @@ ipcMain.handle('window:set-ignore-mouse-events', (event, ignore, options) => {
 
 
 ipcMain.handle('lcu:get-summoner-by-puuid', async (_, puuid) => lcu.getSummonerByPuuid(puuid));
+
+ipcMain.handle('scraper:log', (_, msg) => console.log(msg));
+
+// Extremely fast profile icon fetcher that bypasses Puppeteer and just reads LCU or U.GG HTML
+ipcMain.handle('scraper:fast-icon-fetch', async (_, name, region) => {
+    console.log(`[FastIcon] Request received for: ${name} (Region: ${region})`);
+    try {
+        let user = await lcu.getSummonerByName(name).catch(()=>null);
+        if (user && user.profileIconId) {
+            console.log(`[FastIcon] Found ${name} in LCU: ${user.profileIconId}`);
+            return user.profileIconId;
+        }
+
+        const REGION_MAP = {
+            'EUW': 'euw1', 'NA': 'na1', 'KR': 'kr', 'EUNE': 'eun1', 'BR': 'br1',
+            'TR': 'tr1', 'LAS': 'la2', 'LAN': 'la1', 'OCE': 'oc1', 'RU': 'ru',
+            'JP': 'jp1', 'PH': 'ph2', 'SG': 'sg2', 'TH': 'th2', 'TW': 'tw2', 'VN': 'vn2'
+        };
+        const regionKey = REGION_MAP[(region || 'EUW').toUpperCase()] || (region || 'euw').toLowerCase() + '1';
+        
+        let searchSlug = name;
+        if (!searchSlug.includes('#')) {
+            searchSlug = `${searchSlug}#${(region || 'EUW').toUpperCase()}`;
+        }
+        let slug = searchSlug.replace('#', '-').toLowerCase();
+        
+        let fetchFn = typeof fetch !== 'undefined' ? fetch : require('node-fetch');
+        const res = await fetchFn(`https://u.gg/lol/profile/${regionKey}/${encodeURIComponent(slug)}/overview`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+            timeout: 5000
+        });
+        const text = await res.text();
+        const match = text.match(/profileIconId":(\d+)/i) || text.match(/profileicon\/(\d+)\./i);
+        if (match) {
+            console.log(`[FastIcon] Extracted ${match[1]} from U.GG for ${slug}`);
+            return parseInt(match[1]);
+        }
+    } catch(e) { console.error("[FastIcon] Failed:", e); }
+    return 29;
+});
 
 ipcMain.handle('lcu:search-summoner', async (_, name, region, skipLcu, puuid) => {
     console.log(`[IPC] search-summoner: name=${name}, region=${region}, skip=${skipLcu}, puuid=${puuid}`);
@@ -694,14 +734,80 @@ const getSettings = () => {
     return {};
 };
 
-ipcMain.handle('app:get-settings', () => getSettings());
+let currentSettings = getSettings(); // Initialize currentSettings
+
+ipcMain.handle('app:get-settings', () => currentSettings);
 
 ipcMain.handle('app:set-settings', (_, settings) => {
     try {
         fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
         if (settings.riotApiKey) riotApi.setKey(settings.riotApiKey);
+        currentSettings = { ...currentSettings, ...settings }; // Update currentSettings
         return true;
     } catch (e) { console.error(e); return false; }
+});
+
+// --- Admin Local Server for Push Notifications ---
+const http = require('http');
+const adminServer = http.createServer((req, res) => {
+    // Cross-Origin headers for a local HTML file to hit this endpoint
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+
+    if (req.method === 'POST' && req.url === '/broadcast') {
+        let body = '';
+        req.on('data', chunk => body += chunk.toString());
+        req.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                const notifId = data.id || Date.now();
+                const notifPayload = {
+                    id: notifId,
+                    type: 'system',
+                    title: data.title || 'ORACLE ADMIN',
+                    name: data.name || data.message || 'Nouvelle notification',
+                    status: data.status || 'Message système',
+                    tag: data.tag || 'ANNONCE',
+                    lucideName: data.lucideName || 'Bell',
+                    duration: data.duration || 10000,
+                    iconColor: data.color || 'bg-indigo-500 shadow-indigo-500/50',
+                    borderColor: data.color || 'bg-indigo-500 shadow-indigo-500/50',
+                    imageUrl: data.imageUrl || null,
+                    url: data.url || null
+                };
+
+                // Forward to GLOBAL DB for all online and offline users
+                fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/broadcast.json', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }).catch(err => console.error("[Admin] Failed to send to Firebase", err));
+
+                // Send to Notification Center Locally (instant preview)
+                if (mainWindow) {
+                    mainWindow.webContents.send('admin:broadcast', notifPayload);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, message: 'Broadcast sent locally' }));
+            } catch (e) {
+                res.writeHead(400); res.end('Invalid JSON');
+            }
+        });
+    } else {
+        res.writeHead(404); res.end();
+    }
+});
+
+adminServer.listen(31337, '127.0.0.1', () => {
+    console.log('[Main] Admin Broadcaster listening on http://127.0.0.1:31337');
 });
 
 ipcMain.on('settings:updated', (_, settings) => {
