@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Target, Eye, AlertCircle, Sparkles, Map, Skull, Activity, ScanEye, Swords as SwordsIcon } from 'lucide-react';
 import MainLogo from '../assets/oracle_logo.png';
 
@@ -98,20 +98,29 @@ export function InGameHelper({ ddragonVersion }) {
         if (ddragonVersion) stateRefs.current.ddVersion = ddragonVersion;
     }, [ddragonVersion]);
 
-    const pushLocalToast = (toast) => {
-        const id = Date.now() + Math.random().toString();
-        const newToast = { ...toast, id };
-        setToasts(prev => [...prev, newToast]);
-        setTimeout(() => {
-            setToasts(prev => prev.map(t => t.id === id ? { ...t, isLeaving: true } : t));
-            setTimeout(() => {
-                setToasts(prev => prev.filter(t => t.id !== id));
-            }, 500);
-        }, toast.duration || 8000);
-    };
-
     const pushToast = (toast) => {
-        pushLocalToast(toast);
+        if (window.ipcRenderer) {
+            let sIcon = null;
+            if (toast.icon && toast.icon.render) {
+                // Approximate lucide component name from the type string
+                if (toast.type === 'objective') sIcon = 'Target';
+                else if (toast.type === 'winrate') sIcon = 'Activity';
+                else if (toast.type === 'test') sIcon = 'Sparkles';
+                else if (toast.type === 'warning') sIcon = 'AlertCircle';
+                else sIcon = 'Skull';
+            }
+            window.ipcRenderer.invoke('social:trigger-toast', {
+                type: toast.type || 'system',
+                title: toast.title,
+                name: toast.name,
+                status: toast.status,
+                lucideName: sIcon,
+                letter: toast.letter,
+                imageUrl: toast.imageUrl,
+                iconColor: toast.iconColor,
+                borderColor: toast.borderColor
+            });
+        }
     };
 
     useEffect(() => {
@@ -261,7 +270,7 @@ export function InGameHelper({ ddragonVersion }) {
                 data.events.Events.forEach(e => {
                     const killer = data.allPlayers.find(p => p.summonerName === e.KillerName || p.riotIdGameName === e.KillerName);
                     if (killer) {
-                        const pts = e.EventName === 'DragonKill' ? 15 : e.EventName === 'BaronKill' ? 50 : e.EventName === 'TurretKilled' ? 25 : e.EventName === 'InhibKilled' ? 40 : e.EventName === 'HeraldKill' ? 20 : 0;
+                        const pts = e.EventName === 'DragonKill' ? 10 : e.EventName === 'BaronKill' ? 25 : e.EventName === 'TurretKilled' ? 15 : e.EventName === 'InhibKilled' ? 20 : 0;
                         if (killer.team === myTeam) myTeamScore += pts;
                         else enemyTeamScore += pts;
                     }
@@ -269,13 +278,8 @@ export function InGameHelper({ ddragonVersion }) {
             }
 
             if (myTeamScore === 0 && enemyTeamScore === 0) return 50;
-
-            let ratio = (myTeamScore - enemyTeamScore) / Math.max(10, myTeamScore + enemyTeamScore);
-            let sign = ratio < 0 ? -1 : 1;
-            let impact = Math.pow(Math.abs(ratio), 0.75) * 45; 
-            let probability = 50 + (sign * impact);
-
-            return Math.min(Math.max(probability, 1), 99).toFixed(1);
+            let probability = 50 + ((myTeamScore - enemyTeamScore) / Math.max(10, myTeamScore + enemyTeamScore)) * 40;
+            return Math.min(Math.max(probability, 10), 90).toFixed(1);
         };
 
         const triggerWinrateOverlay = (isForced = false) => {
@@ -287,7 +291,7 @@ export function InGameHelper({ ddragonVersion }) {
                         type: 'warning',
                         title: 'SYSTEM PROTECT',
                         name: 'Cooldown Actif',
-                        status: 'Vous ne pouvez afficher la probabilité de victoire que toutes les 20 secondes.',
+                        status: 'Vous ne pouvez afficher la probabilit├® de victoire que toutes les 20 secondes.',
                         iconColor: 'bg-rose-500',
                         icon: AlertCircle,
                         duration: 5000
@@ -304,8 +308,8 @@ export function InGameHelper({ ddragonVersion }) {
             pushToast({
                 type: 'winrate',
                 title: 'ORACLE PREDICTION',
-                name: `Probabilité : ${prob}%`,
-                status: isWinning ? 'Votre équipe mène la danse ! Maintenez la pression.' : 'Avantage ennemi. Concentrez-vous sur les objectifs.',
+                name: `Probabilit├® : ${prob}%`,
+                status: isWinning ? 'Votre ├®quipe m├¿ne la danse ! Maintenez la pression.' : 'Avantage ennemi. Concentrez-vous sur les objectifs.',
                 iconColor: isWinning ? 'bg-cyan-500' : 'bg-rose-500',
                 icon: Activity,
                 duration: 12000,
@@ -330,7 +334,7 @@ export function InGameHelper({ ddragonVersion }) {
                     type: 'test',
                     title: 'ORACLE SYSTEM',
                     name: 'Interface InGame Active',
-                    status: 'Vos notifications apparaîtront ici.',
+                    status: 'Vos notifications appara├«tront ici.',
                     iconColor: 'bg-indigo-500',
                     borderColor: 'bg-indigo-500 shadow-indigo-500/50',
                     icon: Sparkles
@@ -365,7 +369,7 @@ export function InGameHelper({ ddragonVersion }) {
                     if (me && me.summonerSpells) {
                         const s1 = (me.summonerSpells.summonerSpellOne?.displayName || '').toLowerCase();
                         const s2 = (me.summonerSpells.summonerSpellTwo?.displayName || '').toLowerCase();
-                        if (s1.includes('smite') || s2.includes('smite') || s1.includes('châtiment') || s2.includes('châtiment')) {
+                        if (s1.includes('smite') || s2.includes('smite') || s1.includes('ch├ótiment') || s2.includes('ch├ótiment')) {
                             isJungleLive = true;
                         }
                     }
@@ -416,7 +420,7 @@ export function InGameHelper({ ddragonVersion }) {
                 // We use jungleTimers or objectiveTimer depending on settings structure
                 const showObjectives = refs.settings.objectiveTimer !== false && refs.settings.jungleTimers !== false;
                 if (showObjectives) {
-                    // Buffs Jungle (Spawn à 0:55 -> Notif à 0:40 = 40s)
+                    // Buffs Jungle (Spawn ├á 0:55 -> Notif ├á 0:40 = 40s)
                     if (gameTime >= 40 && gameTime < 120 && !refs.objCamp1) {
                         refs.objCamp1 = true;
                         if (refs.isJungle) {
@@ -424,7 +428,7 @@ export function InGameHelper({ ddragonVersion }) {
                                 type: 'objective',
                                 title: 'JUNGLE (15s)',
                                 name: 'Apparition des Buffs',
-                                status: 'Les premiers buffs de la jungle vont apparaître.',
+                                status: 'Les premiers buffs de la jungle vont appara├«tre.',
                                 iconColor: 'bg-green-600',
                                 borderColor: 'bg-green-600 shadow-green-600/50',
                                 icon: Target,
@@ -433,7 +437,7 @@ export function InGameHelper({ ddragonVersion }) {
                         }
                     }
 
-                    // Carapateur (Spawn à 2:55 -> Notif à 2:40 = 160s)
+                    // Carapateur (Spawn ├á 2:55 -> Notif ├á 2:40 = 160s)
                     if (gameTime >= 160 && gameTime < 300 && !refs.objCamp2) {
                         refs.objCamp2 = true;
                         if (refs.isJungle) {
@@ -441,7 +445,7 @@ export function InGameHelper({ ddragonVersion }) {
                                 type: 'objective',
                                 title: 'JUNGLE (15s)',
                                 name: 'Apparition des Carapateurs',
-                                status: 'Contrôlez la rivière pour récupérer la vision.',
+                                status: 'Contr├┤lez la rivi├¿re pour r├®cup├®rer la vision.',
                                 iconColor: 'bg-teal-500',
                                 borderColor: 'bg-teal-500 shadow-teal-500/50',
                                 icon: Target,
@@ -450,10 +454,10 @@ export function InGameHelper({ ddragonVersion }) {
                         }
                     }
                     // --- DRAGONS ET BARONS DYNAMIQUES (Respawns inclus) ---
-                    let drakeSpawnTime = 300; // 5:00 par défaut
-                    let baronSpawnTime = 1200; // 20:00 par défaut
-                    let heraldSpawnTime = 840; // 14:00 par défaut
-                    let grubsSpawnTime = 300; // 5:00 par défaut pour les larves
+                    let drakeSpawnTime = 300; // 5:00 par d├®faut
+                    let baronSpawnTime = 1200; // 20:00 par d├®faut
+                    let heraldSpawnTime = 840; // 14:00 par d├®faut
+                    let grubsSpawnTime = 300; // 5:00 par d├®faut pour les larves
 
                     if (data.events && data.events.Events) {
                         const dragons = data.events.Events.filter(e => e.EventName === 'DragonKill');
@@ -463,7 +467,7 @@ export function InGameHelper({ ddragonVersion }) {
                         if (barons.length > 0) baronSpawnTime = barons[barons.length - 1].EventTime + 180; // 3 min respawn
 
                         const hordes = data.events.Events.filter(e => e.EventName === 'HordeKill');
-                        if (hordes.length > 0 && hordes[hordes.length - 1].EventTime < 525) grubsSpawnTime = hordes[hordes.length - 1].EventTime + 240; // 4 min respawn (avant héraut)
+                        if (hordes.length > 0 && hordes[hordes.length - 1].EventTime < 525) grubsSpawnTime = hordes[hordes.length - 1].EventTime + 240; // 4 min respawn (avant h├®raut)
                     }
 
                     // Notifs (30s avant)
@@ -473,7 +477,7 @@ export function InGameHelper({ ddragonVersion }) {
                     if (gameTime >= drakeSpawnTime - 30 && gameTime < drakeSpawnTime + 90 && refs.notifiedSpawns.drake !== drakeSpawnTime) {
                         refs.notifiedSpawns.drake = drakeSpawnTime;
                         pushToast({
-                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Dragon', status: 'Le prochain Dragon apparaît bientôt.', iconColor: 'bg-red-500', borderColor: 'bg-red-500 shadow-red-500/50', imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/dragon-100.png', duration: 12000
+                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Dragon', status: 'Le prochain Dragon appara├«t bient├┤t.', iconColor: 'bg-red-500', borderColor: 'bg-red-500 shadow-red-500/50', imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/dragon-100.png', duration: 12000
                         });
                     }
 
@@ -481,7 +485,7 @@ export function InGameHelper({ ddragonVersion }) {
                     if (gameTime >= baronSpawnTime - 30 && gameTime < baronSpawnTime + 90 && refs.notifiedSpawns.baron !== baronSpawnTime) {
                         refs.notifiedSpawns.baron = baronSpawnTime;
                         pushToast({
-                            type: 'objective', title: 'OBJECTIF MAJEUR (30s)', name: 'Baron Nashor', status: 'Le Baron apparaît bientôt.', iconColor: 'bg-fuchsia-600', borderColor: 'bg-fuchsia-600 shadow-fuchsia-600/50', imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/baron-100.png', duration: 12000
+                            type: 'objective', title: 'OBJECTIF MAJEUR (30s)', name: 'Baron Nashor', status: 'Le Baron appara├«t bient├┤t.', iconColor: 'bg-fuchsia-600', borderColor: 'bg-fuchsia-600 shadow-fuchsia-600/50', imageUrl: 'https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/baron-100.png', duration: 12000
                         });
                     }
 
@@ -489,15 +493,15 @@ export function InGameHelper({ ddragonVersion }) {
                     if (gameTime >= grubsSpawnTime - 30 && gameTime < grubsSpawnTime + 90 && refs.notifiedSpawns.grubs !== grubsSpawnTime && gameTime < 820) {
                         refs.notifiedSpawns.grubs = grubsSpawnTime;
                         pushToast({
-                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Larves du Néant', status: 'Important pour push les tours rapidement.', iconColor: 'bg-purple-700', borderColor: 'bg-purple-700 shadow-purple-700/50', icon: Skull, duration: 12000
+                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Larves du N├®ant', status: 'Important pour push les tours rapidement.', iconColor: 'bg-purple-700', borderColor: 'bg-purple-700 shadow-purple-700/50', icon: Skull, duration: 12000
                         });
                     }
 
-                    // Héraut
+                    // H├®raut
                     if (gameTime >= heraldSpawnTime - 30 && gameTime < heraldSpawnTime + 90 && refs.notifiedSpawns.herald !== heraldSpawnTime) {
                         refs.notifiedSpawns.herald = heraldSpawnTime;
                         pushToast({
-                            type: 'objective', title: 'OBJECTIF (30s)', name: 'Héraut de la Faille', status: 'Le Héraut apparaît dans 30s.', iconColor: 'bg-indigo-600', borderColor: 'bg-indigo-600 shadow-indigo-600/50', icon: Target, duration: 12000
+                            type: 'objective', title: 'OBJECTIF (30s)', name: 'H├®raut de la Faille', status: 'Le H├®raut appara├«t dans 30s.', iconColor: 'bg-indigo-600', borderColor: 'bg-indigo-600 shadow-indigo-600/50', icon: Target, duration: 12000
                         });
                     }
                 }
@@ -551,8 +555,8 @@ export function InGameHelper({ ddragonVersion }) {
                             pushToast({
                                 type: 'skill',
                                 title: lvl === 1 ? 'STARTING SKILL' : 'LEVEL UP',
-                                name: `Améliorez le sort ${letter}`,
-                                status: lvl === 1 ? 'Sort à débloquer en premier' : `Vous avez atteint le niveau ${lvl}.`,
+                                name: `Am├®liorez le sort ${letter}`,
+                                status: lvl === 1 ? 'Sort ├á d├®bloquer en premier' : `Vous avez atteint le niveau ${lvl}.`,
                                 iconColor: color,
                                 borderColor: color,
                                 letter: letter,
@@ -583,7 +587,7 @@ export function InGameHelper({ ddragonVersion }) {
                             type: 'ward',
                             title: 'VISION MAP',
                             name: 'Changement de Trinket',
-                            status: refs.isJungle ? 'Prenez le Brouilleur Oracle pour gank.' : 'Achetez des Wards de Contrôle au prochain back.',
+                            status: refs.isJungle ? 'Prenez le Brouilleur Oracle pour gank.' : 'Achetez des Wards de Contr├┤le au prochain back.',
                             iconColor: 'bg-emerald-500',
                             borderColor: 'bg-emerald-500 shadow-emerald-500/50',
                             imageUrl: `https://ddragon.leagueoflegends.com/cdn/${refs.ddVersion}/img/item/${wardId}.png`,
@@ -802,7 +806,7 @@ export function InGameHelper({ ddragonVersion }) {
                                                 <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
                                             </div>
                                         ))}
-                                        {buildData.items.core.length > 0 && <span className="text-white/30 text-[10px] font-black mx-1 drop-shadow-md">►</span>}
+                                        {buildData.items.core.length > 0 && <span className="text-white/30 text-[10px] font-black mx-1 drop-shadow-md">Ôû║</span>}
                                         {buildData.items.core.map((id, idx) => (
                                             <div key={'core-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-amber-500/60 overflow-hidden shadow-[0_0_12px_rgba(245,158,11,0.4)] relative">
                                                 <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-xl" />
@@ -833,7 +837,7 @@ export function InGameHelper({ ddragonVersion }) {
                                     <div className="flex flex-col gap-1.5 mt-2 px-1">
                                         <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest drop-shadow-sm flex items-center gap-1.5">
                                             <Sparkles className="w-3 h-3" />
-                                            Prochain Achat Recommandé
+                                            Prochain Achat Recommand├®
                                         </div>
                                         <div className="flex items-center gap-3 bg-gradient-to-r from-amber-500/20 to-transparent p-2 rounded-xl ring-1 ring-amber-500/30">
                                             <div className="w-11 h-11 rounded-xl border-2 border-amber-400 overflow-hidden shadow-[0_0_15px_rgba(245,158,11,0.6)] relative animate-pulse">
@@ -891,7 +895,7 @@ export function InGameHelper({ ddragonVersion }) {
                                         <div className="w-full relative z-10 flex flex-col gap-2">
                                             <div className="flex justify-between items-end px-1">
                                                 <div className="flex flex-col">
-                                                    <span className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-80 ${isWinning ? 'text-cyan-300' : 'text-white'}`}>Alliés</span>
+                                                    <span className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1.5 opacity-80 ${isWinning ? 'text-cyan-300' : 'text-white'}`}>Alli├®s</span>
                                                     <span className={`text-[20px] font-black leading-none drop-shadow-[0_0_12px_rgba(34,211,238,0.6)] ${isWinning ? 'text-cyan-400' : 'text-white/90'}`}>{toast.prob}%</span>
                                                 </div>
                                                 <div className="flex flex-col items-end">

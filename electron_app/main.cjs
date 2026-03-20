@@ -28,6 +28,10 @@ app.setAppUserModelId("com.oracle.app");
 
 // Allow self-signed certs for LCU
 app.commandLine.appendSwitch('ignore-certificate-errors');
+// Prevent Chromium from throttling the React LCU loop when the window is behind the full-screen game or on another monitor
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
 // Add local relative imports
 const lcu = require('./lcu.cjs');
 const liveApi = require('./live_api.cjs');
@@ -83,7 +87,8 @@ function createMainWindow() {
             nodeIntegration: true,
             contextIsolation: false,
             webSecurity: false,
-            webviewTag: true
+            webviewTag: true,
+            backgroundThrottling: false
         },
         title: 'Oracle',
         icon: path.join(__dirname, 'icon.png'),
@@ -214,11 +219,12 @@ function createLiveWindow() {
 }
 
 function createLoadingWindow() {
+    const primaryDisplay = screen.getPrimaryDisplay();
     loadingWindow = new BrowserWindow({
         width: 1400,
         height: 900,
-        x: 0,
-        y: 0,
+        x: Math.round(primaryDisplay.bounds.x + (primaryDisplay.bounds.width - 1400) / 2),
+        y: Math.round(primaryDisplay.bounds.y + (primaryDisplay.bounds.height - 900) / 2),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -234,6 +240,8 @@ function createLoadingWindow() {
         resizable: false,
         type: 'toolbar'
     });
+
+    loadingWindow.setIgnoreMouseEvents(true, { forward: true });
     
     loadingWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
@@ -371,13 +379,22 @@ ipcMain.handle('window:hide', (event) => {
 
 function createMusicWindow() {
     if (musicWindow) return;
+    const settings = getSettings();
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
+
+    let defaultX = 20;
+    let defaultY = height - 190;
+    if (settings.musicWindowPos) {
+        defaultX = settings.musicWindowPos.x;
+        defaultY = settings.musicWindowPos.y;
+    }
+
     musicWindow = new BrowserWindow({
         width: 360,
         height: 170,
-        x: 20,
-        y: height - 190, // Bottom left corner
+        x: defaultX,
+        y: defaultY,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
@@ -391,12 +408,14 @@ function createMusicWindow() {
         alwaysOnTop: true,
         skipTaskbar: true,
         resizable: false,
-        focusable: false,
+        focusable: true, // Needs focus occasionally? No, keep it non-focusable if possible.
         hasShadow: false,
         type: 'toolbar'
     });
 
-    musicWindow.setIgnoreMouseEvents(false); // Music overlay needs clicks
+    // By default, the music window is click-through (so it doesn't swallow clicks in game)
+    // The React app will turn it to false ONLY when hovering!
+    musicWindow.setIgnoreMouseEvents(true, { forward: true }); 
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev
@@ -405,6 +424,17 @@ function createMusicWindow() {
 
     musicWindow.loadURL(url);
     musicWindow.setAlwaysOnTop(true, 'screen-saver');
+
+    musicWindow.on('moved', () => {
+        if (!musicWindow) return;
+        const [x, y] = musicWindow.getPosition();
+        let curSettings = getSettings();
+        curSettings.musicWindowPos = { x, y };
+        const path = require('path');
+        const fs = require('fs');
+        const SETTINGS_PATH = path.join(app.getPath('userData'), 'settings.json');
+        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(curSettings, null, 2));
+    });
 
     musicWindow.on('closed', () => {
         musicWindow = null;
@@ -436,7 +466,8 @@ function createInGameWindow() {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            webSecurity: false
+            webSecurity: false,
+            backgroundThrottling: false
         },
         title: 'Oracle InGame',
         backgroundColor: '#00000000',
@@ -694,12 +725,7 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
     console.log(`[IPC] app:register-shortcut called with: ${winrateShortcut}`);
     try {
         globalShortcut.unregisterAll();
-        globalShortcut.register('CommandOrControl+H', () => {
-            if (liveWindow) {
-                if (liveWindow.isVisible()) liveWindow.hide();
-                else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
-            }
-        });
+
         
         globalShortcut.register('Alt+B', () => {
             if (lastPhase !== 'GameStart' && lastPhase !== 'InProgress') {
@@ -710,13 +736,29 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
                 if (loadingWindow) {
                     if (loadingWindow.isVisible()) loadingWindow.hide();
                     else { 
-                        loadingWindow.showInactive(); 
+                        const display = screen.getPrimaryDisplay();
+                        const winBounds = loadingWindow.getBounds();
+                        loadingWindow.setBounds({
+                            x: Math.round(display.bounds.x + (display.bounds.width - winBounds.width) / 2),
+                            y: Math.round(display.bounds.y + (display.bounds.height - winBounds.height) / 2),
+                            width: winBounds.width,
+                            height: winBounds.height
+                        });
+                        loadingWindow.show(); 
                         loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                         loadingWindow.setIgnoreMouseEvents(false); 
                     }
                 } else {
                     createLoadingWindow();
                     loadingWindow.webContents.once('did-finish-load', () => {
+                        const display = screen.getPrimaryDisplay();
+                        const winBounds = loadingWindow.getBounds();
+                        loadingWindow.setBounds({
+                            x: Math.round(display.bounds.x + (display.bounds.width - winBounds.width) / 2),
+                            y: Math.round(display.bounds.y + (display.bounds.height - winBounds.height) / 2),
+                            width: winBounds.width,
+                            height: winBounds.height
+                        });
                         loadingWindow.showInactive();
                         loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                         loadingWindow.setIgnoreMouseEvents(false);
@@ -734,22 +776,27 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
             if (!ingameWindow || ingameWindow.isDestroyed()) {
                 createInGameWindow();
                 ingameWindow.webContents.once('did-finish-load', () => {
+                    const display = screen.getPrimaryDisplay();
+                    ingameWindow.setBounds(display.bounds);
                     if (!ingameWindow.isVisible()) ingameWindow.showInactive();
+                    ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                     ingameWindow.webContents.send('shortcut:force-winrate');
                 });
             } else {
+                const display = screen.getPrimaryDisplay();
+                ingameWindow.setBounds(display.bounds);
                 if (!ingameWindow.isVisible()) {
                     ingameWindow.showInactive();
                 }
+                ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                 ingameWindow.webContents.send('shortcut:force-winrate');
             }
         };
 
         globalShortcut.register(winrateShortcut, action);
         // Force a secondary fallback since Control+X is often eaten by Windows or League
-        if (winrateShortcut === 'CommandOrControl+X') {
+        if (winrateShortcut === 'CommandOrControl+X' || winrateShortcut === 'Alt+O') {
             globalShortcut.register('Alt+X', action);
-            globalShortcut.register('CommandOrControl+Shift+X', action);
         }
         return true;
     } catch (e) {
@@ -761,12 +808,7 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
 ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
     try {
         globalShortcut.unregisterAll();
-        globalShortcut.register('CommandOrControl+H', () => {
-            if (liveWindow) {
-                if (liveWindow.isVisible()) liveWindow.hide();
-                else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
-            }
-        });
+
         
         globalShortcut.register('Alt+B', () => {
             if (lastPhase !== 'GameStart' && lastPhase !== 'InProgress') {
@@ -777,6 +819,14 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
                 if (loadingWindow) {
                     if (loadingWindow.isVisible()) loadingWindow.hide();
                     else { 
+                        const display = screen.getPrimaryDisplay();
+                        const winBounds = loadingWindow.getBounds();
+                        loadingWindow.setBounds({
+                            x: Math.round(display.bounds.x + (display.bounds.width - winBounds.width) / 2),
+                            y: Math.round(display.bounds.y + (display.bounds.height - winBounds.height) / 2),
+                            width: winBounds.width,
+                            height: winBounds.height
+                        });
                         loadingWindow.show(); 
                         loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                         loadingWindow.setIgnoreMouseEvents(false); 
@@ -784,14 +834,21 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
                 } else {
                     createLoadingWindow();
                     loadingWindow.webContents.once('did-finish-load', () => {
-                        loadingWindow.showInactive();
+                        const display = screen.getPrimaryDisplay();
+                        const winBounds = loadingWindow.getBounds();
+                        loadingWindow.setBounds({
+                            x: Math.round(display.bounds.x + (display.bounds.width - winBounds.width) / 2),
+                            y: Math.round(display.bounds.y + (display.bounds.height - winBounds.height) / 2),
+                            width: winBounds.width,
+                            height: winBounds.height
+                        });
+                        loadingWindow.show();
                         loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                         loadingWindow.setIgnoreMouseEvents(false);
                     });
                 }
             }
         });
-
         const action = () => {
             console.log(`Shortcut pressed!`);
             if (lastPhase !== 'InProgress') {
@@ -801,22 +858,28 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
             if (!ingameWindow || ingameWindow.isDestroyed()) {
                 createInGameWindow();
                 ingameWindow.webContents.once('did-finish-load', () => {
+                    const display = screen.getPrimaryDisplay();
+                    ingameWindow.setBounds(display.bounds);
                     if (!ingameWindow.isVisible()) ingameWindow.showInactive();
+                    ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                     ingameWindow.webContents.send('shortcut:force-winrate');
                 });
             } else {
+                const display = screen.getPrimaryDisplay();
+                ingameWindow.setBounds(display.bounds);
                 if (!ingameWindow.isVisible()) {
                     ingameWindow.showInactive();
                 }
+                ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                 ingameWindow.webContents.send('shortcut:force-winrate');
             }
         };
 
         globalShortcut.register(keys, action);
-        if (keys === 'CommandOrControl+X') {
+        if (keys === 'CommandOrControl+X' || keys === 'Alt+O') {
             globalShortcut.register('Alt+X', action);
-            globalShortcut.register('CommandOrControl+Shift+X', action);
         }
+
         return true;
     } catch (e) {
         console.error("Shortcut update failed", e);

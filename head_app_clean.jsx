@@ -38,7 +38,6 @@ import {
   UserCircle2,
   Circle,
   Trophy,
-  Monitor,
   MonitorPlay,
   Globe,
   Power,
@@ -1505,8 +1504,8 @@ function App() {
         });
       }
 
-      if (['CTRL+X', 'CommandOrControl+Shift+O', 'CommandOrControl+X', '.'].includes(parsed.winProbabilityShortcut)) {
-        parsed.winProbabilityShortcut = 'Alt+O';
+      if (parsed.winProbabilityShortcut === 'CTRL+X' || parsed.winProbabilityShortcut === 'CommandOrControl+Shift+O') {
+        parsed.winProbabilityShortcut = 'CommandOrControl+X';
       }
 
       return {
@@ -1528,11 +1527,8 @@ function App() {
   useEffect(() => {
     localStorage.setItem('oracle_overlay_settings', JSON.stringify(overlaySettings));
 
-    let currentShortcut = overlaySettings.winProbabilityShortcut || 'Alt+O';
-    // Clean up broken or dangerous bindings (Cut/Paste keys, or accidental dots)
-    if (['CTRL+X', 'CommandOrControl+Shift+O', 'CommandOrControl+X', '.'].includes(currentShortcut)) {
-        currentShortcut = 'Alt+O';
-    }
+    let currentShortcut = overlaySettings.winProbabilityShortcut || 'CommandOrControl+X';
+    if (currentShortcut === 'CTRL+X' || currentShortcut === 'CommandOrControl+Shift+O') currentShortcut = 'CommandOrControl+X';
 
     if (window.ipcRenderer) {
       window.ipcRenderer.invoke('app:register-shortcut', currentShortcut);
@@ -1970,26 +1966,8 @@ function MusicOverlay() {
     }
   };
 
-  const handleMouseEnter = () => {
-    if (window.ipcRenderer) {
-      window.ipcRenderer.invoke('window:set-ignore-mouse-events', false);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (window.ipcRenderer) {
-      window.ipcRenderer.invoke('window:set-ignore-mouse-events', true, { forward: true });
-    }
-  };
-
   return (
-    <div 
-      className="w-full h-full p-2 select-none" 
-      style={{ WebkitAppRegion: 'drag' }} 
-      onContextMenu={(e) => e.preventDefault()}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="w-full h-full p-2 select-none" style={{ WebkitAppRegion: 'drag' }} onContextMenu={(e) => e.preventDefault()}>
       <div
         className="bg-black/50 hover:bg-black/60 dark:bg-[#080a14]/80 dark:hover:bg-[#080a14]/90 backdrop-blur-[24px] rounded-3xl border border-white/20 p-3 flex flex-col justify-between relative h-full transition-all duration-500 overflow-hidden shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
         style={{ transform: 'translateZ(0)' }}
@@ -12403,29 +12381,10 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
       className="fixed inset-0 pointer-events-none select-none z-[9999]"
       style={{ display: 'block' }} /* Ensure it's not hidden by some weird CSS state */
     >
-      {/* Win% Widget (ALT+O) - RESTORED ORIGINAL DESIGN */}
-      {overlaySettings.winProbability !== false && (
-        <div
-          style={{ left: `${pos?.winrate?.x ?? 5}px`, top: `${pos?.winrate?.y ?? 5}%` }}
-          className="absolute bg-[#16171b] rounded-xl flex items-center p-3 pr-10 overflow-hidden shadow-[0_15px_60px_-10px_rgba(0,0,0,0.8)] border border-white/5 pointer-events-auto group touch-none"
-        >
-          {/* Left Purple Border */}
-          <div className="absolute top-0 bottom-0 left-0 w-[5px] bg-[#a855f7]"></div>
-          {/* Bottom Purple Progress */}
-          <div className="absolute bottom-0 left-0 h-[3px] bg-[#a855f7]" style={{ width: '65.2%' }}></div>
+      {/* Win% Widget (ALT+O) - REMOVED AS PER USER REQUEST */}
 
-          {/* Cyan Icon Box */}
-          <div className="w-[3.25rem] h-[3.25rem] rounded-xl bg-[#06b6d4] flex items-center justify-center shrink-0 ml-1.5 mr-4 shadow-inner">
-            <Activity size={28} className="text-white drop-shadow-md" strokeWidth={2}/>
-          </div>
-          
-          <div className="flex flex-col z-10">
-            <div className="text-[10px] font-black tracking-[0.2em] text-[#6b7280] uppercase mb-0.5">ORACLE PREDICTION</div>
-            <div className="text-white font-extrabold text-[15px] tracking-tight">Probabilité : 65.2%</div>
-            <div className="text-[11px] text-[#9ca3af] italic mt-0.5 tracking-tight truncate max-w-[200px]">Votre équipe mène la danse ! Mainte...</div>
-          </div>
-        </div>
-      )}      {/* Jungle Clear Helper / Pathing */}
+
+      {/* Jungle Clear Helper / Pathing */}
       {(isJungle && (overlaySettings.junglePathing || overlaySettings.jungleTimers)) && (
         <div
           style={{ left: `${pos?.jungle?.x ?? 2}%`, top: `${pos?.jungle?.y ?? 40}%` }}
@@ -12524,89 +12483,60 @@ function LoadingOverlay({ t, visualMode, theme }) {
         try { livePlayers = await window.ipcRenderer.invoke('live:get-player-list') || []; } catch(e){}
 
         if (session && session.gameData) {
-          const mergeTeam = (lcuTeam, teamString) => {
-             const finalTeam = [...lcuTeam];
-             const lTeam = livePlayers.filter(p => p.team === teamString);
-             for (const lp of lTeam) {
-                 const exists = finalTeam.find(p => p.summonerName === lp.summonerName || (_champMap[p.championId] && _champMap[p.championId].toLowerCase() === (lp.championName||'').toLowerCase()));
-                 if (!exists) {
-                     finalTeam.push({ puuid: null, summonerName: lp.summonerName, championId: 0, championName: lp.championName });
-                 }
-                 // Fast-patch hidden summoner names directly into final lcuTeam object here!
-                 if (exists && (!exists.summonerName || exists.summonerName.trim() === '')) {
-                     exists.summonerName = lp.summonerName;
-                 }
-             }
-             while (finalTeam.length < 5) {
-                 finalTeam.push({ puuid: null, summonerName: "INCONNU", championId: 0, championName: "?" });
-             }
-             return finalTeam.slice(0, 5); // STRICTLY PREVENT OVERFLOW
-          };
-
           const enrichTeam = async (teamList) => {
             return Promise.all(teamList.map(async (p) => {
               let rankName = "Vérification...";
-              let globalWr = 0; let globalGames = 0; let globalWins = 0, globalLosses = 0; let champMasteryRank = 0;
-              const champName = _champMap[p.championId] || p.championName || "?";
+              let globalWr = 0;
+              let globalGames = 0;
+              let globalWins = 0, globalLosses = 0;
+              let champMasteryRank = 0;
               
-              let name = p.summonerName || p.name;
-              if (!name || name.toLowerCase() === "inconnu" || name.trim() === "") name = "INCONNU";
+              const champName = _champMap[p.championId] || "Unknown";
               
-              // Filter out anonymous champion aliases incorrectly passed as summonerName
-              if (name !== "INCONNU" && name.toLowerCase() === champName.toLowerCase()) {
-                  name = "INCONNU";
+              let name = p.summonerName;
+              if (!name || name === "Inconnu" || name === "") {
+                  const match = livePlayers.find(lp => lp.championName === champName || (lp.championName && champName && lp.championName.toLowerCase() === champName.toLowerCase()));
+                  if (match && match.summonerName) name = match.summonerName;
               }
+              if (!name || name === "") name = "INCONNU";
 
               let currentPuuid = p.puuid;
-              let statsPopulated = false;
               try {
                 if (!currentPuuid && name !== "INCONNU") {
+                    // Force LCU lookup for enemies hidden in Ranked
                     const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', false);
                     if (sumData && sumData.puuid) currentPuuid = sumData.puuid;
                 }
 
-                if (currentPuuid && !currentPuuid.startsWith('ext~')) {
+                if (currentPuuid) {
                   const ranked = await window.ipcRenderer.invoke('lcu:get-ranked-stats', currentPuuid);
                   if (ranked && ranked.queueMap && ranked.queueMap.RANKED_SOLO_5x5) {
                     const solo = ranked.queueMap.RANKED_SOLO_5x5;
-                    globalWins = solo.wins || 0; globalLosses = solo.losses || 0;
-                    if (globalLosses === 0 && globalWins > 5) {
-                        statsPopulated = false; 
-                    } else {
-                        rankName = `${solo.tier} ${solo.division}`;
-                        globalGames = globalWins + globalLosses;
-                        if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
-                        statsPopulated = true;
-                    }
-                  } else rankName = "UNRANKED";
+                    rankName = `${solo.tier} ${solo.division}`;
+                    globalWins = solo.wins || 0;
+                    globalLosses = solo.losses || 0;
+                    globalGames = globalWins + globalLosses;
+                    if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
+                  } else {
+                    rankName = "UNRANKED";
+                  }
+                  
                   const masteries = await window.ipcRenderer.invoke('lcu:get-champion-mastery', currentPuuid);
                   if (masteries && Array.isArray(masteries)) {
                       const m = masteries.find(x => x.championId === p.championId);
                       if (m) champMasteryRank = m.championLevel || 0;
                   }
-                }
-
-                if (!statsPopulated && name !== "INCONNU") {
-                    const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', true);
-                    if (sumData) {
-                       rankName = sumData.rank || rankName;
-                       if (sumData.winRate) globalWr = parseInt(sumData.winRate);
-                       if (sumData.games) {
-                          globalGames = sumData.games;
-                          globalWins = Math.round((globalWr / 100) * globalGames);
-                          globalLosses = globalGames - globalWins;
-                       }
-                    }
-                } else if (!statsPopulated && name === "INCONNU") {
+                } else if (name === "INCONNU") {
                     rankName = "CACHÉ";
                 }
               } catch(e){}
-              return { ...p, name: name, puuid: currentPuuid, champId: p.championId, champName, rank: rankName, globalWr, globalGames, globalWins, globalLosses, mastery: champMasteryRank };
+
+              return { name, puuid: currentPuuid, champId: p.championId, champName, rank: rankName, globalWr, globalGames, globalWins, globalLosses, mastery: champMasteryRank };
             }));
           };
 
-          const orderPlayers = await enrichTeam(mergeTeam(session.gameData.teamOne || [], 'ORDER'));
-          const chaosPlayers = await enrichTeam(mergeTeam(session.gameData.teamTwo || [], 'CHAOS'));
+          const orderPlayers = await enrichTeam(session.gameData.teamOne || []);
+          const chaosPlayers = await enrichTeam(session.gameData.teamTwo || []);
           setPlayers({ order: orderPlayers, chaos: chaosPlayers });
         }
       } catch(e) { console.error("Loading overlay error", e); }
@@ -12623,49 +12553,32 @@ function LoadingOverlay({ t, visualMode, theme }) {
     }
   };
 
-  const getTeamWr = (team) => {
-    const valid = team.filter(p => p.globalWr > 0);
-    return valid.length ? (valid.reduce((s, p) => s + p.globalWr, 0) / valid.length).toFixed(1) : 0;
-  };
-
-  const orderWr = getTeamWr(players.order);
-  const chaosWr = getTeamWr(players.chaos);
-
   return (
     <>
     <style>{`body { background: transparent !important; }`}</style>
-    <div className="fixed inset-0 m-4 sm:m-8 lg:m-12 z-[9999] p-8 flex flex-col items-center justify-start py-12 gap-6 animate-in fade-in transition-all bg-black/50 backdrop-blur-md rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] font-inter no-drag">
-      
-      {/* Oracle Prediction Top Left */}
-      {(orderWr > 0 || chaosWr > 0) && (
-        <div className="absolute top-10 left-10 flex flex-col gap-2 font-bold text-[10px] uppercase tracking-widest pointer-events-none drop-shadow-md">
-           <div className="text-blue-300">Équipe Bleu : {orderWr}%</div>
-           <div className="text-red-300">Équipe Rouge : {chaosWr}%</div>
-        </div>
-      )}
-
-      <div className="flex flex-col items-center pointer-events-none drop-shadow-md shrink-0">
+    <div className="fixed inset-0 m-4 sm:m-8 lg:m-12 z-[9999] p-8 flex flex-col items-center justify-center gap-8 animate-in fade-in transition-all bg-gradient-to-br from-indigo-950/90 to-purple-950/90 backdrop-blur-md rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] font-inter overflow-hidden no-drag">
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none drop-shadow-md">
         <h1 className="text-4xl font-black text-gray-100 tracking-widest italic mb-1 uppercase">ORACLE <span className="text-accent-primary drop-shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.5)]">VISION</span></h1>
         <div className="text-gray-400 font-bold uppercase tracking-[0.3em] text-[10px]">Analyse de l'Opposant</div>
       </div>
 
       {players.order.length > 0 || players.chaos.length > 0 ? (
-        <div className="w-full max-w-7xl grid grid-cols-2 gap-12 sm:gap-24 w-full h-[700px] py-4 px-2 pointer-events-auto shrink-0">
+        <div className="w-full max-w-7xl grid grid-cols-2 gap-12 sm:gap-24 mt-16 overflow-y-auto custom-scrollbar h-full py-4 px-2 pointer-events-auto">
           {/* TEAM BLEU */}
-          <div className="space-y-3 flex flex-col pt-2 block" style={{ height: 'max-content' }}>
+          <div className="space-y-4 flex flex-col justify-center">
             {players.order.map((p, i) => (
-              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-3 px-4 rounded-2xl border border-blue-500/10 hover:border-blue-500/40 hover:bg-blue-500/10 shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer group" onClick={() => openProfile(p.name)}>
-                <div className="w-14 h-14 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner text-[8px] flex items-center justify-center font-bold text-gray-700">
-                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?")}
-                  {p.mastery > 0 && <div className="absolute bottom-0 right-0 z-20 bg-black/70 text-blue-300 font-extrabold text-[8px] px-1 rounded-sm border-t border-l border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
+              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-4 rounded-[1.5rem] border border-blue-500/10 hover:border-blue-500/40 hover:bg-blue-500/10 shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer group" onClick={() => openProfile(p.name)}>
+                <div className="w-16 h-16 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner">
+                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : null}
+                  {p.mastery > 0 && <div className="absolute bottom-1 right-1 z-20 bg-black/70 text-blue-300 font-extrabold text-[9px] px-1.5 rounded-md border border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
                 </div>
-                <div className="flex-1 min-w-0 pr-1">
-                  <div className="flex justify-between items-baseline mb-0 gap-2">
-                    <div className="font-black text-base text-white truncate drop-shadow-sm group-hover:text-blue-300 transition-colors uppercase tracking-tight">{p.name}</div>
-                    <span className="text-[9px] text-blue-300 font-extrabold uppercase tracking-widest bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex justify-between items-baseline mb-1 gap-2">
+                    <div className="font-black text-lg text-white truncate drop-shadow-sm group-hover:text-blue-300 transition-colors uppercase tracking-tight">{p.name}</div>
+                    <span className="text-[10px] text-blue-300 font-extrabold uppercase tracking-widest bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
                   </div>
-                  <div className="flex items-center justify-start gap-2 text-[10px] font-bold text-gray-300">
-                    <span className="opacity-75 uppercase tracking-wide">WR:</span>
+                  <div className="flex items-center justify-between text-[11px] font-bold mt-2 text-gray-300">
+                    <span className="opacity-75 uppercase tracking-wide">Global WR</span>
                     <span>{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
                   </div>
                 </div>
@@ -12674,21 +12587,21 @@ function LoadingOverlay({ t, visualMode, theme }) {
           </div>
 
           {/* TEAM ROUGE */}
-          <div className="space-y-3 flex flex-col pt-2 block" style={{ height: 'max-content' }}>
+          <div className="space-y-4 flex flex-col justify-center">
             {players.chaos.map((p, i) => (
-              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-3 px-4 rounded-2xl border border-red-500/10 hover:border-red-500/40 hover:bg-red-500/10 shadow-lg hover:shadow-red-500/20 transition-all cursor-pointer group flex-row-reverse text-right" onClick={() => openProfile(p.name)}>
-                <div className="w-14 h-14 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner text-[8px] flex items-center justify-center font-bold text-gray-700">
-                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?")}
-                  {p.mastery > 0 && <div className="absolute bottom-0 left-0 z-20 bg-black/70 text-red-300 font-extrabold text-[8px] px-1 rounded-sm border-t border-r border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
+              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-4 rounded-[1.5rem] border border-red-500/10 hover:border-red-500/40 hover:bg-red-500/10 shadow-lg hover:shadow-red-500/20 transition-all cursor-pointer group flex-row-reverse text-right" onClick={() => openProfile(p.name)}>
+                <div className="w-16 h-16 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner">
+                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : null}
+                  {p.mastery > 0 && <div className="absolute bottom-1 auto-left-1 z-20 bg-black/70 text-red-300 font-extrabold text-[9px] px-1.5 rounded-md border border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
                 </div>
-                <div className="flex-1 min-w-0 pl-1">
-                  <div className="flex justify-between items-baseline mb-0 flex-row-reverse gap-2">
-                    <div className="font-black text-base text-white truncate drop-shadow-sm group-hover:text-red-400 transition-colors uppercase tracking-tight">{p.name}</div>
-                    <span className="text-[9px] text-red-300 font-extrabold uppercase tracking-widest bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                <div className="flex-1 min-w-0 pl-2">
+                  <div className="flex justify-between items-baseline mb-1 flex-row-reverse gap-2">
+                    <div className="font-black text-lg text-white truncate drop-shadow-sm group-hover:text-red-400 transition-colors uppercase tracking-tight">{p.name}</div>
+                    <span className="text-[10px] text-red-300 font-extrabold uppercase tracking-widest bg-red-500/20 border border-red-500/30 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
                   </div>
-                  <div className="flex items-center justify-end gap-2 text-[10px] font-bold text-gray-300">
-                    <span className="text-white">{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
-                    <span className="opacity-75 uppercase tracking-wide">:WR</span>
+                  <div className="flex items-center justify-between flex-row-reverse text-[11px] font-bold mt-2 text-gray-300">
+                    <span className="opacity-75 uppercase tracking-wide">Global WR</span>
+                    <span>{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
                   </div>
                 </div>
               </div>
@@ -12696,7 +12609,7 @@ function LoadingOverlay({ t, visualMode, theme }) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-[500px] pointer-events-none">
+        <div className="flex flex-col items-center justify-center h-full pointer-events-none">
            <div className="w-16 h-16 border-[4px] border-accent-primary border-t-transparent rounded-full animate-spin mb-6"></div>
            <div className="text-white font-bold uppercase tracking-[0.2em] text-xs">Patientez...</div>
         </div>

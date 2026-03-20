@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CHAMP_ID_TO_NAME = {
@@ -38,7 +38,6 @@ import {
   UserCircle2,
   Circle,
   Trophy,
-  Monitor,
   MonitorPlay,
   Globe,
   Power,
@@ -398,7 +397,7 @@ const translations = {
     verdict_feeder: "Oracle : Sustained Hemorrhage. Accumulating double-digit deaths actively sabotages your entire team's effort. You became nothing more than a walking gold bag for the enemy carry. You must learn the discipline of playing 'weakside' and conceding farm.",
     verdict_blind: "Oracle : Playing in the Dark. Your vision score was statistically non-existent. You repeatedly facechecked dangerous brush and paid the price because you refused to invest in Control Wards. Stop treating map awareness as an optional luxury.",
     verdict_afk_farm: "Oracle : PvE Specialist. Your farming metrics are high, but your concrete impact was zero. While you were busy optimizing your jungle routing, your team was losing the actual game. League of Legends is PvP; you need to join the fights.",
-    verdict_solid_effort: "Oracle : Tragic Hero. A tough pill to swallow. You did virtually everything correctly—winning your lane and maintaining pristine stats—but you couldn't carry the dead weight of your teammates. Don't tilt; consistency like this guarantees climbing in the long run.",
+    verdict_solid_effort: "Oracle : Tragic Hero. A tough pill to swallow. You did virtually everything correctlyÔÇöwinning your lane and maintaining pristine statsÔÇöbut you couldn't carry the dead weight of your teammates. Don't tilt; consistency like this guarantees climbing in the long run.",
     verdict_rich_loser: "Oracle : Shopkeeper's Best Friend. You achieved a full build but still suffered defeat. Gold is utterly useless if you get caught out of position right before the Elder Dragon spawns. Late game, proper positioning is infinitely more valuable than your items.",
     verdict_unlucky_carry: "Oracle : Team Gap. You assumed the mantle of leadership and dealt the most damage, but the sheer skill disparity between the remaining team members was too vast to overcome. Keep your mental fortitude intact; you played this match extremely well.",
     // Analysis Points
@@ -542,344 +541,344 @@ const translations = {
     dashboard: "Tableau de bord", tierlist: "Builds & Tips", leaderboards: "Classements",
     overlays: "Overlays", collections: "Collections",
     esports: "Esports", datastudio: "Data Studio", matchups: "Matchups",
-    settings: "Paramètres", profile: "Profil", watch: "Regarder",
+    settings: "Param├¿tres", profile: "Profil", watch: "Regarder",
     connected: "En ligne", disconnected: "Hors ligne",
-    searchPlaceholder: "Rechercher invocateur...", visualStyle: "Style Visuel", colorTheme: "Thème Couleur",
-    language: "Langue", startup: "Lancer au démarrage", glass: "Glass", opaque: "Opaque",
+    searchPlaceholder: "Rechercher invocateur...", visualStyle: "Style Visuel", colorTheme: "Th├¿me Couleur",
+    language: "Langue", startup: "Lancer au d├®marrage", glass: "Glass", opaque: "Opaque",
     themeToggle: "Basculer Clair/Sombre", chooseStyle: "Apparence Visuelle",
-    chooseLang: "Sélectionner la langue", startupDesc: "Comportement au démarrage",
-    auto_accept: "Acceptation Auto", auto_accept_desc: "Accepter automatiquement les parties dès qu'elles sont trouvées.",
+    chooseLang: "S├®lectionner la langue", startupDesc: "Comportement au d├®marrage",
+    auto_accept: "Acceptation Auto", auto_accept_desc: "Accepter automatiquement les parties d├¿s qu'elles sont trouv├®es.",
     auto_import: "Import Auto Runes", auto_import_desc: "Importer automatiquement les meilleures runes pour votre champion.",
     flash_position: "Position du Flash", flash_left: "Gauche (D)", flash_right: "Droite (F)",
-    overlay_settings: "Paramètres d'Overlay", ingame_modules: "Modules en jeu",
+    overlay_settings: "Param├¿tres d'Overlay", ingame_modules: "Modules en jeu",
     edit_layout: "Modifier la Disposition", save_layout: "Sauvegarder & Quitter",
-    reset_layout: "Réinitialiser",
+    reset_layout: "R├®initialiser",
     loading_screen: "Overlay Chargement", loading_desc: "Stats des joueurs pendant le chargement",
-    winrate_toggle: "Prédiction de Victoire (CTRL+X ou ALT+X)", winrate_desc: "Pourcentage de chance de victoire en temps réel",
+    winrate_toggle: "Pr├®diction de Victoire (CTRL+X ou ALT+X)", winrate_desc: "Pourcentage de chance de victoire en temps r├®el",
     jungle_pathing: "Chemin Jungle", jungle_pathing_desc: "Meilleures routes et timers",
     ward_timer: "Rappel de Balise", ward_timer_desc: "Alerte quand changer/poser une balise",
     metaTierList: "Meta Tier List", proReplays: "Replays Pro", waitingMatch: "En attente du match",
-    clientDisconnected: "Client Déconnecté", liveMatch: "LIVE",
-    rank: "Rang", champion: "Champion", role: "Rôle", winrate: "Taux Victoire", ban: "Taux Ban", tier: "Tier",
+    clientDisconnected: "Client D├®connect├®", liveMatch: "LIVE",
+    rank: "Rang", champion: "Champion", role: "R├┤le", winrate: "Taux Victoire", ban: "Taux Ban", tier: "Tier",
     kda: "KDA", dpmScore: "ORACLE SCORE", kp: "KP", csm: "CSM", vision: "Score Vision", gpm: "GPM",
     appearance: "Apparence", chooseStyleDesc: "Choisissez entre Liquid Glass ou Solide",
     themeToggleDesc: "Changer l'apparence des couleurs de l'application",
-    theme_classic: "Classique", theme_purple: "Pourpre", theme_storm: "Tempête", theme_radiant: "Radiant",
-    langSelectDesc: "Sélectionnez votre langue préférée",
+    theme_classic: "Classique", theme_purple: "Pourpre", theme_storm: "Temp├¬te", theme_radiant: "Radiant",
+    langSelectDesc: "S├®lectionnez votre langue pr├®f├®r├®e",
     gold_sound_label: "Alerte Or (1200g)",
     gold_sound_desc: "Joue un son quand vous atteignez 1200 gold",
     test_mode_label: "Mode TEST Overlays",
     test_mode_desc: "Affiche tous les overlays pour test",
-    edit_layout_desc: "Ajustez la position de chaque module sur votre écran.",
-    layout_editor_title: "Éditeur d'Overlay Oracle",
+    edit_layout_desc: "Ajustez la position de chaque module sur votre ├®cran.",
+    layout_editor_title: "├ëditeur d'Overlay Oracle",
     layout_editor_desc: "Glissez les modules pour les repositionner",
     game_space: "Espace de Jeu",
     cancel: "Annuler",
-    confirm_reset: "Réinitialiser les positions des overlays ?",
-    reset_default: "Réinitialiser les positions par défaut",
-    skill_advice: "Conseil : Améliorer",
+    confirm_reset: "R├®initialiser les positions des overlays ?",
+    reset_default: "R├®initialiser les positions par d├®faut",
+    skill_advice: "Conseil : Am├®liorer",
     gold_alert: "Alerte Gold",
-    gold_deficit_massive: "Déficit massif :",
+    gold_deficit_massive: "D├®ficit massif :",
     gold_advantage_massive: "Avantage massif :",
     compare_and_win: "Analysez le matchup et dominez votre lane",
     gameplay_conseils: "Conseils de Matchup",
-    summoner_spells: "Sorts Recommandés",
+    summoner_spells: "Sorts Recommand├®s",
     recommended_build: "Build Essentiel",
-    build_starting: "Départ", build_core: "Build Core", build_fourth: "4ème Item",
-    build_fifth: "5ème Item", build_sixth: "6ème Item",
+    build_starting: "D├®part", build_core: "Build Core", build_fourth: "4├¿me Item",
+    build_fifth: "5├¿me Item", build_sixth: "6├¿me Item",
     matchup_video: "Replay du Match",
     high_elo_pov: "POV Haut Elo",
-    matchup_no_data: "Pas de données spécifiques. Jouez sur vos fondamentaux.",
+    matchup_no_data: "Pas de donn├®es sp├®cifiques. Jouez sur vos fondamentaux.",
     winrate_label: "Taux de Victoire",
     vs_comparison: "Comparaison Directe",
     danger_level: "Niveau de Risque",
     risk_low: "FAIBLE",
     risk_medium: "MOYEN",
     risk_critical: "CRITIQUE",
-    risk_desc_low: "Vous avez l'avantage statistique. Cherchez les échanges agressifs.",
-    risk_desc_medium: "Matchup basé sur le talent (Skill). Concentrez-vous sur les mécaniques.",
-    risk_desc_critical: "Matchup haute pression. Évitez les échanges quand ses sorts sont dispos.",
-    ward_advice: "Oracle suggère une balise maintenant.",
-    blue_team: "Équipe Bleue",
-    red_team: "Équipe Rouge",
+    risk_desc_low: "Vous avez l'avantage statistique. Cherchez les ├®changes agressifs.",
+    risk_desc_medium: "Matchup bas├® sur le talent (Skill). Concentrez-vous sur les m├®caniques.",
+    risk_desc_critical: "Matchup haute pression. ├ëvitez les ├®changes quand ses sorts sont dispos.",
+    ward_advice: "Oracle sugg├¿re une balise maintenant.",
+    blue_team: "├ëquipe Bleue",
+    red_team: "├ëquipe Rouge",
     jungle_insight: "Insight Jungle",
     logic_pathing: "Parcours Logique",
     next_camp: "Prochain :",
     connectLcu: "Connexion au Client League...", vs1w: "vs il y a 1 sem",
     // Game Modes & Status
-    queue_custom: "Personnalisé", queue_draft: "Draft", queue_solo: "Classé Solo", queue_flex: "Classé Flex",
+    queue_custom: "Personnalis├®", queue_draft: "Draft", queue_solo: "Class├® Solo", queue_flex: "Class├® Flex",
     queue_blind: "Aveugle", queue_aram: "ARAM", queue_arena: "Arena", queue_urf: "URF", queue_coop: "Co-op vs IA",
     queue_normal: "Normal", queue_unknown: "Inconnu", ingame: "Partie en cours", playing: "Joue", spectate_btn: "Spectateur",
-    explore_oracle: "Explorez l'app ORACLE", season: "Saison 15", owned_skins: "Skins possédés",
-    survivability: "Survivabilité", tf_deaths: "Morts en Teamfight", performance: "Performance par champion",
+    explore_oracle: "Explorez l'app ORACLE", season: "Saison 15", owned_skins: "Skins poss├®d├®s",
+    survivability: "Survivabilit├®", tf_deaths: "Morts en Teamfight", performance: "Performance par champion",
     all: "TOUS", mvp: "MVP", score: "score", deaths: "Morts", ka: "Kills + Assists",
-    early: "DÉBUT", mid: "MILIEU", late: "FIN", live_pro: "PRO EN DIRECT", spectate: "Regarder",
-    replay: "REPLAY", victory: "Victoire", defeat: "Défaite", theme_dark: "Sombre", theme_light: "Clair",
+    early: "D├ëBUT", mid: "MILIEU", late: "FIN", live_pro: "PRO EN DIRECT", spectate: "Regarder",
+    replay: "REPLAY", victory: "Victoire", defeat: "D├®faite", theme_dark: "Sombre", theme_light: "Clair",
     visual_glass: "Glass", visual_opaque: "Opaque", records: "Records", lens: "Lens", behavioral: "Comportemental",
-    pings: "Pings", solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM", coming_soon: "Bientôt disponible...",
-    estimated_solo: "ESTIMÉ (SOLO, 20 GAMES)", estimated_flex: "ESTIMÉ (FLEX, 20 GAMES)",
+    pings: "Pings", solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM", coming_soon: "Bient├┤t disponible...",
+    estimated_solo: "ESTIM├ë (SOLO, 20 GAMES)", estimated_flex: "ESTIM├ë (FLEX, 20 GAMES)",
     // New Additions
     waiting_for_match: "En attente du match...", enter_game_live: "Veuillez entrer en jeu pour voir les stats.", toggle_hint: "[CTRL+X] POUR BASCULER",
-    team_blue: "Ordre (Bleu)", team_red: "Chaos (Rouge)", you: "VOUS", hot_streak: "SÉRIE",
-    matchup_analysis: "Analyse Matchup", strategic_insight: "Insight Stratégique", counter_items: "Objets Contre Recommandés",
+    team_blue: "Ordre (Bleu)", team_red: "Chaos (Rouge)", you: "VOUS", hot_streak: "S├ëRIE",
+    matchup_analysis: "Analyse Matchup", strategic_insight: "Insight Strat├®gique", counter_items: "Objets Contre Recommand├®s",
     behavioral_analysis: "Analyse Comportementale",
-    esports_center: "Centre Esports", switch_source: "Changer Source", upcoming_matches: "Matchs à venir", latest_news: "Dernières Actus",
+    esports_center: "Centre Esports", switch_source: "Changer Source", upcoming_matches: "Matchs ├á venir", latest_news: "Derni├¿res Actus",
     collections_title: "Collections", rankings_title: "Classements",
-    launch_custom: "Lancez une partie perso pour configurer.", start_editor: "Lancer Éditeur Overlay",
+    launch_custom: "Lancez une partie perso pour configurer.", start_editor: "Lancer ├ëditeur Overlay",
     select_champion: "Choisir Champion", search_champion: "Chercher...",
     rank_header: "Rang", lp_header: "LP", winrate_header: "Taux Victoire", games_header: "Parties", summoner_header: "Invocateur",
-    no_games_found: "Aucune partie trouvée", search_summoner_profile: "Chercher profil invocateur", search_result: "Rechercher",
-    most_kills: "plus de Kills", dmg_dealt: "Dégâts infligés", vision_score: "Score Vision", cs_min: "CS / min", season_best: "MEILLEURE SAISON",
+    no_games_found: "Aucune partie trouv├®e", search_summoner_profile: "Chercher profil invocateur", search_result: "Rechercher",
+    most_kills: "plus de Kills", dmg_dealt: "D├®g├óts inflig├®s", vision_score: "Score Vision", cs_min: "CS / min", season_best: "MEILLEURE SAISON",
     aggression: "Agression", farming: "Farm", vision_radar: "Vision", survival: "Survie", objective: "Objectif",
     playstyle: "Style de jeu", focus: "Focus", aggressive_carry: "Carry Agressif", die_less: "Mourir Moins",
-    playstyle_berserker: "Berserker", playstyle_kda_player: "Joueur KDA", playstyle_supportive: "Âme Support",
+    playstyle_berserker: "Berserker", playstyle_kda_player: "Joueur KDA", playstyle_supportive: "├éme Support",
     playstyle_resource_hoard: "Accapareur Ressources", playstyle_obj_melter: "Destructeur d'Objectifs", playstyle_map_architect: "Architecte (Map)",
     playstyle_facechecker: "Facechecker", playstyle_complete_carry: "Carry Ultime", playstyle_aggressive: "Carry Agressif",
-    playstyle_passive: "Joueur Passif", playstyle_tactical: "Spécialiste Tactique",
+    playstyle_passive: "Joueur Passif", playstyle_tactical: "Sp├®cialiste Tactique",
     focus_farm: "Combler le Farm", focus_vision: "Poser Balises", focus_positioning: "Positionnement", focus_group: "Se Regrouper",
-    focus_towers: "Détruire Tours", focus_survival: "Survivre Plus", focus_expand: "Accroître l'Avance",
-    focus_macro: "Améliorer Macro", focus_teamfights: "Présence Teamfights", focus_consistency: "Être Constant", focus_pressure: "Mettre la Pression", focus_roaming: "Plus de Décalages",
+    focus_towers: "D├®truire Tours", focus_survival: "Survivre Plus", focus_expand: "Accro├«tre l'Avance",
+    focus_macro: "Am├®liorer Macro", focus_teamfights: "Pr├®sence Teamfights", focus_consistency: "├ètre Constant", focus_pressure: "Mettre la Pression", focus_roaming: "Plus de D├®calages",
     skill_levelup: "Guide Sorts", jungle_timers: "Timers Jungle", objective_voting: "Vote Objectifs", gold_diff: "Diff. Or",
-    last_20_games: "20 Dernières Parties", summoner_not_found: "Invocateur Introuvable",
-    strategic_desc_mock: "Irelia a un avantage significatif au niveau 2. Cherchez des échanges tôt. Évitez Darius quand son E est dispo. Construisez Blade of the Ruined King en premier.",
+    last_20_games: "20 Derni├¿res Parties", summoner_not_found: "Invocateur Introuvable",
+    strategic_desc_mock: "Irelia a un avantage significatif au niveau 2. Cherchez des ├®changes t├┤t. ├ëvitez Darius quand son E est dispo. Construisez Blade of the Ruined King en premier.",
     search_hint: "Rechercher Nom#Tag",
-    region: "Région",
+    region: "R├®gion",
     online: "En ligne", offline: "Hors ligne",
-    preferred_roles: "Rôles Préférés",
+    preferred_roles: "R├┤les Pr├®f├®r├®s",
     // Build View
-    build_runes_season: "Build, Runes Saison", patch: "Patch", recommended_plus: "P+ Recommandé",
-    skill_order: "Ordre des Compétences",
-    max_1st: "Max 1er", max_2nd: "Max 2ème", max_3rd: "Max 3ème",
-    boots_options: "Options Bottes", starters: "Objets de Départ", core_build_path: "Build Principal",
+    build_runes_season: "Build, Runes Saison", patch: "Patch", recommended_plus: "P+ Recommand├®",
+    skill_order: "Ordre des Comp├®tences",
+    max_1st: "Max 1er", max_2nd: "Max 2├¿me", max_3rd: "Max 3├¿me",
+    boots_options: "Options Bottes", starters: "Objets de D├®part", core_build_path: "Build Principal",
     matchups_analysis: "Analyse Matchups", strong_against: "Fort Contre", weak_against: "Faible Contre",
     rune_path: "Pages de Runes", launch: "Lancer", winrate_trend: "Tendance Winrate (30 Jours)",
     // Matchup View
     matchup_analysis_title: "Analyse Matchup",
-    lane_kill_rate: "Taux Kill Lane", gold_15: "Or @ 15 min", early_wr: "Winrate Début", late_wr: "Winrate Fin", first_tower: "Première Tour",
+    lane_kill_rate: "Taux Kill Lane", gold_15: "Or @ 15 min", early_wr: "Winrate D├®but", late_wr: "Winrate Fin", first_tower: "Premi├¿re Tour",
     analysis_direct: "Analyse Directe", duel_vs: "Duel contre", guide_matchup: "Guide Matchup", rival: "RIVAL",
     searching: "RECHERCHE...", sync_data: "Synchronisation...", coach_verdict: "Verdict Coach", view_tips: "Voir Conseils", back_btn: "Retour", matchup_tips_title: "Astuces Matchup",
-    to_do: "À FAIRE", to_avoid: "À ÉVITER",
-    friend: "Ami", oracle_estimate: "ESTIMATION ORACLE", friend_connected: "AMI CONNECTÉ", friend_connected_msg: "Vient de se connecter au Launcher", friend_disconnected: "AMI DÉCONNECTÉ", friend_disconnected_msg: "A quitté League of Legends", game_started: "PARTIE LANCÉE", game_started_msg: "Vient de lancer une partie",
-    title_to_do: "STRATÉGIE OFFENSIVE", title_to_avoid: "VIGILANCE CRITIQUE",
+    to_do: "├Ç FAIRE", to_avoid: "├Ç ├ëVITER",
+    friend: "Ami", oracle_estimate: "ESTIMATION ORACLE", friend_connected: "AMI CONNECT├ë", friend_connected_msg: "Vient de se connecter au Launcher", friend_disconnected: "AMI D├ëCONNECT├ë", friend_disconnected_msg: "A quitt├® League of Legends", game_started: "PARTIE LANC├ëE", game_started_msg: "Vient de lancer une partie",
+    title_to_do: "STRAT├ëGIE OFFENSIVE", title_to_avoid: "VIGILANCE CRITIQUE",
 
     // Profile & Replays
-    profile_not_found: "Profil Introuvable", summoner_not_found_desc: "Le joueur est introuvable ou n'existe pas dans cette région.",
-    recent_matches: "Matchs Récents", no_match_found: "Aucun match trouvé...", phase_label: "Phase",
-    no_partners: "Aucun joueur récent", games_played: "Parties jouées", top_champions: "Top Champions", recent_players: "Joueurs Récents",
-    loading_replays: "Chargement des replays...", and_ai_coaching: "& Coaching IA", replays_desc: "Visionnez vos parties et recevez des conseils personnalisés par l'IA.",
-    games_found: "Parties trouvées", watchable: "Visionnables", ai_analyzer_title: "Analyseur IA Oracle",
-    ai_analyzer_desc: "Sélectionnez une partie sur la gauche pour générer un rapport complet de coaching et identifier vos erreurs.",
+    profile_not_found: "Profil Introuvable", summoner_not_found_desc: "Le joueur est introuvable ou n'existe pas dans cette r├®gion.",
+    recent_matches: "Matchs R├®cents", no_match_found: "Aucun match trouv├®...", phase_label: "Phase",
+    no_partners: "Aucun joueur r├®cent", games_played: "Parties jou├®es", top_champions: "Top Champions", recent_players: "Joueurs R├®cents",
+    loading_replays: "Chargement des replays...", and_ai_coaching: "& Coaching IA", replays_desc: "Visionnez vos parties et recevez des conseils personnalis├®s par l'IA.",
+    games_found: "Parties trouv├®es", watchable: "Visionnables", ai_analyzer_title: "Analyseur IA Oracle",
+    ai_analyzer_desc: "S├®lectionnez une partie sur la gauche pour g├®n├®rer un rapport complet de coaching et identifier vos erreurs.",
     analyzing_caps: "ANALYSE...", close_duel: "Fermer Duel", analyze_duel: "Analyse Duel", opponent: "Adversaire",
-    sync_data_opp: "Synchronisation...", key_tips: "Conseils Clés", analysis_timeline: "Chronologie", events: "ÉVÉNEMENTS",
+    sync_data_opp: "Synchronisation...", key_tips: "Conseils Cl├®s", analysis_timeline: "Chronologie", events: "├ëV├ëNEMENTS",
     tactical_analysis: "Analyse tactique...", watch_replay: "Visionner Replay",
-    stat_obj_focus: "Focus Objectif", stat_mechanics: "Mécaniques", stat_kda_perf: "Perf KDA", stat_farming: "Farming",
-    matchup_desc_example: "a un avantage significatif au niveau 2. Cherchez les échanges rapides.",
+    stat_obj_focus: "Focus Objectif", stat_mechanics: "M├®caniques", stat_kda_perf: "Perf KDA", stat_farming: "Farming",
+    matchup_desc_example: "a un avantage significatif au niveau 2. Cherchez les ├®changes rapides.",
     // Enhanced French Tips
-    tip_deaths_1: "Vous mourez trop souvent. Analysez vos replays pour repérer vos sur-extensions. Chaque mort offre de l'or, de l'XP et un avantage numérique global à l'ennemi.",
-    tip_deaths_2: "Mortalité critique. Forcez-vous à jouer plus en retrait quand vous n'avez pas la vision sur le jungler adverse. La survie doit être votre priorité N°1.",
+    tip_deaths_1: "Vous mourez trop souvent. Analysez vos replays pour rep├®rer vos sur-extensions. Chaque mort offre de l'or, de l'XP et un avantage num├®rique global ├á l'ennemi.",
+    tip_deaths_2: "Mortalit├® critique. Forcez-vous ├á jouer plus en retrait quand vous n'avez pas la vision sur le jungler adverse. La survie doit ├¬tre votre priorit├® N┬░1.",
     tip_deaths_3: "Vous donnez beaucoup trop de ressources. Prenez moins de risques inutiles, surtout avant l'apparition d'un objectif neutre majeur.",
-    tip_csm_1: "Retard de farm critique (CS/min). Votre farm est votre source de revenu la plus fiable. Évitez de rester au mid indéfiniment, allez récupérer les vagues sur les side lanes.",
-    tip_csm_2: "CSing très faible. Prenez l'habitude de tuer la jungle ou les sbires entre deux rotations. Vos objets dépendent de votre capacité à ne rien laisser au sol.",
-    tip_csm_3: "Déficit économique via les sbires. Vous perdez trop de sbires sous la tour ou lors de vos décalages. Améliorez votre last-hitting en phase de lane.",
-    tip_vision_1: "Votre score de vision est inquiétant. Achetez 1 à 2 Balises de Contrôle à chaque retour à la base et placez-les pour protéger vos flancs.",
-    tip_vision_2: "Cécité totale sur la carte. Ne face-checkez pas sans vision et aidez votre équipe en plaçant des wards profondes dans la jungle adverse.",
-    tip_vision_3: "Vision beaucoup trop faible. N'oubliez pas de changer votre relique (Brouilleur/Altération) selon votre rôle mid-game et utilisez-la au maximum.",
-    tip_obj_1: "Manque total de pression sur les tourelles et monstres épiques. Les kills isolés ne font pas gagner la partie. Aidez à prendre le Héraut/Dragon après un combat.",
-    tip_obj_2: "Aucune participation à la destruction des objectifs. Vous devez faire avancer la ligne de front pour asphyxier la carte, pas seulement chercher l'élimination.",
-    tip_obj_3: "Impact nul sur l'environnement. Si vous avez le contrôle de votre lane, servez-vous en pour prendre les plaques de barricade ou envahir la jungle.",
-    tip_win_1: "Victoire solide. Essayez de clôturer les parties encore plus vite la prochaine fois en forçant le Baron Nashor avec votre avantage.",
+    tip_csm_1: "Retard de farm critique (CS/min). Votre farm est votre source de revenu la plus fiable. ├ëvitez de rester au mid ind├®finiment, allez r├®cup├®rer les vagues sur les side lanes.",
+    tip_csm_2: "CSing tr├¿s faible. Prenez l'habitude de tuer la jungle ou les sbires entre deux rotations. Vos objets d├®pendent de votre capacit├® ├á ne rien laisser au sol.",
+    tip_csm_3: "D├®ficit ├®conomique via les sbires. Vous perdez trop de sbires sous la tour ou lors de vos d├®calages. Am├®liorez votre last-hitting en phase de lane.",
+    tip_vision_1: "Votre score de vision est inqui├®tant. Achetez 1 ├á 2 Balises de Contr├┤le ├á chaque retour ├á la base et placez-les pour prot├®ger vos flancs.",
+    tip_vision_2: "C├®cit├® totale sur la carte. Ne face-checkez pas sans vision et aidez votre ├®quipe en pla├ºant des wards profondes dans la jungle adverse.",
+    tip_vision_3: "Vision beaucoup trop faible. N'oubliez pas de changer votre relique (Brouilleur/Alt├®ration) selon votre r├┤le mid-game et utilisez-la au maximum.",
+    tip_obj_1: "Manque total de pression sur les tourelles et monstres ├®piques. Les kills isol├®s ne font pas gagner la partie. Aidez ├á prendre le H├®raut/Dragon apr├¿s un combat.",
+    tip_obj_2: "Aucune participation ├á la destruction des objectifs. Vous devez faire avancer la ligne de front pour asphyxier la carte, pas seulement chercher l'├®limination.",
+    tip_obj_3: "Impact nul sur l'environnement. Si vous avez le contr├┤le de votre lane, servez-vous en pour prendre les plaques de barricade ou envahir la jungle.",
+    tip_win_1: "Victoire solide. Essayez de cl├┤turer les parties encore plus vite la prochaine fois en for├ºant le Baron Nashor avec votre avantage.",
     tip_win_2: "Excellente gestion de l'avantage. Vous avez su capitaliser sur les erreurs adverses avec brio. Continuez ainsi.",
-    tip_win_3: "Très bonne exécution. Continuez à appuyer votre macro après la phase de lane pour totalement étouffer l'adversaire.",
-    tip_loss_1: "Défaite difficile. Prenez 5 minutes de pause pour décompresser, hydratez-vous, et revoyez les moments où la partie a basculé.",
-    tip_loss_2: "Manque de cohésion globale. Dans vos défaites, cherchez systématiquement ce que VOUS auriez pu faire de mieux, ignorez les fautes de vos alliés.",
-    tip_loss_3: "Mauvaise coordination en mid/late game. Identifiez les faiblesses de votre composition et jouez de manière plus prudente la prochaine fois.",
+    tip_win_3: "Tr├¿s bonne ex├®cution. Continuez ├á appuyer votre macro apr├¿s la phase de lane pour totalement ├®touffer l'adversaire.",
+    tip_loss_1: "D├®faite difficile. Prenez 5 minutes de pause pour d├®compresser, hydratez-vous, et revoyez les moments o├╣ la partie a bascul├®.",
+    tip_loss_2: "Manque de coh├®sion globale. Dans vos d├®faites, cherchez syst├®matiquement ce que VOUS auriez pu faire de mieux, ignorez les fautes de vos alli├®s.",
+    tip_loss_3: "Mauvaise coordination en mid/late game. Identifiez les faiblesses de votre composition et jouez de mani├¿re plus prudente la prochaine fois.",
 
     // Generic fallbacks
-    tip_deaths_title: "Morts Excessives", tip_deaths_desc: "Taux de mortalité trop élevé. Vous donnez trop de ressources.",
-    tip_survival_title: "Survie Parfaite", tip_survival_desc: "Aucune mort. Positionnement irréprochable.",
+    tip_deaths_title: "Morts Excessives", tip_deaths_desc: "Taux de mortalit├® trop ├®lev├®. Vous donnez trop de ressources.",
+    tip_survival_title: "Survie Parfaite", tip_survival_desc: "Aucune mort. Positionnement irr├®prochable.",
     tip_csm_title: "Retard de Farm", tip_csm_desc: "CS/min critique. Priorisez les sbires.",
     tip_multikill_title: "Multi-Kill", tip_multikill_desc: "Excellente gestion des fights.",
-    tip_vision_elite_title: "Vision Élite", tip_vision_elite_desc: "Vision au-dessus de la moyenne. Bon contrôle.",
-    tip_vision_poor_title: "Cécité Carte", tip_vision_poor_desc: "Score vision faible. Achetez des Pinks.",
+    tip_vision_elite_title: "Vision ├ëlite", tip_vision_elite_desc: "Vision au-dessus de la moyenne. Bon contr├┤le.",
+    tip_vision_poor_title: "C├®cit├® Carte", tip_vision_poor_desc: "Score vision faible. Achetez des Pinks.",
     tip_firstblood_title: "Premier Sang", tip_firstblood_desc: "Excellent avantage early.",
     tip_objective_title: "Focus Objectif", tip_objective_desc: "Grosse pression Tours/Dragons.",
-    tip_cc_title: "Maître du CC", tip_cc_desc: "Excellente utilisation des contrôles.",
-    tip_gold_title: "Capitalisation Éco", tip_gold_desc: "Quantité d'or massive générée.",
-    tip_tank_title: "Résilience Absolue", tip_tank_desc: "Énormes dégâts mitigés.",
+    tip_cc_title: "Ma├«tre du CC", tip_cc_desc: "Excellente utilisation des contr├┤les.",
+    tip_gold_title: "Capitalisation ├ëco", tip_gold_desc: "Quantit├® d'or massive g├®n├®r├®e.",
+    tip_tank_title: "R├®silience Absolue", tip_tank_desc: "├ënormes d├®g├óts mitig├®s.",
     tip_jungle_title: "Rythme Jungle", tip_jungle_desc: "Clearing trop lent.",
     tip_default_title: "Optimisation Or", tip_default_desc: "Concentrez-vous sur le farm.",
     // Behavioral
-    beh_consistency: "Constance", beh_consistency_sub: "Stabilité Performance",
-    beh_tilt: "Résit. Tilt", beh_tilt_sub: "Winrate après défaite",
+    beh_consistency: "Constance", beh_consistency_sub: "Stabilit├® Performance",
+    beh_tilt: "R├®sit. Tilt", beh_tilt_sub: "Winrate apr├¿s d├®faite",
     beh_farming: "Farming", beh_farming_sub: "CS Par Minute",
-    beh_activity: "Activité Équipe", beh_activity_sub: "Participation Kills",
-    beh_survival: "Survie", beh_survival_sub: "Évitement Morts",
+    beh_activity: "Activit├® ├ëquipe", beh_activity_sub: "Participation Kills",
+    beh_survival: "Survie", beh_survival_sub: "├ëvitement Morts",
     beh_aggression: "Aggression", beh_aggression_sub: "Impact / Min",
     // Verdicts
     // Verdicts
-    verdict_pivot: "Oracle : Pivot Stratégique. Vous étiez le véritable moteur de votre équipe. Votre participation aux kills a défini le tempo global du match. En étant littéralement partout, vous avez su transformer chaque escarmouche locale en un avantage décisif sur la carte.",
-    verdict_soul: "Oracle : Moissonneur d'Âmes. Domination économique totale. Vous n'avez pas seulement gagné votre duel; vous avez ruiné la partie de votre adversaire direct. En le privant de sbires et d'XP de façon aussi agressive, le match s'est transformé en 5 contre 4.",
-    verdict_fatal: "Oracle : Efficacité Fatale. Précision Chirurgicale. Vous avez maximisé la valeur de chaque pièce d'or dépensée. Vos dégâts par rapport à votre économie sont époustouflants, prouvant qu'il n'y a pas besoin d'être totalement 'full build' pour être mortel.",
-    verdict_pillar: "Oracle : Pilier de Victoire. Le Roc inébranlable. Vous étiez la fondation fiable dont votre équipe manquait cruellement. Sans forcément dominer les statistiques, votre présence constante aux moments clés et votre macro irréprochable ont sécurisé cette victoire.",
-    verdict_vuln: "Oracle : Cible Ambulante. Vous avez navigué à contre-courant, passant plus de temps mort qu'à impacter la carte. Vos prises de risques non-calculées ont offert de l'or gratuit à l'ennemi. Arrêtez de forcer des actions désespérées quand vous êtes en retard.",
-    verdict_eco: "Oracle : Asphyxie Économique. Famine de Ressources. Vous avez dramatiquement échoué sur les bases : le farming. Se battre tout en subissant un retard d'équipement est une stratégie perdante. Priorisez impérativement la récolte des sbires avant de contester la rivière.",
-    verdict_leader: "Oracle : Loup Solitaire. Vous avez brillé individuellement, mais n'avez absolument pas su traduire votre avantage pour soulever l'équipe. Un bon KDA ne détruit pas le Nexus de lui-même. Vous deviez utiliser votre suprématie pour débloquer vos alliés en difficulté.",
-    verdict_defeat: "Oracle : Effondrement Macro. Mécaniquement décent, mais vous avez totalement abandonné la carte. Vous avez laissé l'ennemi dicter les rotations et le contrôle des objectifs sans jamais punir ailleurs. Revoyez de toute urgence vos prises de décisions en mid-game.",
+    verdict_pivot: "Oracle : Pivot Strat├®gique. Vous ├®tiez le v├®ritable moteur de votre ├®quipe. Votre participation aux kills a d├®fini le tempo global du match. En ├®tant litt├®ralement partout, vous avez su transformer chaque escarmouche locale en un avantage d├®cisif sur la carte.",
+    verdict_soul: "Oracle : Moissonneur d'├émes. Domination ├®conomique totale. Vous n'avez pas seulement gagn├® votre duel; vous avez ruin├® la partie de votre adversaire direct. En le privant de sbires et d'XP de fa├ºon aussi agressive, le match s'est transform├® en 5 contre 4.",
+    verdict_fatal: "Oracle : Efficacit├® Fatale. Pr├®cision Chirurgicale. Vous avez maximis├® la valeur de chaque pi├¿ce d'or d├®pens├®e. Vos d├®g├óts par rapport ├á votre ├®conomie sont ├®poustouflants, prouvant qu'il n'y a pas besoin d'├¬tre totalement 'full build' pour ├¬tre mortel.",
+    verdict_pillar: "Oracle : Pilier de Victoire. Le Roc in├®branlable. Vous ├®tiez la fondation fiable dont votre ├®quipe manquait cruellement. Sans forc├®ment dominer les statistiques, votre pr├®sence constante aux moments cl├®s et votre macro irr├®prochable ont s├®curis├® cette victoire.",
+    verdict_vuln: "Oracle : Cible Ambulante. Vous avez navigu├® ├á contre-courant, passant plus de temps mort qu'├á impacter la carte. Vos prises de risques non-calcul├®es ont offert de l'or gratuit ├á l'ennemi. Arr├¬tez de forcer des actions d├®sesp├®r├®es quand vous ├¬tes en retard.",
+    verdict_eco: "Oracle : Asphyxie ├ëconomique. Famine de Ressources. Vous avez dramatiquement ├®chou├® sur les bases : le farming. Se battre tout en subissant un retard d'├®quipement est une strat├®gie perdante. Priorisez imp├®rativement la r├®colte des sbires avant de contester la rivi├¿re.",
+    verdict_leader: "Oracle : Loup Solitaire. Vous avez brill├® individuellement, mais n'avez absolument pas su traduire votre avantage pour soulever l'├®quipe. Un bon KDA ne d├®truit pas le Nexus de lui-m├¬me. Vous deviez utiliser votre supr├®matie pour d├®bloquer vos alli├®s en difficult├®.",
+    verdict_defeat: "Oracle : Effondrement Macro. M├®caniquement d├®cent, mais vous avez totalement abandonn├® la carte. Vous avez laiss├® l'ennemi dicter les rotations et le contr├┤le des objectifs sans jamais punir ailleurs. Revoyez de toute urgence vos prises de d├®cisions en mid-game.",
     verdict_intro: "Oracle :",
     // New Verdicts
-    verdict_perfect_kda: "Oracle : Immortel. Performance Parfaite. Vous n'avez jamais concédé la moindre prime. Un positionnement impeccable couplé à une agression savamment calculée vous a permis d'infliger d'énormes dégâts sans jamais vous faire véritablement attraper.",
-    verdict_penta: "Oracle : Prédateur Apex. Un Pentakill n'est jamais le simple fruit du hasard, c'est une démonstration de domination totale. Vous avez lu le combat parfaitement et exécuté chaque cible l'une après l'autre. Vous étiez LE carry incontestable.",
-    verdict_visionary: "Oracle : Œil Omniscient. Votre contrôle de la vision était tout simplement étouffant. En traquant sans relâche le jungler ennemi et en éclairant l'entièreté de la carte, vous leur avez retiré toute capacité à jouer autour des objectifs majeurs.",
-    verdict_carry_hard: "Oracle : Machine 1v9. Vous avez participé à plus de 75% des éliminations de votre équipe. Soyons clairs : sans vous, cette partie se terminait en 15 minutes top chrono. Une formidable performance format 'sac à dos'.",
-    verdict_stomp: "Oracle : Destruction Totale. Une avance en or monumentale. Ce n'était même plus un match, c'était une démonstration de force. L'ennemi n'a jamais eu le moindre fragment de chance de revenir.",
-    verdict_efficient: "Oracle : Miracle Économique. Des dégâts infligés véritablement insensés compte tenu du peu d'or à votre disposition. Vous n'aviez pas besoin d'items absurdes pour dominer, uniquement d'une aisance mécanique pure.",
-    verdict_feeder: "Oracle : Hémorragie Continue. Atteindre un nombre de mort à deux chiffres saborde l'ensemble des efforts de votre équipe. Vous êtes devenu un sac d'or sur pattes pour le carry adverse. Vous DEVEZ apprendre à jouer 'weakside' et lâcher votre tour s'il le faut.",
-    verdict_blind: "Oracle : L'Aveuglement Volontaire. Votre score de vision approche le Zéro absolu. Vous avez péri à maintes reprises en inspectant des buissons car vous refusez d'investir dans les Balises de Contrôle. La vision est l'outil le plus indispensable du jeu.",
-    verdict_afk_farm: "Oracle : Maladie du 'PvE Player'. Vos statistiques de farming explosent, mais leur utilité y est nulle (Participation médiocre). Pendant que vous étiez sur les corbins, votre équipe s'est fait décimer au Dragon. L'or doit servir à gagner des combats, rejoignez-les !",
-    verdict_solid_effort: "Oracle : Héros Tragique. Difficile à avaler. Vous avez absolument tout fait correctement (Lane remportée, statistiques irréprochables), mais le poids de votre équipe était bien trop lourd. N'en faites pas une fixation, la persévérance finit par payer.",
-    verdict_rich_loser: "Oracle : Syndrôme de la Vitrine. Vous aviez 6 équipements mais vous avez tout de même subi la défaite. L'or accumulé est inutile si vous vous faites surprendre bêtement avant les combats qui décident du match. Le positionnement prime sur les objets.",
-    verdict_unlucky_carry: "Oracle : Team Gap. Vous avez endossé le rôle de meneur et assumé la pression (Plus gros DPS, haut KP), mais l'écart de niveau entre les deux équipes était tout bonnement impossible à combler. Gardez une mentalité de fer, vous avez excellé.",
+    verdict_perfect_kda: "Oracle : Immortel. Performance Parfaite. Vous n'avez jamais conc├®d├® la moindre prime. Un positionnement impeccable coupl├® ├á une agression savamment calcul├®e vous a permis d'infliger d'├®normes d├®g├óts sans jamais vous faire v├®ritablement attraper.",
+    verdict_penta: "Oracle : Pr├®dateur Apex. Un Pentakill n'est jamais le simple fruit du hasard, c'est une d├®monstration de domination totale. Vous avez lu le combat parfaitement et ex├®cut├® chaque cible l'une apr├¿s l'autre. Vous ├®tiez LE carry incontestable.",
+    verdict_visionary: "Oracle : ┼Æil Omniscient. Votre contr├┤le de la vision ├®tait tout simplement ├®touffant. En traquant sans rel├óche le jungler ennemi et en ├®clairant l'enti├¿ret├® de la carte, vous leur avez retir├® toute capacit├® ├á jouer autour des objectifs majeurs.",
+    verdict_carry_hard: "Oracle : Machine 1v9. Vous avez particip├® ├á plus de 75% des ├®liminations de votre ├®quipe. Soyons clairs : sans vous, cette partie se terminait en 15 minutes top chrono. Une formidable performance format 'sac ├á dos'.",
+    verdict_stomp: "Oracle : Destruction Totale. Une avance en or monumentale. Ce n'├®tait m├¬me plus un match, c'├®tait une d├®monstration de force. L'ennemi n'a jamais eu le moindre fragment de chance de revenir.",
+    verdict_efficient: "Oracle : Miracle ├ëconomique. Des d├®g├óts inflig├®s v├®ritablement insens├®s compte tenu du peu d'or ├á votre disposition. Vous n'aviez pas besoin d'items absurdes pour dominer, uniquement d'une aisance m├®canique pure.",
+    verdict_feeder: "Oracle : H├®morragie Continue. Atteindre un nombre de mort ├á deux chiffres saborde l'ensemble des efforts de votre ├®quipe. Vous ├¬tes devenu un sac d'or sur pattes pour le carry adverse. Vous DEVEZ apprendre ├á jouer 'weakside' et l├ócher votre tour s'il le faut.",
+    verdict_blind: "Oracle : L'Aveuglement Volontaire. Votre score de vision approche le Z├®ro absolu. Vous avez p├®ri ├á maintes reprises en inspectant des buissons car vous refusez d'investir dans les Balises de Contr├┤le. La vision est l'outil le plus indispensable du jeu.",
+    verdict_afk_farm: "Oracle : Maladie du 'PvE Player'. Vos statistiques de farming explosent, mais leur utilit├® y est nulle (Participation m├®diocre). Pendant que vous ├®tiez sur les corbins, votre ├®quipe s'est fait d├®cimer au Dragon. L'or doit servir ├á gagner des combats, rejoignez-les !",
+    verdict_solid_effort: "Oracle : H├®ros Tragique. Difficile ├á avaler. Vous avez absolument tout fait correctement (Lane remport├®e, statistiques irr├®prochables), mais le poids de votre ├®quipe ├®tait bien trop lourd. N'en faites pas une fixation, la pers├®v├®rance finit par payer.",
+    verdict_rich_loser: "Oracle : Syndr├┤me de la Vitrine. Vous aviez 6 ├®quipements mais vous avez tout de m├¬me subi la d├®faite. L'or accumul├® est inutile si vous vous faites surprendre b├¬tement avant les combats qui d├®cident du match. Le positionnement prime sur les objets.",
+    verdict_unlucky_carry: "Oracle : Team Gap. Vous avez endoss├® le r├┤le de meneur et assum├® la pression (Plus gros DPS, haut KP), mais l'├®cart de niveau entre les deux ├®quipes ├®tait tout bonnement impossible ├á combler. Gardez une mentalit├® de fer, vous avez excell├®.",
     // Points d'analyse
-    pos_kda_1: "Ratio KDA exceptionnel. Vous avez survolé les combats d'équipe.",
-    pos_kda_2: "Excellente survie combinée à une forte participation aux kills.",
-    pos_kda_3: "Vous avez sévèrement puni l'ennemi sans jamais donner votre prime.",
-    pos_multikill_1: "Multikills dévastateurs. Vous étiez un cauchemar en combat regroupé.",
-    pos_multikill_2: "Des exécutions multiples qui ont totalement fait basculer la partie.",
-    pos_multikill_3: "Tueur en série. Votre mécanique en teamfight était impeccable.",
-    pos_kp_1: "Omniprésence absolue. Une participation aux éliminations colossale.",
-    pos_kp_2: "Vous étiez le catalyseur de quasiment toutes les actions de l'équipe.",
-    pos_kp_3: "Un KP élevé signifie un très fort impact. Bons décalages stratégiques.",
-    pos_farm_1: "Farming impérial générant une avance en or insurmontable.",
-    pos_farm_2: "Derniers coups parfaits. Votre nombre de sbires a gagné les affrontements.",
-    pos_farm_3: "Gestion de vague parfaite ayant rapporté un avantage de creeps massif.",
-    pos_gold_1: "Vous avez littéralement ruiné votre adversaire direct économiquement.",
-    pos_gold_2: "Différence d'or écrasante générée par votre seule domination en lane.",
-    pos_gold_3: "Suprématie économique. Vous avez mis votre vis-à-vis hors-jeu.",
-    pos_obj_1: "Focus objectif redoutable. Vous privilégiez la carte aux poursuites.",
-    pos_obj_2: "De très lourds dégâts sur les structures. Vous savez finir une partie.",
-    pos_obj_3: "Destructeur d'objectifs. Vous avez converti votre force en contrôle total.",
-    pos_vision_1: "Illumination suprême de la carte. Vous avez nié tout effet de surprise.",
-    pos_vision_2: "Excellent score de vision qui a sécurisé les rotations alliées.",
-    pos_vision_3: "Votre balisage a totalement étouffé le parcours du jungler adverse.",
-    pos_carry_1: "Performance incontestable de carry. Vous avez pulvérisé le compteur de dégâts.",
-    pos_carry_2: "Vous étiez le moteur principal des dégâts en teamfight.",
-    pos_carry_3: "Effort colossal. Vous avez littéralement porté les combats sur vos épaules.",
+    pos_kda_1: "Ratio KDA exceptionnel. Vous avez survol├® les combats d'├®quipe.",
+    pos_kda_2: "Excellente survie combin├®e ├á une forte participation aux kills.",
+    pos_kda_3: "Vous avez s├®v├¿rement puni l'ennemi sans jamais donner votre prime.",
+    pos_multikill_1: "Multikills d├®vastateurs. Vous ├®tiez un cauchemar en combat regroup├®.",
+    pos_multikill_2: "Des ex├®cutions multiples qui ont totalement fait basculer la partie.",
+    pos_multikill_3: "Tueur en s├®rie. Votre m├®canique en teamfight ├®tait impeccable.",
+    pos_kp_1: "Omnipr├®sence absolue. Une participation aux ├®liminations colossale.",
+    pos_kp_2: "Vous ├®tiez le catalyseur de quasiment toutes les actions de l'├®quipe.",
+    pos_kp_3: "Un KP ├®lev├® signifie un tr├¿s fort impact. Bons d├®calages strat├®giques.",
+    pos_farm_1: "Farming imp├®rial g├®n├®rant une avance en or insurmontable.",
+    pos_farm_2: "Derniers coups parfaits. Votre nombre de sbires a gagn├® les affrontements.",
+    pos_farm_3: "Gestion de vague parfaite ayant rapport├® un avantage de creeps massif.",
+    pos_gold_1: "Vous avez litt├®ralement ruin├® votre adversaire direct ├®conomiquement.",
+    pos_gold_2: "Diff├®rence d'or ├®crasante g├®n├®r├®e par votre seule domination en lane.",
+    pos_gold_3: "Supr├®matie ├®conomique. Vous avez mis votre vis-├á-vis hors-jeu.",
+    pos_obj_1: "Focus objectif redoutable. Vous privil├®giez la carte aux poursuites.",
+    pos_obj_2: "De tr├¿s lourds d├®g├óts sur les structures. Vous savez finir une partie.",
+    pos_obj_3: "Destructeur d'objectifs. Vous avez converti votre force en contr├┤le total.",
+    pos_vision_1: "Illumination supr├¬me de la carte. Vous avez ni├® tout effet de surprise.",
+    pos_vision_2: "Excellent score de vision qui a s├®curis├® les rotations alli├®es.",
+    pos_vision_3: "Votre balisage a totalement ├®touff├® le parcours du jungler adverse.",
+    pos_carry_1: "Performance incontestable de carry. Vous avez pulv├®ris├® le compteur de d├®g├óts.",
+    pos_carry_2: "Vous ├®tiez le moteur principal des d├®g├óts en teamfight.",
+    pos_carry_3: "Effort colossal. Vous avez litt├®ralement port├® les combats sur vos ├®paules.",
 
-    neg_deaths_1: "Vos morts répétées ont injecté des sommes d'or folles aux carrys adverses.",
-    neg_deaths_2: "Trop de temps passé mort. Jouer safe est souvent la meilleure action possible.",
-    neg_deaths_3: "Un positionnement trop téméraire menant à trop de morts gratuites.",
-    neg_kp_1: "Jeu trop isolé. Marge de participation aux kills beaucoup trop faible.",
-    neg_kp_2: "AFK push en side-lane pendant que votre équipe se faisait massacrer au Dragon.",
-    neg_kp_3: "Présence fantomatique. Vous n'avez quasiment pas participé à l'issue finale.",
-    neg_farm_1: "Last-hitting très pauvre. Vous avez trop cherché la bagarre au lieu de farmer.",
-    neg_farm_2: "Vous avez abandonné vos vagues de sbires, subissant un déficit d'objets total.",
-    neg_farm_3: "Le CS/min est la mécanique numéro 1. Le vôtre faisait cruellement défaut.",
-    neg_gold_1: "Votre vis-à-vis vous a totalement écrasé et asphyxié économiquement.",
-    neg_gold_2: "Vous avez été retiré de la partie à cause de votre gouffre économique.",
-    neg_gold_3: "Écart d'or massif causé par l'adversaire. Vous avez subi toute la game.",
-    neg_obj_1: "Pression nulle sur les tours ou monstres épiques. Vous avez joué pour le KDA.",
-    neg_obj_2: "Les objectifs gagnent les parties. Et vous les avez complètement ignorés.",
-    neg_obj_3: "Conversion tactique catastrophique. Faire des kills sans taper de tour ne sert à rien.",
-    neg_vision_1: "Vous avez navigué dans l'obscurité totale. Refuser la vision coûte des parties.",
-    neg_vision_2: "Aucun contrôle de la carte. Vous avez invité le jungler adverse à camper.",
-    neg_vision_3: "Cécité cartographique. Achetez des Pinks Wards à chaque retour à la base.",
+    neg_deaths_1: "Vos morts r├®p├®t├®es ont inject├® des sommes d'or folles aux carrys adverses.",
+    neg_deaths_2: "Trop de temps pass├® mort. Jouer safe est souvent la meilleure action possible.",
+    neg_deaths_3: "Un positionnement trop t├®m├®raire menant ├á trop de morts gratuites.",
+    neg_kp_1: "Jeu trop isol├®. Marge de participation aux kills beaucoup trop faible.",
+    neg_kp_2: "AFK push en side-lane pendant que votre ├®quipe se faisait massacrer au Dragon.",
+    neg_kp_3: "Pr├®sence fantomatique. Vous n'avez quasiment pas particip├® ├á l'issue finale.",
+    neg_farm_1: "Last-hitting tr├¿s pauvre. Vous avez trop cherch├® la bagarre au lieu de farmer.",
+    neg_farm_2: "Vous avez abandonn├® vos vagues de sbires, subissant un d├®ficit d'objets total.",
+    neg_farm_3: "Le CS/min est la m├®canique num├®ro 1. Le v├┤tre faisait cruellement d├®faut.",
+    neg_gold_1: "Votre vis-├á-vis vous a totalement ├®cras├® et asphyxi├® ├®conomiquement.",
+    neg_gold_2: "Vous avez ├®t├® retir├® de la partie ├á cause de votre gouffre ├®conomique.",
+    neg_gold_3: "├ëcart d'or massif caus├® par l'adversaire. Vous avez subi toute la game.",
+    neg_obj_1: "Pression nulle sur les tours ou monstres ├®piques. Vous avez jou├® pour le KDA.",
+    neg_obj_2: "Les objectifs gagnent les parties. Et vous les avez compl├¿tement ignor├®s.",
+    neg_obj_3: "Conversion tactique catastrophique. Faire des kills sans taper de tour ne sert ├á rien.",
+    neg_vision_1: "Vous avez navigu├® dans l'obscurit├® totale. Refuser la vision co├╗te des parties.",
+    neg_vision_2: "Aucun contr├┤le de la carte. Vous avez invit├® le jungler adverse ├á camper.",
+    neg_vision_3: "C├®cit├® cartographique. Achetez des Pinks Wards ├á chaque retour ├á la base.",
     neg_support_vision: "Vision insuffisante pour un Support",
-    neg_jungle_impact: "Jungler fantôme : peu d'impact sur les lanes",
-    neg_damage: "Manque d'impact offensif dans les échanges",
-    neg_default: "Aucune erreur majeure détectée",
-    pos_default: "Tu as joué de manière solide jusqu'au bout",
+    neg_jungle_impact: "Jungler fant├┤me : peu d'impact sur les lanes",
+    neg_damage: "Manque d'impact offensif dans les ├®changes",
+    neg_default: "Aucune erreur majeure d├®tect├®e",
+    pos_default: "Tu as jou├® de mani├¿re solide jusqu'au bout",
     analysis_pos: "Points Positifs",
-    analysis_neg: "Points Négatifs",
+    analysis_neg: "Points N├®gatifs",
 
-    matchup_stomp_1: "Vous avez totalement neutralisé {{champ}}. L'écart d'or et de kills l'a rendu inutile.",
-    matchup_stomp_2: "Domination absolue en lane contre {{champ}}. Vous avez remporté tous les échanges prolongés.",
-    matchup_stomp_3: "Une masterclass sur comment punir {{champ}}. Vous avez exploité ses rechargements de sorts à merveille.",
-    matchup_lost_lane_won_game_1: "{{champ}} vous a mené la vie dure, mais votre macro supérieure a remporté la guerre.",
-    matchup_lost_lane_won_game_2: "Vous avez concédé la pression face à {{champ}}, mais fait preuve d'une grande résilience en teamfight.",
+    matchup_stomp_1: "Vous avez totalement neutralis├® {{champ}}. L'├®cart d'or et de kills l'a rendu inutile.",
+    matchup_stomp_2: "Domination absolue en lane contre {{champ}}. Vous avez remport├® tous les ├®changes prolong├®s.",
+    matchup_stomp_3: "Une masterclass sur comment punir {{champ}}. Vous avez exploit├® ses rechargements de sorts ├á merveille.",
+    matchup_lost_lane_won_game_1: "{{champ}} vous a men├® la vie dure, mais votre macro sup├®rieure a remport├® la guerre.",
+    matchup_lost_lane_won_game_2: "Vous avez conc├®d├® la pression face ├á {{champ}}, mais fait preuve d'une grande r├®silience en teamfight.",
     matchup_lost_lane_won_game_3: "Phase de lane difficile contre {{champ}}. La prochaine fois, respectez davantage ses pics de puissance.",
-    matchup_won_lane_lost_game_1: "Vous avez battu {{champ}}, mais l'avantage a été gaspillé. Essayez de mieux étendre votre pression.",
-    matchup_won_lane_lost_game_2: "Match frustrant. Vous aviez la priorité absolue sur {{champ}} mais n'avez pas pu stopper l'hémorragie alliée.",
-    matchup_won_lane_lost_game_3: "Supériorité mécanique indéniable face à {{champ}}. Ne laissez pas vos coéquipiers détruire votre mental.",
-    matchup_feeding_1: "{{champ}} vous a sévèrement surclassé. Vous n'avez pas respecté ses seuils de dégâts critiques.",
-    matchup_feeding_2: "Scénario catastrophe. {{champ}} a capitalisé sur vos mauvaises postures à répétition. Jouez en retrait.",
-    matchup_feeding_3: "Vous avez nourri {{champ}} lourdement. Apprenez à lâcher l'or quand vous perdez massivement des HP.",
-    matchup_passive_1: "Un accord tacite de non-agression avec {{champ}}. Testez ses limites plus tôt la prochaine fois.",
-    matchup_passive_2: "Lane extrêmement lente contre {{champ}}. Vous avez joué le scaling plutôt que de tenter de dominer.",
-    matchup_passive_3: "Face-à-face inoffensif face à {{champ}}. Vous avez manqué des fenêtres critiques pour le punir.",
-    matchup_neutral_1: "Un duel magnifiquement équilibré contre {{champ}}. Les décalages seuls ont décidé du résultat.",
-    matchup_neutral_2: "Impasse technique face à {{champ}}. Vous vous êtes mutuellement neutralisés en phase de lane.",
-    matchup_neutral_3: "Égalité quasi-parfaite face à {{champ}}. Les très légères décisions macro ont fait la différence.",
-    matchup_vision_gap_1: "Alerte vision. {{champ}} a beaucoup mieux contrôlé la carte.",
-    matchup_vision_gap_2: "Vous avez perdu la guerre de la visibilité contre {{champ}}.",
-    matchup_vision_gap_3: "{{champ}} a abusé de votre manque de vision. Achetez le Brouilleur plus tôt.",
-    matchup_default_1: "Duel serré contre {{champ}}. Analyse bien ses timings la prochaine fois.",
+    matchup_won_lane_lost_game_1: "Vous avez battu {{champ}}, mais l'avantage a ├®t├® gaspill├®. Essayez de mieux ├®tendre votre pression.",
+    matchup_won_lane_lost_game_2: "Match frustrant. Vous aviez la priorit├® absolue sur {{champ}} mais n'avez pas pu stopper l'h├®morragie alli├®e.",
+    matchup_won_lane_lost_game_3: "Sup├®riorit├® m├®canique ind├®niable face ├á {{champ}}. Ne laissez pas vos co├®quipiers d├®truire votre mental.",
+    matchup_feeding_1: "{{champ}} vous a s├®v├¿rement surclass├®. Vous n'avez pas respect├® ses seuils de d├®g├óts critiques.",
+    matchup_feeding_2: "Sc├®nario catastrophe. {{champ}} a capitalis├® sur vos mauvaises postures ├á r├®p├®tition. Jouez en retrait.",
+    matchup_feeding_3: "Vous avez nourri {{champ}} lourdement. Apprenez ├á l├ócher l'or quand vous perdez massivement des HP.",
+    matchup_passive_1: "Un accord tacite de non-agression avec {{champ}}. Testez ses limites plus t├┤t la prochaine fois.",
+    matchup_passive_2: "Lane extr├¬mement lente contre {{champ}}. Vous avez jou├® le scaling plut├┤t que de tenter de dominer.",
+    matchup_passive_3: "Face-├á-face inoffensif face ├á {{champ}}. Vous avez manqu├® des fen├¬tres critiques pour le punir.",
+    matchup_neutral_1: "Un duel magnifiquement ├®quilibr├® contre {{champ}}. Les d├®calages seuls ont d├®cid├® du r├®sultat.",
+    matchup_neutral_2: "Impasse technique face ├á {{champ}}. Vous vous ├¬tes mutuellement neutralis├®s en phase de lane.",
+    matchup_neutral_3: "├ëgalit├® quasi-parfaite face ├á {{champ}}. Les tr├¿s l├®g├¿res d├®cisions macro ont fait la diff├®rence.",
+    matchup_vision_gap_1: "Alerte vision. {{champ}} a beaucoup mieux contr├┤l├® la carte.",
+    matchup_vision_gap_2: "Vous avez perdu la guerre de la visibilit├® contre {{champ}}.",
+    matchup_vision_gap_3: "{{champ}} a abus├® de votre manque de vision. Achetez le Brouilleur plus t├┤t.",
+    matchup_default_1: "Duel serr├® contre {{champ}}. Analyse bien ses timings la prochaine fois.",
     matchup_default_2: "Combat tendu contre {{champ}}. Travaillez mieux la gestion de la distance.",
-    matchup_default_3: "Échanges standards face à {{champ}}. Concentrez-vous sur la manipulation des sbires.",
+    matchup_default_3: "├ëchanges standards face ├á {{champ}}. Concentrez-vous sur la manipulation des sbires.",
     profile_not_found_title: "Profil Introuvable",
-    profile_not_found_desc: "Le joueur est introuvable ou n'existe pas dans cette région.",
+    profile_not_found_desc: "Le joueur est introuvable ou n'existe pas dans cette r├®gion.",
     others: "Autres",
     waiting_for_league: "En attente de League of Legends",
-    launch_game_desc: "Lancez votre client pour accéder aux outils Oracle.",
+    launch_game_desc: "Lancez votre client pour acc├®der aux outils Oracle.",
     // Missing Keys
-    tab_general: "Général", tab_details: "Détails", tab_runes: "Runes",
-    partial_data: "Données Partielles",
-    partial_data_desc: "Les statistiques détaillées des 10 joueurs et la timeline ne sont pas disponibles pour ce match externe.",
-    blue_side: "Côté Bleu", red_side: "Côté Rouge",
-    fetching_details: "Récupération des données détaillées...",
-    no_details_found: "Détails non disponibles pour ce match.",
+    tab_general: "G├®n├®ral", tab_details: "D├®tails", tab_runes: "Runes",
+    partial_data: "Donn├®es Partielles",
+    partial_data_desc: "Les statistiques d├®taill├®es des 10 joueurs et la timeline ne sont pas disponibles pour ce match externe.",
+    blue_side: "C├┤t├® Bleu", red_side: "C├┤t├® Rouge",
+    fetching_details: "R├®cup├®ration des donn├®es d├®taill├®es...",
+    no_details_found: "D├®tails non disponibles pour ce match.",
     analyzing_match: "ANALYSE DU MATCH...",
     laning_phase: "Phase de Laning (15m)",
     cs_diff: "DIFF CS", gold_diff_title: "DIFF OR", xp_diff: "DIFF XP",
-    vision_control_title: "Contrôle Vision",
-    wards_placed_title: "POSÉES", wards_destroyed: "DÉTRUITES", control_wards: "CONTROLE",
+    vision_control_title: "Contr├┤le Vision",
+    wards_placed_title: "POS├ëES", wards_destroyed: "D├ëTRUITES", control_wards: "CONTROLE",
     perf_min: "Performance / Min",
     cs_min_short: "CS/M", dmg_min_short: "DMG/M", gold_min_short: "OR/M",
     build_order_title: "ORDRE DES OBJETS",
-    no_shop_events: "Aucun événement de boutique détecté.",
-    filtered_data: "Données filtrées",
+    no_shop_events: "Aucun ├®v├®nement de boutique d├®tect├®.",
+    filtered_data: "Donn├®es filtr├®es",
     timeline_unavailable: "Chronologie indisponible",
     skill_order_title: "ORDRE DES SORTS",
-    spell_casted: "SORTS LANCÉS",
+    spell_casted: "SORTS LANC├ëS",
     times: "fois",
     pings_title: "PINGS",
-    unranked: "NON CLASSÉ",
+    unranked: "NON CLASS├ë",
     th: "e", cs: "CS", m: "m", s: "s",
-    meta_current: "Méta Actuelle",
+    meta_current: "M├®ta Actuelle",
     unknown: "Inconnu",
     loading_info: "Chargement des infos",
-    last_game: "Dernière Partie",
+    last_game: "Derni├¿re Partie",
     view_analysis: "Voir l'analyse",
     patch_news: "Actus des Patchs",
     view_all: "Voir tout",
-    no_summary: "Aucun résumé disponible.",
-    recently: "Récemment",
+    no_summary: "Aucun r├®sum├® disponible.",
+    recently: "R├®cemment",
     loading_news: "Chargement des actus...",
-    latest_games: "Dernières Parties",
+    latest_games: "Derni├¿res Parties",
     goldDiff15: "OR @ 15",
     kaDiff15: "DIFF KA @ 15",
-    rankings_wip: "Classements & Leaderboards en cours de mise à jour.",
-    maintenance: "FONCTIONNALITÉ DÉSACTIVÉE POUR MAINTENANCE",
-    iron: "Fer", bronze: "Bronze", silver: "Argent", gold: "Or", platinum: "Platine", emerald: "Émeraude", diamond: "Diamant", master: "Maître", grandmaster: "Grand Maître", challenger: "Challenger",
-    inventory_subtitle: "Visualisez votre inventaire cosmétique",
+    rankings_wip: "Classements & Leaderboards en cours de mise ├á jour.",
+    maintenance: "FONCTIONNALIT├ë D├ëSACTIV├ëE POUR MAINTENANCE",
+    iron: "Fer", bronze: "Bronze", silver: "Argent", gold: "Or", platinum: "Platine", emerald: "├ëmeraude", diamond: "Diamant", master: "Ma├«tre", grandmaster: "Grand Ma├«tre", challenger: "Challenger",
+    inventory_subtitle: "Visualisez votre inventaire cosm├®tique",
     sort_by: "Trier",
     name_az: "Nom (A-Z)",
     name_za: "Nom (Z-A)",
     sync_inventory: "Synchronisation de l'inventaire...",
     search_generic: "Chercher...",
-    refresh: "Rafraîchir",
+    refresh: "Rafra├«chir",
     perfect: "Parfait",
-    no_champ_stats: "Aucune statistique de champion récente",
+    no_champ_stats: "Aucune statistique de champion r├®cente",
     parties: "parties",
-    loading_data: "Chargement des données...",
+    loading_data: "Chargement des donn├®es...",
     searching_for: "Recherche de",
     active_player: "Joueur Actif",
     welcome: "Bienvenue sur Oracle",
     welcome_back: "Bon retour sur Oracle",
-    stats_unavailable: "Stats indisponibles (Région externe)",
+    stats_unavailable: "Stats indisponibles (R├®gion externe)",
   },
   es: {
     cat_core: "ORACLE CORE", cat_app: "ORACLE APP", cat_insights: "ORACLE INSIGHTS",
-    dashboard: "Resumen", tierlist: "Builds & Tips", leaderboards: "Clasificacià³n",
+    dashboard: "Resumen", tierlist: "Builds & Tips", leaderboards: "Clasificaci├á┬│n",
     replays: "Replays", overlays: "Overlays", watch: "Ver", collections: "Colecciones",
     esports: "Esports", datastudio: "Data Studio", matchups: "Matchups",
     settings: "Ajustes", profile: "Perfil",
@@ -890,253 +889,253 @@ const translations = {
     chooseLang: "Idioma", startupDesc: "Auto-inicio",
     metaTierList: "Meta Tier List", proReplays: "Replays Pro", waitingMatch: "Esperando",
     clientDisconnected: "Desconectado", liveMatch: "PARTIDA EN VIVO",
-    rank: "Rango", champion: "Campeà³n", role: "Rol", winrate: "Winrate", ban: "Ban Rate", tier: "Tier",
+    rank: "Rango", champion: "Campe├á┬│n", role: "Rol", winrate: "Winrate", ban: "Ban Rate", tier: "Tier",
     explore_oracle: "Explorar App ORACLE", season: "Temporada 15", owned_skins: "Skins en propiedad",
-    survivability: "Supervivencia", tf_deaths: "Muertes en Teamfight", performance: "Rendimiento por campeà³n",
-    all: "TODOS", mvp: "MVP", score: "puntuacià³n", deaths: "Muertes", ka: "Asesinatos + Asistencias",
-    early: "TEMPRANO", mid: "MEDIO", late: "TARDàO", live_pro: "EN VIVO PRO", spectate: "Espectar",
+    survivability: "Supervivencia", tf_deaths: "Muertes en Teamfight", performance: "Rendimiento por campe├á┬│n",
+    all: "TODOS", mvp: "MVP", score: "puntuaci├á┬│n", deaths: "Muertes", ka: "Asesinatos + Asistencias",
+    early: "TEMPRANO", mid: "MEDIO", late: "TARD├á┬ìO", live_pro: "EN VIVO PRO", spectate: "Espectar",
     replay: "REPLAY", victory: "Victoria", defeat: "Derrota", theme_dark: "Oscuro", theme_light: "Claro",
-    visual_glass: "Cristal", visual_opaque: "Opaco", records: "Récords", lens: "Lente", behavioral: "Comportamiento",
-    pings: "Pings", solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM", coming_soon: "Prà³ximamente...",
-    appearance: "Apariencia", chooseStyleDesc: "Elige entre Cristal Là­quido o Sà³lido",
+    visual_glass: "Cristal", visual_opaque: "Opaco", records: "R├®cords", lens: "Lente", behavioral: "Comportamiento",
+    pings: "Pings", solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM", coming_soon: "Pr├á┬│ximamente...",
+    appearance: "Apariencia", chooseStyleDesc: "Elige entre Cristal L├á┬¡quido o S├á┬│lido",
     themeToggleDesc: "Alternar entre modo Claro y Oscuro",
     langSelectDesc: "Selecciona tu idioma preferido",
     connectLcu: "Conectando al Cliente de League...", vs1w: "hace 1 sem",
-    kda: "KDA", dpmScore: "Puntuacià³n Oracle", kp: "KP", csm: "CSM", vision: "Puntuacià³n de Visià³n", gpm: "GPM",
+    kda: "KDA", dpmScore: "Puntuaci├á┬│n Oracle", kp: "KP", csm: "CSM", vision: "Puntuaci├á┬│n de Visi├á┬│n", gpm: "GPM",
     // Game Modes & Status
     queue_custom: "Personalizada", queue_draft: "Draft", queue_solo: "Ranked Solo", queue_flex: "Ranked Flex",
     queue_blind: "A Ciegas", queue_aram: "ARAM", queue_arena: "Arena", queue_urf: "URF", queue_coop: "Co-op vs IA",
     queue_unknown: "Desconocido", ingame: "En Partida", playing: "Jugando", spectate_btn: "Espectar",
     // New Additions
     waiting_for_match: "Esperando partida...", enter_game_live: "Por favor, entra a partida para ver stats.", toggle_hint: "[CTRL+X] PARA ALTERNAR",
-    team_blue: "Orden (Azul)", team_red: "Caos (Rojo)", you: "TÃƒÅ¡", hot_streak: "RACHA",
-    matchup_analysis: "Anà¡lisis de Matchup", strategic_insight: "Insight Estratégico", counter_items: "Objetos Contra Recomendados",
-    esports_center: "Centro Esports", switch_source: "Cambiar Fuente", upcoming_matches: "Partidos Prà³ximos", latest_news: "ÃƒÅ¡ltimas Noticias",
+    team_blue: "Orden (Azul)", team_red: "Caos (Rojo)", you: "T├âãÆ├à┬í", hot_streak: "RACHA",
+    matchup_analysis: "An├á┬ílisis de Matchup", strategic_insight: "Insight Estrat├®gico", counter_items: "Objetos Contra Recomendados",
+    esports_center: "Centro Esports", switch_source: "Cambiar Fuente", upcoming_matches: "Partidos Pr├á┬│ximos", latest_news: "├âãÆ├à┬íltimas Noticias",
     collections_title: "Colecciones", rankings_title: "Clasificaciones", overlay_settings: "Ajustes Overlay",
-    ingame_modules: "Mà³dulos en Juego", launch_custom: "Lanza una personalizada para configurar.", start_editor: "Iniciar Editor Overlay",
-    select_champion: "Seleccionar Campeà³n", search_champion: "Buscar...",
+    ingame_modules: "M├á┬│dulos en Juego", launch_custom: "Lanza una personalizada para configurar.", start_editor: "Iniciar Editor Overlay",
+    select_champion: "Seleccionar Campe├á┬│n", search_champion: "Buscar...",
     rank_header: "Rango", lp_header: "LP", winrate_header: "Winrate", games_header: "Partidas", summoner_header: "Invocador",
     no_games_found: "No se encontraron partidas", search_summoner_profile: "Buscar perfil de invocador", search_result: "Buscar",
-    most_kills: "Mà¡s Kills", dmg_dealt: "daà±o infligido", vision_score: "Puntuacià³n Visià³n", cs_min: "CS / min", season_best: "MEJOR TEMPORADA",
-    aggression: "Agresividad", farming: "Farm", vision_radar: "Visià³n", survival: "Supervivencia", objective: "Objetivo",
+    most_kills: "M├á┬ís Kills", dmg_dealt: "da├á┬▒o infligido", vision_score: "Puntuaci├á┬│n Visi├á┬│n", cs_min: "CS / min", season_best: "MEJOR TEMPORADA",
+    aggression: "Agresividad", farming: "Farm", vision_radar: "Visi├á┬│n", survival: "Supervivencia", objective: "Objetivo",
     playstyle: "Estilo", focus: "Foco", aggressive_carry: "Carry Agresivo", die_less: "Morir Menos",
-    skill_levelup: "Orden Habilidades", jungle_timers: "Timers Jungla", objective_voting: "Votacià³n Objetivos", gold_diff: "Diferencia de Oro",
-    skill_desc: "Muestra orden de habilidades en HUD", jungle_desc: "Overlay minimapa para campos", voting_desc: "Seguimiento de votos de equipo", gold_desc: "Estimacià³n diff oro",
-    last_20_games: "ÃƒÅ¡ltimas 20 Partidas", summoner_not_found: "Invocador No Encontrado",
+    skill_levelup: "Orden Habilidades", jungle_timers: "Timers Jungla", objective_voting: "Votaci├á┬│n Objetivos", gold_diff: "Diferencia de Oro",
+    skill_desc: "Muestra orden de habilidades en HUD", jungle_desc: "Overlay minimapa para campos", voting_desc: "Seguimiento de votos de equipo", gold_desc: "Estimaci├á┬│n diff oro",
+    last_20_games: "├âãÆ├à┬íltimas 20 Partidas", summoner_not_found: "Invocador No Encontrado",
     strategic_desc_mock: "Irelia tiene ventaja significativa al nivel 2. Busca intercambios pronto. Evita a Darius cuando tiene la E. Construye Hoja del Rey Arruinado primero.",
     search_hint: "Search Name#Tag (Region Locked)",
     region: "Region",
     online: "Online", offline: "Offline",
-    edit_layout: "Éditer Layout", save_layout: "Sauvegarder",
+    edit_layout: "├ëditer Layout", save_layout: "Sauvegarder",
     gold_sound_label: "Alerte Or (1200g)",
     gold_sound_desc: "Joue un son quand vous atteignez 1200 gold",
     test_mode_label: "Mode TEST Overlays",
     test_mode_desc: "Affiche tous les overlays pour test",
-    edit_layout_desc: "Ajustez la position de chaque module sur votre écran.",
+    edit_layout_desc: "Ajustez la position de chaque module sur votre ├®cran.",
     layout_editor_title: "Oracle Layout Editor",
     layout_editor_desc: "Glissez les modules pour les repositionner",
     game_space: "Espace de Jeu",
     cancel: "Annuler",
-    confirm_reset: "Réinitialiser les positions des overlays ?",
-    reset_default: "Réinitialiser les positions par défaut",
+    confirm_reset: "R├®initialiser les positions des overlays ?",
+    reset_default: "R├®initialiser les positions par d├®faut",
     ward_timer_desc: "Rappel pour placer vos balises de vision",
     // Build View
     build_runes_season: "Build, Runas Temporada", patch: "Parche", recommended_plus: "P+ Recomendado",
     summoner_spells: "Hechizos de Invocador", skill_order: "Orden de Habilidades",
-    max_1st: "Max 1Ã‚Âº", max_2nd: "Max 2Ã‚Âº", max_3rd: "Max 3Ã‚Âº",
+    max_1st: "Max 1├âÔÇÜ├é┬║", max_2nd: "Max 2├âÔÇÜ├é┬║", max_3rd: "Max 3├âÔÇÜ├é┬║",
     boots_options: "Opciones de Botas", starters: "Objetos Iniciales", core_build_path: "Ruta de Build Principal",
-    matchups_analysis: "Anà¡lisis de Matchups", strong_against: "Fuerte Contra", weak_against: "Débil Contra",
-    rune_path: "Ruta de Runas", launch: "Lanzar", winrate_trend: "Tendencia Winrate (30 Dà­as)",
+    matchups_analysis: "An├á┬ílisis de Matchups", strong_against: "Fuerte Contra", weak_against: "D├®bil Contra",
+    rune_path: "Ruta de Runas", launch: "Lanzar", winrate_trend: "Tendencia Winrate (30 D├á┬¡as)",
     // Matchup View
-    matchup_analysis_title: "Anà¡lisis de Matchup",
-    lane_kill_rate: "Tasa Kill Là­nea", gold_15: "Oro @ 15 min", early_wr: "Winrate Temprano", late_wr: "Winrate Tardà­o", first_tower: "Primera Torre",
-    analysis_direct: "Anà¡lisis Directo", duel_vs: "Duelo vs", guide_matchup: "Guà­a de Matchup", rival: "RIVAL",
-    searching: "Buscando...", sync_data: "Sinc...", coach_verdict: "Veredicto Técnico", view_tips: "Ver Consejos", back_btn: "Volver", matchup_tips_title: "Consejos Matchup",
+    matchup_analysis_title: "An├á┬ílisis de Matchup",
+    lane_kill_rate: "Tasa Kill L├á┬¡nea", gold_15: "Oro @ 15 min", early_wr: "Winrate Temprano", late_wr: "Winrate Tard├á┬¡o", first_tower: "Primera Torre",
+    analysis_direct: "An├á┬ílisis Directo", duel_vs: "Duelo vs", guide_matchup: "Gu├á┬¡a de Matchup", rival: "RIVAL",
+    searching: "Buscando...", sync_data: "Sinc...", coach_verdict: "Veredicto T├®cnico", view_tips: "Ver Consejos", back_btn: "Volver", matchup_tips_title: "Consejos Matchup",
     // Esports View
-    // esports_center: "Centro Esports", switch_source: "Cambiar Fuente", upcoming_matches: "Prà³ximos Partidos", latest_news: "ÃƒÅ¡ltimas Noticias", // Removed duplicate
-    // esports_center: "Centro Esports", switch_source: "Cambiar Fuente", upcoming_matches: "Prà³ximos Partidos", latest_news: "ÃƒÅ¡ltimas Noticias",
+    // esports_center: "Centro Esports", switch_source: "Cambiar Fuente", upcoming_matches: "Pr├á┬│ximos Partidos", latest_news: "├âãÆ├à┬íltimas Noticias", // Removed duplicate
+    // esports_center: "Centro Esports", switch_source: "Cambiar Fuente", upcoming_matches: "Pr├á┬│ximos Partidos", latest_news: "├âãÆ├à┬íltimas Noticias",
 
     // Profile & Replays
-    profile_not_found: "Perfil No Encontrado", summoner_not_found_desc: "Jugador no encontrado o no existe en esta regià³n.",
+    profile_not_found: "Perfil No Encontrado", summoner_not_found_desc: "Jugador no encontrado o no existe en esta regi├á┬│n.",
     recent_matches: "Partidas Recientes", no_match_found: "No se encontraron partidas...", phase_label: "Fase",
     no_partners: "Sin jugadores recientes", games_played: "Partidas jugadas", top_champions: "Mejores Campeones", recent_players: "Jugadores Recientes",
     loading_replays: "Cargando replays...", and_ai_coaching: "& Coaching IA", replays_desc: "Mira tus partidas y recibe consejos personalizados.",
     games_found: "Partidas encontradas", watchable: "Visualizables", ai_analyzer_title: "Analizador IA Oracle",
     ai_analyzer_desc: "Selecciona una partida para generar un reporte completo.",
     analyzing_caps: "ANALIZANDO...", close_duel: "Cerrar Duelo", analyze_duel: "Analizar Duelo", opponent: "Oponente",
-    sync_data_opp: "Sincronizando...", key_tips: "Consejos Clave", analysis_timeline: "Cronologà­a", events: "EVENTOS",
-    tactical_analysis: "Anà¡lisis tà¡ctico...", watch_replay: "Ver Replay",
-    stat_obj_focus: "Foco Objetivos", stat_mechanics: "Mecà¡nicas", stat_kda_perf: "Rend. KDA", stat_farming: "Farming",
+    sync_data_opp: "Sincronizando...", key_tips: "Consejos Clave", analysis_timeline: "Cronolog├á┬¡a", events: "EVENTOS",
+    tactical_analysis: "An├á┬ílisis t├á┬íctico...", watch_replay: "Ver Replay",
+    stat_obj_focus: "Foco Objetivos", stat_mechanics: "Mec├á┬ínicas", stat_kda_perf: "Rend. KDA", stat_farming: "Farming",
     matchup_desc_example: "tiene ventaja significativa a nivel 2. Busca intercambios.",
     // Tips
     tip_deaths_title: "Muertes Excesivas", tip_deaths_desc: "Tasa de mortalidad alta.",
     tip_survival_title: "Supervivencia Perfecta", tip_survival_desc: "Ninguna muerte concedida.",
-    tip_csm_title: "Déficit de Farm", tip_csm_desc: "CS/min crà­tico. Prioriza sàºbditos.",
-    tip_multikill_title: "Multi-Kill", tip_multikill_desc: "Gran gestià³n de peleas.",
-    tip_vision_elite_title: "Visià³n Élite", tip_vision_elite_desc: "Control de mapa superior.",
-    tip_vision_poor_title: "Ceguera de Mapa", tip_vision_poor_desc: "Puntuacià³n de visià³n baja.",
+    tip_csm_title: "D├®ficit de Farm", tip_csm_desc: "CS/min cr├á┬¡tico. Prioriza s├á┬║bditos.",
+    tip_multikill_title: "Multi-Kill", tip_multikill_desc: "Gran gesti├á┬│n de peleas.",
+    tip_vision_elite_title: "Visi├á┬│n ├ëlite", tip_vision_elite_desc: "Control de mapa superior.",
+    tip_vision_poor_title: "Ceguera de Mapa", tip_vision_poor_desc: "Puntuaci├á┬│n de visi├á┬│n baja.",
     tip_firstblood_title: "Primera Sangre", tip_firstblood_desc: "Gran ventaja temprana.",
-    tip_objective_title: "Foco Objetivos", tip_objective_desc: "Presià³n en Torres/Dragones.",
+    tip_objective_title: "Foco Objetivos", tip_objective_desc: "Presi├á┬│n en Torres/Dragones.",
     tip_cc_title: "Maestro del CC", tip_cc_desc: "Excelente uso de control.",
-    tip_gold_title: "Capitalizacià³n Eco", tip_gold_desc: "Generacià³n masiva de oro.",
-    tip_tank_title: "Resiliencia Absoluta", tip_tank_desc: "Gran mitigacià³n de daà±o.",
+    tip_gold_title: "Capitalizaci├á┬│n Eco", tip_gold_desc: "Generaci├á┬│n masiva de oro.",
+    tip_tank_title: "Resiliencia Absoluta", tip_tank_desc: "Gran mitigaci├á┬│n de da├á┬▒o.",
     tip_jungle_title: "Ritmo de Jungla", tip_jungle_desc: "Limpieza muy lenta.",
-    tip_default_title: "Optimizacià³n Oro", tip_default_desc: "Concéntrate en farmear.",
+    tip_default_title: "Optimizaci├á┬│n Oro", tip_default_desc: "Conc├®ntrate en farmear.",
     // Verdicts
-    verdict_pivot: "Oracle : Pivote Estratégico. Fuiste el motor de tu equipo. Tu participacià³n definià³ el ritmo del partido. Estuviste en todas partes, convirtiendo escaramuzas en ventajas globales.",
-    verdict_soul: "Oracle : Segador de Almas. Dominio Econà³mico. No solo ganaste tu là­nea; llevaste a la bancarrota a tu oponente. Al negar recursos, hiciste que el enemigo fuera irrelevante.",
-    verdict_fatal: "Oracle : Eficiencia Fatal. Precisià³n Quiràºrgica. Maximizaste cada moneda de oro gastada. Tu daà±o en comparacià³n con tu economà­a fue excepcional. No necesitas build completa para ser letal.",
-    verdict_pillar: "Oracle : Pilar de Victoria. La Roca. Fuiste la base confiable que tu equipo necesitaba. Tu presencia en momentos clave y tu juego macro sà³lido aseguraron la victoria.",
-    verdict_vuln: "Oracle : Carga. Pasaste mà¡s tiempo muerto que impactando el mapa. Tus errores de posicionamiento regalaron oro y ritmo. Deja de forzar jugadas cuando vas por detrà¡s.",
-    verdict_eco: "Oracle : Asfixia Econà³mica. Hambre de Recursos. Fallaste en lo bà¡sico: el farm. Pelear con desventaja de objetos es una estrategia perdedora. Prioriza las oleadas de sàºbditos.",
+    verdict_pivot: "Oracle : Pivote Estrat├®gico. Fuiste el motor de tu equipo. Tu participaci├á┬│n defini├á┬│ el ritmo del partido. Estuviste en todas partes, convirtiendo escaramuzas en ventajas globales.",
+    verdict_soul: "Oracle : Segador de Almas. Dominio Econ├á┬│mico. No solo ganaste tu l├á┬¡nea; llevaste a la bancarrota a tu oponente. Al negar recursos, hiciste que el enemigo fuera irrelevante.",
+    verdict_fatal: "Oracle : Eficiencia Fatal. Precisi├á┬│n Quir├á┬║rgica. Maximizaste cada moneda de oro gastada. Tu da├á┬▒o en comparaci├á┬│n con tu econom├á┬¡a fue excepcional. No necesitas build completa para ser letal.",
+    verdict_pillar: "Oracle : Pilar de Victoria. La Roca. Fuiste la base confiable que tu equipo necesitaba. Tu presencia en momentos clave y tu juego macro s├á┬│lido aseguraron la victoria.",
+    verdict_vuln: "Oracle : Carga. Pasaste m├á┬ís tiempo muerto que impactando el mapa. Tus errores de posicionamiento regalaron oro y ritmo. Deja de forzar jugadas cuando vas por detr├á┬ís.",
+    verdict_eco: "Oracle : Asfixia Econ├á┬│mica. Hambre de Recursos. Fallaste en lo b├á┬ísico: el farm. Pelear con desventaja de objetos es una estrategia perdedora. Prioriza las oleadas de s├á┬║bditos.",
     verdict_leader: "Oracle : Lobo Solitario. Jugaste bien individualmente, pero no tradujiste tu ventaja al equipo. El KDA no destruye el Nexo. Necesitabas usar tu fuerza para cubrir a tus aliados.",
-    verdict_defeat: "Oracle : Colapso Macro. Mecà¡nicamente decente, pero perdiste el mapa. Dejaste que el enemigo dictara las rotaciones. Revisa tu toma de decisiones en el juego medio.",
+    verdict_defeat: "Oracle : Colapso Macro. Mec├á┬ínicamente decente, pero perdiste el mapa. Dejaste que el enemigo dictara las rotaciones. Revisa tu toma de decisiones en el juego medio.",
     verdict_intro: "Oracle :",
     profile_not_found_title: "Perfil No Encontrado",
-    profile_not_found_desc: "El jugador no se encuentra o no existe en esta regià³n.",
+    profile_not_found_desc: "El jugador no se encuentra o no existe en esta regi├á┬│n.",
     others: "Otros",
   },
   pt: {
-    overview: "Visà£o Geral", champions: "Campeàµes", prohub: "Hub Pro", draft: "Draft", live: "Ao Vivo",
-    profile: "Perfil", settings: "Configuraçàµes", connected: "Conectado", disconnected: "Desconectado",
+    overview: "Vis├á┬úo Geral", champions: "Campe├á┬Áes", prohub: "Hub Pro", draft: "Draft", live: "Ao Vivo",
+    profile: "Perfil", settings: "Configura├º├á┬Áes", connected: "Conectado", disconnected: "Desconectado",
     searchPlaceholder: "Buscar invocador...", visualStyle: "Estilo Visual", colorTheme: "Tema de Cor",
     language: "Idioma", startup: "Iniciar com Windows", glass: "Vidro", opaque: "Opaco",
-    themeToggle: "Alternar Claro/Escuro", chooseStyle: "Escolha entre Vidro ou Sà³lido",
+    themeToggle: "Alternar Claro/Escuro", chooseStyle: "Escolha entre Vidro ou S├á┬│lido",
     chooseLang: "Selecione seu idioma", startupDesc: "Iniciar Oracle com o Windows",
     metaTierList: "Meta Tier List", proReplays: "Replays Pro", waitingMatch: "Aguardando partida",
     clientDisconnected: "Cliente Desconectado", liveMatch: "PARTIDA AO VIVO",
-    rank: "Rank", champion: "Campeà£o", role: "Rota", winrate: "Vità³rias", ban: "Banimentos", tier: "Tier",
-    kda: "KDA", dpmScore: "Oracle Score", kp: "KP", csm: "CSM", vision: "Pontuaçà£o de Visà£o", gpm: "GPM",
-    match_history: "Histà³rico de Partidas", records: "Registros", coming_soon: "Em breve...",
-    behavioral: "Comportamental", lens: "Oracle Lens", performance: "Desempenho por campeà£o", pings: "Pings Totais",
+    rank: "Rank", champion: "Campe├á┬úo", role: "Rota", winrate: "Vit├á┬│rias", ban: "Banimentos", tier: "Tier",
+    kda: "KDA", dpmScore: "Oracle Score", kp: "KP", csm: "CSM", vision: "Pontua├º├á┬úo de Vis├á┬úo", gpm: "GPM",
+    match_history: "Hist├á┬│rico de Partidas", records: "Registros", coming_soon: "Em breve...",
+    behavioral: "Comportamental", lens: "Oracle Lens", performance: "Desempenho por campe├á┬úo", pings: "Pings Totais",
     all: "Todos",
     explore_oracle: "Explorar App ORACLE", season: "Temporada 15", owned_skins: "Skins obtidos",
-    survivability: "Sobrevivência", tf_deaths: "Mortes em Teamfight",
-    mvp: "MVP", score: "pontuaçà£o", deaths: "Mortes", ka: "Abates + Assistências",
+    survivability: "Sobreviv├¬ncia", tf_deaths: "Mortes em Teamfight",
+    mvp: "MVP", score: "pontua├º├á┬úo", deaths: "Mortes", ka: "Abates + Assist├¬ncias",
     early: "CEDO", mid: "MEIO", late: "FIM", live_pro: "AO VIVO PRO", spectate: "Assistir",
-    replay: "REPLAY", victory: "Vità³ria", defeat: "Derrota", theme_dark: "Escuro", theme_light: "Claro",
+    replay: "REPLAY", victory: "Vit├á┬│ria", defeat: "Derrota", theme_dark: "Escuro", theme_light: "Claro",
     visual_glass: "Vidro", visual_opaque: "Opaco",
     solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM",
-    appearance: "Aparência", chooseStyleDesc: "Escolha entre Vidro ou Sà³lido",
+    appearance: "Apar├¬ncia", chooseStyleDesc: "Escolha entre Vidro ou S├á┬│lido",
     themeToggleDesc: "Alternar entre modo Claro e Escuro",
     langSelectDesc: "Selecione seu idioma preferido",
-    connectLcu: "Conectando ao Cliente...", vs1w: "vs 1 sem atrà¡s",
+    connectLcu: "Conectando ao Cliente...", vs1w: "vs 1 sem atr├á┬ís",
     cat_core: "ORACLE CORE", cat_app: "ORACLE APP", cat_insights: "ORACLE INSIGHTS",
-    dashboard: "Visà£o Geral", tierlist: "Builds & Tips", leaderboards: "Rankings",
-    replays: "Replays", overlays: "Overlays", collections: "Coleçàµes",
+    dashboard: "Vis├á┬úo Geral", tierlist: "Builds & Tips", leaderboards: "Rankings",
+    replays: "Replays", overlays: "Overlays", collections: "Cole├º├á┬Áes",
     esports: "Esports", datastudio: "Data Studio", matchups: "Matchups",
     watch: "Assistir",
     // Game Modes & Status
     queue_custom: "Personalizada", queue_draft: "Draft", queue_solo: "Ranked Solo", queue_flex: "Ranked Flex",
-    queue_blind: "Às Cegas", queue_aram: "ARAM", queue_arena: "Arena", queue_urf: "URF", queue_coop: "Co-op vs IA",
+    queue_blind: "├Çs Cegas", queue_aram: "ARAM", queue_arena: "Arena", queue_urf: "URF", queue_coop: "Co-op vs IA",
     queue_unknown: "Desconhecido", ingame: "Em Jogo", playing: "Jogando", spectate_btn: "Assistir",
     // New Additions
-    waiting_for_match: "Aguardando partida...", enter_game_live: "Por favor, entre em uma partida para ver estatà­sticas.", toggle_hint: "[CTRL+X] PARA ALTERNAR",
-    team_blue: "Ordem (Azul)", team_red: "Caos (Vermelho)", you: "VOCÃƒÅ ", hot_streak: "SÉRIE",
-    matchup_analysis: "Anà¡lise de Matchup", strategic_insight: "Insight Estratégico", counter_items: "Itens Counter Recomendados",
-    esports_center: "Centro de Esports", switch_source: "Trocar Fonte", upcoming_matches: "Prà³ximas Partidas", latest_news: "ÃƒÅ¡ltimas Notà­cias",
-    collections_title: "Coleçàµes", rankings_title: "Rankings", overlay_settings: "Configuraçàµes de Overlay",
-    ingame_modules: "Mà³dulos no Jogo", launch_custom: "Inicie uma personalizada para configurar.", start_editor: "Iniciar Editor de Overlay",
-    select_champion: "Selecionar Campeà£o", search_champion: "Buscar...",
-    rank_header: "Rank", lp_header: "PdL", winrate_header: "Vità³rias", games_header: "Partidas", summoner_header: "Invocador",
+    waiting_for_match: "Aguardando partida...", enter_game_live: "Por favor, entre em uma partida para ver estat├á┬¡sticas.", toggle_hint: "[CTRL+X] PARA ALTERNAR",
+    team_blue: "Ordem (Azul)", team_red: "Caos (Vermelho)", you: "VOC├âãÆ├à┬á", hot_streak: "S├ëRIE",
+    matchup_analysis: "An├á┬ílise de Matchup", strategic_insight: "Insight Estrat├®gico", counter_items: "Itens Counter Recomendados",
+    esports_center: "Centro de Esports", switch_source: "Trocar Fonte", upcoming_matches: "Pr├á┬│ximas Partidas", latest_news: "├âãÆ├à┬íltimas Not├á┬¡cias",
+    collections_title: "Cole├º├á┬Áes", rankings_title: "Rankings", overlay_settings: "Configura├º├á┬Áes de Overlay",
+    ingame_modules: "M├á┬│dulos no Jogo", launch_custom: "Inicie uma personalizada para configurar.", start_editor: "Iniciar Editor de Overlay",
+    select_champion: "Selecionar Campe├á┬úo", search_champion: "Buscar...",
+    rank_header: "Rank", lp_header: "PdL", winrate_header: "Vit├á┬│rias", games_header: "Partidas", summoner_header: "Invocador",
     no_games_found: "Nenhuma partida encontrada", search_summoner_profile: "Buscar perfil de invocador", search_result: "Buscar",
-    most_kills: "Mais Abates", dmg_dealt: "Dano Causado", vision_score: "Placar de Visà£o", cs_min: "CS / min", season_best: "MELHOR TEMPORADA",
-    aggression: "Agressividade", farming: "Farm", vision_radar: "Visà£o", survival: "Sobrevivência", objective: "Objetivo",
+    most_kills: "Mais Abates", dmg_dealt: "Dano Causado", vision_score: "Placar de Vis├á┬úo", cs_min: "CS / min", season_best: "MELHOR TEMPORADA",
+    aggression: "Agressividade", farming: "Farm", vision_radar: "Vis├á┬úo", survival: "Sobreviv├¬ncia", objective: "Objetivo",
     playstyle: "Estilo de Jogo", focus: "Foco", aggressive_carry: "Carry Agressivo", die_less: "Morrer Menos",
-    skill_levelup: "Ordem de Habilidades", jungle_timers: "Timers da Jungle", objective_voting: "Votaçà£o de Objetivos", gold_diff: "Diferença de Ouro",
-    skill_desc: "Mostra ordem das habilidades no HUD", jungle_desc: "Overlay do minimapa para campos", voting_desc: "Rastreamento de votos da equipe", gold_desc: "Estimativa de diferença de ouro",
-    last_20_games: "ÃƒÅ¡ltimas 20 Partidas", summoner_not_found: "Invocador Nà£o Encontrado",
-    strategic_desc_mock: "Irelia tem uma vantagem significativa no nà­vel 2. Procure trocas cedo. Evite Darius quando o E dele estiver disponà­vel. Faça Espada do Rei Destruà­do primeiro.",
-    search_hint: "Buscar Nome#Tag (Regià£o Bloqueada)",
-    region: "Regià£o",
+    skill_levelup: "Ordem de Habilidades", jungle_timers: "Timers da Jungle", objective_voting: "Vota├º├á┬úo de Objetivos", gold_diff: "Diferen├ºa de Ouro",
+    skill_desc: "Mostra ordem das habilidades no HUD", jungle_desc: "Overlay do minimapa para campos", voting_desc: "Rastreamento de votos da equipe", gold_desc: "Estimativa de diferen├ºa de ouro",
+    last_20_games: "├âãÆ├à┬íltimas 20 Partidas", summoner_not_found: "Invocador N├á┬úo Encontrado",
+    strategic_desc_mock: "Irelia tem uma vantagem significativa no n├á┬¡vel 2. Procure trocas cedo. Evite Darius quando o E dele estiver dispon├á┬¡vel. Fa├ºa Espada do Rei Destru├á┬¡do primeiro.",
+    search_hint: "Buscar Nome#Tag (Regi├á┬úo Bloqueada)",
+    region: "Regi├á┬úo",
     online: "Online", offline: "Offline",
     // Build View
     build_runes_season: "Build, Runas Temporada", patch: "Patch", recommended_plus: "P+ Recomendado",
-    summoner_spells: "Feitiços de Invocador", skill_order: "Ordem de Habilidades",
-    max_1st: "Max 1Ã‚Âº", max_2nd: "Max 2Ã‚Âº", max_3rd: "Max 3Ã‚Âº",
-    boots_options: "Opçàµes de Botas", starters: "Itens Iniciais", core_build_path: "Caminho de Build Principal",
-    matchups_analysis: "Anà¡lise de Matchups", strong_against: "Forte Contra", weak_against: "Fraco Contra",
-    rune_path: "Caminho de Runas", launch: "Lanç.", winrate_trend: "Tendência Winrate (30 Dias)",
+    summoner_spells: "Feiti├ºos de Invocador", skill_order: "Ordem de Habilidades",
+    max_1st: "Max 1├âÔÇÜ├é┬║", max_2nd: "Max 2├âÔÇÜ├é┬║", max_3rd: "Max 3├âÔÇÜ├é┬║",
+    boots_options: "Op├º├á┬Áes de Botas", starters: "Itens Iniciais", core_build_path: "Caminho de Build Principal",
+    matchups_analysis: "An├á┬ílise de Matchups", strong_against: "Forte Contra", weak_against: "Fraco Contra",
+    rune_path: "Caminho de Runas", launch: "Lan├º.", winrate_trend: "Tend├¬ncia Winrate (30 Dias)",
     // Matchup View
-    matchup_analysis_title: "Anà¡lise de Matchup",
+    matchup_analysis_title: "An├á┬ílise de Matchup",
     lane_kill_rate: "Taxa de Abate na Rota", gold_15: "Ouro @ 15 min", early_wr: "Winrate Inicial", late_wr: "Winrate Final", first_tower: "Primeira Torre",
-    analysis_direct: "Anà¡lise Direta", duel_vs: "Duelo contra", guide_matchup: "Guia de Matchup", rival: "RIVAL",
-    searching: "Buscando...", sync_data: "Sincronizando...", coach_verdict: "Veredito Técnico", view_tips: "Ver Dicas", back_btn: "Voltar", matchup_tips_title: "Dicas de Matchup",
+    analysis_direct: "An├á┬ílise Direta", duel_vs: "Duelo contra", guide_matchup: "Guia de Matchup", rival: "RIVAL",
+    searching: "Buscando...", sync_data: "Sincronizando...", coach_verdict: "Veredito T├®cnico", view_tips: "Ver Dicas", back_btn: "Voltar", matchup_tips_title: "Dicas de Matchup",
     // Profile & Replays
-    profile_not_found: "Perfil Nà£o Encontrado", summoner_not_found_desc: "Jogador nà£o encontrado ou nà£o existe nesta regià£o.",
+    profile_not_found: "Perfil N├á┬úo Encontrado", summoner_not_found_desc: "Jogador n├á┬úo encontrado ou n├á┬úo existe nesta regi├á┬úo.",
     recent_matches: "Partidas Recentes", no_match_found: "Nenhuma partida encontrada...", phase_label: "Fase",
-    no_partners: "Sem jogadores recentes", games_played: "Jogos", top_champions: "Melhores Campeàµes", recent_players: "Jogadores Recentes",
+    no_partners: "Sem jogadores recentes", games_played: "Jogos", top_champions: "Melhores Campe├á┬Áes", recent_players: "Jogadores Recentes",
     loading_replays: "Carregando replays...", and_ai_coaching: "& Coaching IA", replays_desc: "Assista seus jogos e receba dicas personalizadas.",
-    games_found: "Jogos encontrados", watchable: "Assistà­veis", ai_analyzer_title: "Analisador IA Oracle",
-    ai_analyzer_desc: "Selecione um jogo para gerar um relatà³rio completo.",
+    games_found: "Jogos encontrados", watchable: "Assist├á┬¡veis", ai_analyzer_title: "Analisador IA Oracle",
+    ai_analyzer_desc: "Selecione um jogo para gerar um relat├á┬│rio completo.",
     analyzing_caps: "ANALISANDO...", close_duel: "Fechar Duelo", analyze_duel: "Analisar Duelo", opponent: "Oponente",
     sync_data_opp: "Sincronizando...", key_tips: "Dicas Chave", analysis_timeline: "Linha do Tempo", events: "EVENTOS",
-    tactical_analysis: "Anà¡lise tà¡tica...", watch_replay: "Ver Replay",
-    stat_obj_focus: "Foco Objetivos", stat_mechanics: "Mecânicas", stat_kda_perf: "Perf. KDA", stat_farming: "Farming",
-    matchup_desc_example: "tem vantagem significativa no nà­vel 2. Busque trocas cedo.",
+    tactical_analysis: "An├á┬ílise t├á┬ítica...", watch_replay: "Ver Replay",
+    stat_obj_focus: "Foco Objetivos", stat_mechanics: "Mec├ónicas", stat_kda_perf: "Perf. KDA", stat_farming: "Farming",
+    matchup_desc_example: "tem vantagem significativa no n├á┬¡vel 2. Busque trocas cedo.",
     // Tips
     tip_deaths_title: "Mortes Excessivas", tip_deaths_desc: "Taxa de mortalidade alta.",
-    tip_survival_title: "Sobrevivência Perfeita", tip_survival_desc: "Nenhuma morte. Posicionamento perfeito.",
-    tip_csm_title: "Déficit de Farm", tip_csm_desc: "CS/min crà­tico. Priorize minions.",
-    tip_multikill_title: "Multi-Kill", tip_multikill_desc: "Êœtima gestà£o de luta.",
-    tip_vision_elite_title: "Visà£o Elite", tip_vision_elite_desc: "Controle de mapa superior.",
-    tip_vision_poor_title: "Cegueira de Mapa", tip_vision_poor_desc: "Baixa pontuaçà£o de visà£o.",
+    tip_survival_title: "Sobreviv├¬ncia Perfeita", tip_survival_desc: "Nenhuma morte. Posicionamento perfeito.",
+    tip_csm_title: "D├®ficit de Farm", tip_csm_desc: "CS/min cr├á┬¡tico. Priorize minions.",
+    tip_multikill_title: "Multi-Kill", tip_multikill_desc: "├è┼ôtima gest├á┬úo de luta.",
+    tip_vision_elite_title: "Vis├á┬úo Elite", tip_vision_elite_desc: "Controle de mapa superior.",
+    tip_vision_poor_title: "Cegueira de Mapa", tip_vision_poor_desc: "Baixa pontua├º├á┬úo de vis├á┬úo.",
     tip_firstblood_title: "First Blood", tip_firstblood_desc: "Grande vantagem inicial.",
-    tip_objective_title: "Foco Objetivos", tip_objective_desc: "Pressà£o em Torres/Dragàµes.",
+    tip_objective_title: "Foco Objetivos", tip_objective_desc: "Press├á┬úo em Torres/Drag├á┬Áes.",
     tip_cc_title: "Mestre do CC", tip_cc_desc: "Uso excelente de controle.",
-    tip_gold_title: "Capitalizaçà£o Eco", tip_gold_desc: "Geraçà£o massiva de ouro.",
-    tip_tank_title: "Resiliência Absoluta", tip_tank_desc: "Grande mitigaçà£o de dano.",
+    tip_gold_title: "Capitaliza├º├á┬úo Eco", tip_gold_desc: "Gera├º├á┬úo massiva de ouro.",
+    tip_tank_title: "Resili├¬ncia Absoluta", tip_tank_desc: "Grande mitiga├º├á┬úo de dano.",
     tip_jungle_title: "Ritmo de Jungle", tip_jungle_desc: "Limpeza muito lenta.",
-    tip_default_title: "Otimizaçà£o Ouro", tip_default_desc: "Foque em farmar.",
+    tip_default_title: "Otimiza├º├á┬úo Ouro", tip_default_desc: "Foque em farmar.",
     // Verdicts
-    verdict_pivot: "Oracle : Pivô Estratégico. Você foi o motor do seu time. Sua participaçà£o definiu o ritmo da partida. Você estava em todos os lugares, transformando escaramuças em vantagens globais.",
-    verdict_soul: "Oracle : Ceifador de Almas. Domà­nio Econômico. Você nà£o apenas venceu sua rota; levou seu oponente à  falência. Ao negar recursos, você tornou o inimigo irrelevante.",
-    verdict_fatal: "Oracle : Eficiência Fatal. Precisà£o Ciràºrgica. Você maximizou cada moeda de ouro gasta. Seu dano comparado à  sua economia foi excepcional. Nà£o precisa de build completa para ser letal.",
-    verdict_pillar: "Oracle : Pilar da Vità³ria. A Rocha. Você foi a base confià¡vel que seu time precisava. Sua presença em momentos cruciais e macro jogo sà³lido garantiram a vità³ria.",
-    verdict_vuln: "Oracle : Fardo. Você passou mais tempo morto do que impactando o mapa. Seus erros de posicionamento deram ouro e ritmo de graça. Pare de forçar jogadas quando estiver atrà¡s.",
-    verdict_eco: "Oracle : Asfixia Econômica. Fome de Recursos. Você falhou no bà¡sico: farm. Lutar com desvantagem de itens é uma estratégia perdedora. Priorize as ondas de minions.",
-    verdict_leader: "Oracle : Lobo Solità¡rio. Jogou bem individualmente, mas nà£o traduziu sua vantagem para o time. KDA nà£o destrà³i o Nexus. Use sua força para cobrir seus aliados.",
-    verdict_defeat: "Oracle : Colapso Macro. Mecanicamente decente, mas perdeu o mapa. Você deixou o inimigo ditar as rotaçàµes. Revise suas decisàµes no meio do jogo.",
+    verdict_pivot: "Oracle : Piv├┤ Estrat├®gico. Voc├¬ foi o motor do seu time. Sua participa├º├á┬úo definiu o ritmo da partida. Voc├¬ estava em todos os lugares, transformando escaramu├ºas em vantagens globais.",
+    verdict_soul: "Oracle : Ceifador de Almas. Dom├á┬¡nio Econ├┤mico. Voc├¬ n├á┬úo apenas venceu sua rota; levou seu oponente ├á┬á fal├¬ncia. Ao negar recursos, voc├¬ tornou o inimigo irrelevante.",
+    verdict_fatal: "Oracle : Efici├¬ncia Fatal. Precis├á┬úo Cir├á┬║rgica. Voc├¬ maximizou cada moeda de ouro gasta. Seu dano comparado ├á┬á sua economia foi excepcional. N├á┬úo precisa de build completa para ser letal.",
+    verdict_pillar: "Oracle : Pilar da Vit├á┬│ria. A Rocha. Voc├¬ foi a base confi├á┬ível que seu time precisava. Sua presen├ºa em momentos cruciais e macro jogo s├á┬│lido garantiram a vit├á┬│ria.",
+    verdict_vuln: "Oracle : Fardo. Voc├¬ passou mais tempo morto do que impactando o mapa. Seus erros de posicionamento deram ouro e ritmo de gra├ºa. Pare de for├ºar jogadas quando estiver atr├á┬ís.",
+    verdict_eco: "Oracle : Asfixia Econ├┤mica. Fome de Recursos. Voc├¬ falhou no b├á┬ísico: farm. Lutar com desvantagem de itens ├® uma estrat├®gia perdedora. Priorize as ondas de minions.",
+    verdict_leader: "Oracle : Lobo Solit├á┬írio. Jogou bem individualmente, mas n├á┬úo traduziu sua vantagem para o time. KDA n├á┬úo destr├á┬│i o Nexus. Use sua for├ºa para cobrir seus aliados.",
+    verdict_defeat: "Oracle : Colapso Macro. Mecanicamente decente, mas perdeu o mapa. Voc├¬ deixou o inimigo ditar as rota├º├á┬Áes. Revise suas decis├á┬Áes no meio do jogo.",
     verdict_intro: "Oracle :",
-    profile_not_found_title: "Perfil Nà£o Encontrado",
-    profile_not_found_desc: "O jogador nà£o foi encontrado ou nà£o existe nesta regià£o.",
+    profile_not_found_title: "Perfil N├á┬úo Encontrado",
+    profile_not_found_desc: "O jogador n├á┬úo foi encontrado ou n├á┬úo existe nesta regi├á┬úo.",
     others: "Outros",
   },
   de: {
-    overview: "ÃƒÅ“bersicht", champions: "Champions", prohub: "Pro Hub", draft: "Draft", live: "Live",
+    overview: "├âãÆ├àÔÇ£bersicht", champions: "Champions", prohub: "Pro Hub", draft: "Draft", live: "Live",
     profile: "Profil", settings: "Einstellungen", connected: "Verbunden", disconnected: "Getrennt",
-    searchPlaceholder: "Beschwà¶rer suchen...", visualStyle: "Visueller Stil", colorTheme: "Farbthema",
-    language: "Sprache", startup: "Beim Start à¶ffnen", glass: "Glas", opaque: "Undurchsichtig",
+    searchPlaceholder: "Beschw├á┬Ârer suchen...", visualStyle: "Visueller Stil", colorTheme: "Farbthema",
+    language: "Sprache", startup: "Beim Start ├á┬Âffnen", glass: "Glas", opaque: "Undurchsichtig",
     themeToggle: "Hell/Dunkel umschalten", chooseStyle: "Visuelles Erscheinungsbild",
-    chooseLang: "Wà¤hlen Sie Ihre Sprache", startupDesc: "Automatisches Startverhalten",
+    chooseLang: "W├á┬ñhlen Sie Ihre Sprache", startupDesc: "Automatisches Startverhalten",
     metaTierList: "Meta Tier List", proReplays: "Pro Replays", waitingMatch: "Warte auf Match",
     clientDisconnected: "Client Getrennt", liveMatch: "LIVE MATCH",
     rank: "Rang", champion: "Champion", role: "Rolle", winrate: "Siegesrate", ban: "Bannrate", tier: "Tier",
     kda: "KDA", dpmScore: "Oracle Score", kp: "KP", csm: "CSM", vision: "Sichtwertung", gpm: "GPM",
-    match_history: "Spielverlauf", records: "Aufzeichnungen", coming_soon: "Demnà¤chst verfà¼gbar...",
+    match_history: "Spielverlauf", records: "Aufzeichnungen", coming_soon: "Demn├á┬ñchst verf├á┬╝gbar...",
     behavioral: "Verhalten", lens: "Oracle Lens", performance: "Leistung nach Champion", pings: "Gesamt-Pings",
     all: "Alle",
     explore_oracle: "Erkunden Sie ORACLE", season: "Saison 15", owned_skins: "Besitzte Skins",
-    survivability: "ÃƒÅ“berlebensfà¤higkeit", tf_deaths: "Teamfight-Tode",
+    survivability: "├âãÆ├àÔÇ£berlebensf├á┬ñhigkeit", tf_deaths: "Teamfight-Tode",
     mvp: "MVP", score: "Punktzahl", deaths: "Tode", ka: "Kills + Assists",
-    early: "FRÃƒÅ“H", mid: "MITTE", late: "SPÊžT", live_pro: "LIVE PRO", spectate: "Zuschauen",
+    early: "FR├âãÆ├àÔÇ£H", mid: "MITTE", late: "SP├è┼¥T", live_pro: "LIVE PRO", spectate: "Zuschauen",
     replay: "WIEDERHOLUNG", victory: "Sieg", defeat: "Niederlage", theme_dark: "Dunkel", theme_light: "Hell",
     visual_glass: "Glas", visual_opaque: "Undurchsichtig", solo_duo: "Solo/Duo", flex: "Flex", aram: "ARAM",
-    appearance: "Aussehen", chooseStyleDesc: "Wà¤hlen Sie zwischen Glas oder Solid",
+    appearance: "Aussehen", chooseStyleDesc: "W├á┬ñhlen Sie zwischen Glas oder Solid",
     themeToggleDesc: "Zwischen Hell- und Dunkelmodus wechseln",
-    langSelectDesc: "Wà¤hlen Sie Ihre Sprache",
+    langSelectDesc: "W├á┬ñhlen Sie Ihre Sprache",
     connectLcu: "Verbinde mit League Client...", vs1w: "vs vor 1 Woche",
     search_hint: "Suche Name#Tag", region: "Region",
     online: "Online", offline: "Offline",
     build_runes_season: "Build, Runen Saison", patch: "Patch", recommended_plus: "P+ Empfohlen",
-    summoner_spells: "Beschwà¶rerzauber", skill_order: "Fà¤higkeiten-Reihenfolge",
+    summoner_spells: "Beschw├á┬Ârerzauber", skill_order: "F├á┬ñhigkeiten-Reihenfolge",
     max_1st: "Max 1.", max_2nd: "Max 2.", max_3rd: "Max 3.",
-    boots_options: "Stiefel-Optionen", starters: "Startgegenstà¤nde", core_build_path: "Immer bauen",
+    boots_options: "Stiefel-Optionen", starters: "Startgegenst├á┬ñnde", core_build_path: "Immer bauen",
     matchups_analysis: "Matchup-Analyse", strong_against: "Stark gegen", weak_against: "Schwach gegen",
     rune_path: "Runenpfad", launch: "Start", winrate_trend: "Siegesrate Trend",
     matchup_analysis_title: "Matchup-Analyse",
-    lane_kill_rate: "Lane Kill-Rate", gold_15: "Gold @ 15 Min", early_wr: "Siegquote (Frà¼h)", late_wr: "Siegquote (Spà¤t)", first_tower: "Erster Turm",
-    select_champion: "Champion wà¤hlen", search_champion: "Suche...", strategic_insight: "Strategische Einsicht", counter_items: "Counter Items",
+    lane_kill_rate: "Lane Kill-Rate", gold_15: "Gold @ 15 Min", early_wr: "Siegquote (Fr├á┬╝h)", late_wr: "Siegquote (Sp├á┬ñt)", first_tower: "Erster Turm",
+    select_champion: "Champion w├á┬ñhlen", search_champion: "Suche...", strategic_insight: "Strategische Einsicht", counter_items: "Counter Items",
     esports_center: "Esports Center", switch_source: "Quelle wechseln", upcoming_matches: "Kommende Matches", latest_news: "Aktuelle Nachrichten",
     matchups: "Matchups"
   },
@@ -1172,94 +1171,94 @@ const translations = {
     watch: "Smotret"
   },
   ja: {
-    overview: "Ã¦Â¦â€šèÂ¦Â", champions: "Ã£Æ’ÂÃ£Æ’Â£Ã£Æ’Â³Ã£Æ’â€Ã£â€šÂªÃ£Æ’Â³", prohub: "Ã£Æ’â€”Ã£Æ’Â­Ã£Æ’ÂÃ£Æ’â€“", draft: "Ã£Æ’â€°Ã£Æ’Â©Ã£Æ’â€¢Ã£Æ’Ë†", live: "Ã£Æ’Â©Ã£â€šÂ¤Ã£Æ’â€“",
-    profile: "Ã£Æ’â€”Ã£Æ’Â­Ã£Æ’â€¢Ã£â€šÂ£Ã£Æ’Â¼Ã£Æ’Â«", settings: "èÂ¨Â­Ã¥Â®Å¡", connected: "Ã¦Å½Â¥çÂ¶Å¡Ã¦Â¸Ë†Ã£ÂÂ¿", disconnected: "Ã¦Å“ÂªÃ¦Å½Â¥çÂ¶Å¡",
-    searchPlaceholder: "Ã£â€šÂµÃ£Æ’Â¢Ã£Æ’Å Ã£Æ’Â¼Ã¦Â¤Å“çÂ´Â¢...", visualStyle: "Ã£Æ’â€œÃ£â€šÂ¸Ã£Æ’Â¥Ã£â€šÂ¢Ã£Æ’Â«", colorTheme: "Ã£Æ’â€ Ã£Æ’Â¼Ã£Æ’Å¾",
-    language: "èÂ¨â‚¬èÂªÅ¾", startup: "Ã£â€šÂ¹Ã£â€šÂ¿Ã£Æ’Â¼Ã£Æ’Ë†Ã£â€šÂ¢Ã£Æ’Æ’Ã£Æ’â€”", glass: "Ã£â€šÂ¬Ã£Æ’Â©Ã£â€šÂ¹", opaque: "Ã¤Â¸Âéâ‚¬ÂÃ¦ËœÅ½",
-    themeToggle: "Ã£Æ’Â©Ã£â€šÂ¤Ã£Æ’Ë†/Ã£Æ’â‚¬Ã£Æ’Â¼Ã£â€šÂ¯Ã¥Ë†â€¡Ã¦â€ºÂ¿", chooseStyle: "Ã£â€šÂ¹Ã£â€šÂ¿Ã£â€šÂ¤Ã£Æ’Â«Ã£â€šâ€™éÂÂ¸Ã¦Å Å¾",
-    chooseLang: "èÂ¨â‚¬èÂªÅ¾Ã£â€šâ€™éÂÂ¸Ã¦Å Å¾", startupDesc: "WindowsèÂµÂ·Ã¥â€¹â€¢Ã¦â„¢â€šÃ£ÂÂ«Ã¥Â®Å¸èÂ¡Å’",
-    metaTierList: "Ã£Æ’Â¡Ã£â€šÂ¿Ã£Æ’â€ Ã£â€šÂ£Ã£â€šÂ¢Ã£Æ’ÂªÃ£â€šÂ¹Ã£Æ’Ë†", proReplays: "Ã£Æ’â€”Ã£Æ’Â­Ã£Æ’ÂªÃ£Æ’â€”Ã£Æ’Â¬Ã£â€šÂ¤", waitingMatch: "Ã£Æ’Å¾Ã£Æ’Æ’Ã£Æ’ÂÃ¥Â¾â€¦Ã¦Â©Å¸Ã¤Â¸Â­",
-    clientDisconnected: "Ã£â€šÂ¯Ã£Æ’Â©Ã£â€šÂ¤Ã£â€šÂ¢Ã£Æ’Â³Ã£Æ’Ë†Ã¦Å“ÂªÃ¦Å½Â¥çÂ¶Å¡", liveMatch: "Ã£Æ’Â©Ã£â€šÂ¤Ã£Æ’â€“Ã£Æ’Å¾Ã£Æ’Æ’Ã£Æ’Â",
-    rank: "Ã£Æ’Â©Ã£Æ’Â³Ã£â€šÂ¯", champion: "Ã£Æ’ÂÃ£Æ’Â£Ã£Æ’Â³Ã£Æ’â€Ã£â€šÂªÃ£Æ’Â³", role: "Ã£Æ’Â­Ã£Æ’Â¼Ã£Æ’Â«", winrate: "Ã¥â€¹ÂçÅ½â€¡", ban: "Ã£Æ’ÂÃ£Æ’Â³çÅ½â€¡", tier: "Ã£Æ’â€ Ã£â€šÂ£Ã£â€šÂ¢",
-    kda: "KDA", dpmScore: "OracleÃ£â€šÂ¹Ã£â€šÂ³Ã£â€šÂ¢", kp: "KP", csm: "CSM", vision: "èÂ¦â€“çâ€¢Å’Ã£â€šÂ¹Ã£â€šÂ³Ã£â€šÂ¢", gpm: "GPM",
-    match_history: "èÂ©Â¦Ã¥ÂË†Ã¥Â±Â¥Ã¦Â­Â´", records: "èÂ¨ËœéÅ’Â²", coming_soon: "èÂ¿â€˜Ã¦â€”Â¥Ã¥â€¦Â¬éâ€“â€¹...",
-    behavioral: "èÂ¡Å’Ã¥â€¹â€¢", lens: "OracleÃ£Æ’Â¬Ã£Æ’Â³Ã£â€šÂº", performance: "Ã£Æ’ÂÃ£Æ’Â£Ã£Æ’Â³Ã£Æ’â€Ã£â€šÂªÃ£Æ’Â³Ã¥Ë†Â¥Ã£Æ’â€˜Ã£Æ’â€¢Ã£â€šÂ©Ã£Æ’Â¼Ã£Æ’Å¾Ã£Æ’Â³Ã£â€šÂ¹", pings: "Ã¥ÂË†èÂ¨Ë†Ã£Æ’â€Ã£Æ’Â³Ã£â€šÂ°",
-    all: "Ã£Ââ„¢Ã£ÂÂ¹Ã£ÂÂ¦",
-    explore_oracle: "OracleÃ£â€šÂ¢Ã£Æ’â€”Ã£Æ’ÂªÃ£â€šâ€™Ã¦Å½Â¢çÂ´Â¢", season: "Ã£â€šÂ·Ã£Æ’Â¼Ã£â€šÂºÃ£Æ’Â³15", owned_skins: "Ã¦â€°â‚¬Ã¦Å’ÂÃ£â€šÂ¹Ã£â€šÂ­Ã£Æ’Â³",
-    survivability: "çâ€Å¸Ã¥Â­ËœçÅ½â€¡", tf_deaths: "éâ€ºâ€ Ã¥â€ºÂ£Ã¦Ë†Â¦Ã£Æ’â€¡Ã£â€šÂ¹",
-    mvp: "MVP", score: "Ã£â€šÂ¹Ã£â€šÂ³Ã£â€šÂ¢", deaths: "Ã£Æ’â€¡Ã£â€šÂ¹", ka: "Ã£â€šÂ­Ã£Æ’Â« + Ã£â€šÂ¢Ã£â€šÂ·Ã£â€šÂ¹Ã£Æ’Ë†",
-    early: "Ã¥ÂºÂçâ€ºÂ¤", mid: "Ã¤Â¸Â­çâ€ºÂ¤", late: "çÂµâ€šçâ€ºÂ¤", live_pro: "Ã£Æ’Â©Ã£â€šÂ¤Ã£Æ’â€“Ã£Æ’â€”Ã£Æ’Â­", spectate: "èÂ¦Â³Ã¦Ë†Â¦",
-    replay: "Ã£Æ’ÂªÃ£Æ’â€”Ã£Æ’Â¬Ã£â€šÂ¤", victory: "Ã¥â€¹ÂÃ¥Ë†Â©", defeat: "Ã¦â€¢â€”Ã¥Å’â€”", theme_dark: "Ã£Æ’â‚¬Ã£Æ’Â¼Ã£â€šÂ¯", theme_light: "Ã£Æ’Â©Ã£â€šÂ¤Ã£Æ’Ë†",
-    visual_glass: "Ã£â€šÂ¬Ã£Æ’Â©Ã£â€šÂ¹", visual_opaque: "Ã¤Â¸Âéâ‚¬ÂÃ¦ËœÅ½",
-    appearance: "Ã¥Â¤â€“èÂ¦Â³", chooseStyleDesc: "Ã£â€šÂ¬Ã£Æ’Â©Ã£â€šÂ¹Ã£Ââ€¹Ã¤Â¸Âéâ‚¬ÂÃ¦ËœÅ½Ã£Ââ€¹Ã£â€šâ€™éÂÂ¸Ã¦Å Å¾",
-    themeToggleDesc: "Ã£Æ’Â©Ã£â€šÂ¤Ã£Æ’Ë†/Ã£Æ’â‚¬Ã£Æ’Â¼Ã£â€šÂ¯Ã£Æ’Â¢Ã£Æ’Â¼Ã£Æ’â€°Ã¥Ë†â€¡Ã¦â€ºÂ¿",
-    langSelectDesc: "èÂ¨â‚¬èÂªÅ¾Ã£â€šâ€™éÂÂ¸Ã¦Å Å¾Ã£Ââ€”Ã£ÂÂ¦Ã£ÂÂÃ£ÂÂ Ã£Ââ€¢Ã£Ââ€ž",
-    connectLcu: "Ã£â€šÂ¯Ã£Æ’Â©Ã£â€šÂ¤Ã£â€šÂ¢Ã£Æ’Â³Ã£Æ’Ë†Ã£ÂÂ«Ã¦Å½Â¥çÂ¶Å¡Ã¤Â¸Â­...", vs1w: "1éâ‚¬Â±éâ€“â€œÃ¥â€°Â",
+    overview: "├â┬ª├é┬ª├óÔé¼┼í├¿├é┬ª├é┬ü", champions: "├â┬ú├åÔÇÖ├é┬ü├â┬ú├åÔÇÖ├é┬ú├â┬ú├åÔÇÖ├é┬│├â┬ú├åÔÇÖ├óÔé¼┬Ø├â┬ú├óÔé¼┼í├é┬¬├â┬ú├åÔÇÖ├é┬│", prohub: "├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¡├â┬ú├åÔÇÖ├é┬Å├â┬ú├åÔÇÖ├óÔé¼ÔÇ£", draft: "├â┬ú├åÔÇÖ├óÔé¼┬░├â┬ú├åÔÇÖ├é┬®├â┬ú├åÔÇÖ├óÔé¼┬ó├â┬ú├åÔÇÖ├ïÔÇá", live: "├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├åÔÇÖ├óÔé¼ÔÇ£",
+    profile: "├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¡├â┬ú├åÔÇÖ├óÔé¼┬ó├â┬ú├óÔé¼┼í├é┬ú├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├é┬½", settings: "├¿├é┬¿├é┬¡├â┬Ñ├é┬«├à┬í", connected: "├â┬ª├à┬¢├é┬Ñ├º├é┬Â├à┬í├â┬ª├é┬©├ïÔÇá├â┬ú├é┬ü├é┬┐", disconnected: "├â┬ª├àÔÇ£├é┬¬├â┬ª├à┬¢├é┬Ñ├º├é┬Â├à┬í",
+    searchPlaceholder: "├â┬ú├óÔé¼┼í├é┬Á├â┬ú├åÔÇÖ├é┬ó├â┬ú├åÔÇÖ├à┬á├â┬ú├åÔÇÖ├é┬╝├â┬ª├é┬ñ├àÔÇ£├º├é┬┤├é┬ó...", visualStyle: "├â┬ú├åÔÇÖ├óÔé¼┼ô├â┬ú├óÔé¼┼í├é┬©├â┬ú├åÔÇÖ├é┬Ñ├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├é┬½", colorTheme: "├â┬ú├åÔÇÖ├óÔé¼┬á├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├à┬¥",
+    language: "├¿├é┬¿├óÔÇÜ┬¼├¿├é┬¬├à┬¥", startup: "├â┬ú├óÔé¼┼í├é┬╣├â┬ú├óÔé¼┼í├é┬┐├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├ïÔÇá├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├åÔÇÖ├â┬ú├åÔÇÖ├óÔé¼ÔÇØ", glass: "├â┬ú├óÔé¼┼í├é┬¼├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬╣", opaque: "├â┬ñ├é┬©├é┬ì├®├óÔÇÜ┬¼├é┬Å├â┬ª├ï┼ô├à┬¢",
+    themeToggle: "├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├åÔÇÖ├ïÔÇá/├â┬ú├åÔÇÖ├óÔÇÜ┬¼├â┬ú├åÔÇÖ├é┬╝├â┬ú├óÔé¼┼í├é┬»├â┬Ñ├ïÔÇá├óÔé¼┬í├â┬ª├óÔé¼┬║├é┬┐", chooseStyle: "├â┬ú├óÔé¼┼í├é┬╣├â┬ú├óÔé¼┼í├é┬┐├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├åÔÇÖ├é┬½├â┬ú├óÔé¼┼í├óÔé¼Ôäó├®├é┬ü├é┬©├â┬ª├à┬á├à┬¥",
+    chooseLang: "├¿├é┬¿├óÔÇÜ┬¼├¿├é┬¬├à┬¥├â┬ú├óÔé¼┼í├óÔé¼Ôäó├®├é┬ü├é┬©├â┬ª├à┬á├à┬¥", startupDesc: "Windows├¿├é┬Á├é┬À├â┬Ñ├óÔé¼┬╣├óÔé¼┬ó├â┬ª├óÔÇ×┬ó├óÔé¼┼í├â┬ú├é┬ü├é┬½├â┬Ñ├é┬«├à┬©├¿├é┬í├àÔÇÖ",
+    metaTierList: "├â┬ú├åÔÇÖ├é┬í├â┬ú├óÔé¼┼í├é┬┐├â┬ú├åÔÇÖ├óÔé¼┬á├â┬ú├óÔé¼┼í├é┬ú├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├é┬¬├â┬ú├óÔé¼┼í├é┬╣├â┬ú├åÔÇÖ├ïÔÇá", proReplays: "├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¡├â┬ú├åÔÇÖ├é┬¬├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¼├â┬ú├óÔé¼┼í├é┬ñ", waitingMatch: "├â┬ú├åÔÇÖ├à┬¥├â┬ú├åÔÇÖ├åÔÇÖ├â┬ú├åÔÇÖ├é┬ü├â┬Ñ├é┬¥├óÔé¼┬ª├â┬ª├é┬®├à┬©├â┬ñ├é┬©├é┬¡",
+    clientDisconnected: "├â┬ú├óÔé¼┼í├é┬»├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├é┬│├â┬ú├åÔÇÖ├ïÔÇá├â┬ª├àÔÇ£├é┬¬├â┬ª├à┬¢├é┬Ñ├º├é┬Â├à┬í", liveMatch: "├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├åÔÇÖ├óÔé¼ÔÇ£├â┬ú├åÔÇÖ├à┬¥├â┬ú├åÔÇÖ├åÔÇÖ├â┬ú├åÔÇÖ├é┬ü",
+    rank: "├â┬ú├åÔÇÖ├é┬®├â┬ú├åÔÇÖ├é┬│├â┬ú├óÔé¼┼í├é┬»", champion: "├â┬ú├åÔÇÖ├é┬ü├â┬ú├åÔÇÖ├é┬ú├â┬ú├åÔÇÖ├é┬│├â┬ú├åÔÇÖ├óÔé¼┬Ø├â┬ú├óÔé¼┼í├é┬¬├â┬ú├åÔÇÖ├é┬│", role: "├â┬ú├åÔÇÖ├é┬¡├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├é┬½", winrate: "├â┬Ñ├óÔé¼┬╣├é┬Ø├º├à┬¢├óÔé¼┬í", ban: "├â┬ú├åÔÇÖ├é┬É├â┬ú├åÔÇÖ├é┬│├º├à┬¢├óÔé¼┬í", tier: "├â┬ú├åÔÇÖ├óÔé¼┬á├â┬ú├óÔé¼┼í├é┬ú├â┬ú├óÔé¼┼í├é┬ó",
+    kda: "KDA", dpmScore: "Oracle├â┬ú├óÔé¼┼í├é┬╣├â┬ú├óÔé¼┼í├é┬│├â┬ú├óÔé¼┼í├é┬ó", kp: "KP", csm: "CSM", vision: "├¿├é┬ª├óÔé¼ÔÇ£├º├óÔé¼┬ó├àÔÇÖ├â┬ú├óÔé¼┼í├é┬╣├â┬ú├óÔé¼┼í├é┬│├â┬ú├óÔé¼┼í├é┬ó", gpm: "GPM",
+    match_history: "├¿├é┬®├é┬ª├â┬Ñ├é┬É├ïÔÇá├â┬Ñ├é┬▒├é┬Ñ├â┬ª├é┬¡├é┬┤", records: "├¿├é┬¿├ï┼ô├®├àÔÇÖ├é┬▓", coming_soon: "├¿├é┬┐├óÔé¼╦£├â┬ª├óÔé¼ÔÇØ├é┬Ñ├â┬Ñ├óÔé¼┬ª├é┬¼├®├óÔé¼ÔÇ£├óÔé¼┬╣...",
+    behavioral: "├¿├é┬í├àÔÇÖ├â┬Ñ├óÔé¼┬╣├óÔé¼┬ó", lens: "Oracle├â┬ú├åÔÇÖ├é┬¼├â┬ú├åÔÇÖ├é┬│├â┬ú├óÔé¼┼í├é┬║", performance: "├â┬ú├åÔÇÖ├é┬ü├â┬ú├åÔÇÖ├é┬ú├â┬ú├åÔÇÖ├é┬│├â┬ú├åÔÇÖ├óÔé¼┬Ø├â┬ú├óÔé¼┼í├é┬¬├â┬ú├åÔÇÖ├é┬│├â┬Ñ├ïÔÇá├é┬Ñ├â┬ú├åÔÇÖ├óÔé¼╦£├â┬ú├åÔÇÖ├óÔé¼┬ó├â┬ú├óÔé¼┼í├é┬®├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├à┬¥├â┬ú├åÔÇÖ├é┬│├â┬ú├óÔé¼┼í├é┬╣", pings: "├â┬Ñ├é┬É├ïÔÇá├¿├é┬¿├ïÔÇá├â┬ú├åÔÇÖ├óÔé¼┬Ø├â┬ú├åÔÇÖ├é┬│├â┬ú├óÔé¼┼í├é┬░",
+    all: "├â┬ú├é┬ü├óÔÇ×┬ó├â┬ú├é┬ü├é┬╣├â┬ú├é┬ü├é┬ª",
+    explore_oracle: "Oracle├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¬├â┬ú├óÔé¼┼í├óÔé¼Ôäó├â┬ª├à┬¢├é┬ó├º├é┬┤├é┬ó", season: "├â┬ú├óÔé¼┼í├é┬À├â┬ú├åÔÇÖ├é┬╝├â┬ú├óÔé¼┼í├é┬║├â┬ú├åÔÇÖ├é┬│15", owned_skins: "├â┬ª├óÔé¼┬░├óÔÇÜ┬¼├â┬ª├àÔÇÖ├é┬ü├â┬ú├óÔé¼┼í├é┬╣├â┬ú├óÔé¼┼í├é┬¡├â┬ú├åÔÇÖ├é┬│",
+    survivability: "├º├óÔé¼┬Ø├à┬©├â┬Ñ├é┬¡├ï┼ô├º├à┬¢├óÔé¼┬í", tf_deaths: "├®├óÔé¼┬║├óÔé¼┬á├â┬Ñ├óÔé¼┬║├é┬ú├â┬ª├ïÔÇá├é┬ª├â┬ú├åÔÇÖ├óÔé¼┬í├â┬ú├óÔé¼┼í├é┬╣",
+    mvp: "MVP", score: "├â┬ú├óÔé¼┼í├é┬╣├â┬ú├óÔé¼┼í├é┬│├â┬ú├óÔé¼┼í├é┬ó", deaths: "├â┬ú├åÔÇÖ├óÔé¼┬í├â┬ú├óÔé¼┼í├é┬╣", ka: "├â┬ú├óÔé¼┼í├é┬¡├â┬ú├åÔÇÖ├é┬½ + ├â┬ú├óÔé¼┼í├é┬ó├â┬ú├óÔé¼┼í├é┬À├â┬ú├óÔé¼┼í├é┬╣├â┬ú├åÔÇÖ├ïÔÇá",
+    early: "├â┬Ñ├é┬║├é┬Å├º├óÔé¼┬║├é┬ñ", mid: "├â┬ñ├é┬©├é┬¡├º├óÔé¼┬║├é┬ñ", late: "├º├é┬Á├óÔé¼┼í├º├óÔé¼┬║├é┬ñ", live_pro: "├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├åÔÇÖ├óÔé¼ÔÇ£├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¡", spectate: "├¿├é┬ª├é┬│├â┬ª├ïÔÇá├é┬ª",
+    replay: "├â┬ú├åÔÇÖ├é┬¬├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¼├â┬ú├óÔé¼┼í├é┬ñ", victory: "├â┬Ñ├óÔé¼┬╣├é┬Ø├â┬Ñ├ïÔÇá├é┬®", defeat: "├â┬ª├óÔé¼┬ó├óÔé¼ÔÇØ├â┬Ñ├àÔÇÖ├óÔé¼ÔÇØ", theme_dark: "├â┬ú├åÔÇÖ├óÔÇÜ┬¼├â┬ú├åÔÇÖ├é┬╝├â┬ú├óÔé¼┼í├é┬»", theme_light: "├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├åÔÇÖ├ïÔÇá",
+    visual_glass: "├â┬ú├óÔé¼┼í├é┬¼├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬╣", visual_opaque: "├â┬ñ├é┬©├é┬ì├®├óÔÇÜ┬¼├é┬Å├â┬ª├ï┼ô├à┬¢",
+    appearance: "├â┬Ñ├é┬ñ├óÔé¼ÔÇ£├¿├é┬ª├é┬│", chooseStyleDesc: "├â┬ú├óÔé¼┼í├é┬¼├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬╣├â┬ú├é┬ü├óÔé¼┬╣├â┬ñ├é┬©├é┬ì├®├óÔÇÜ┬¼├é┬Å├â┬ª├ï┼ô├à┬¢├â┬ú├é┬ü├óÔé¼┬╣├â┬ú├óÔé¼┼í├óÔé¼Ôäó├®├é┬ü├é┬©├â┬ª├à┬á├à┬¥",
+    themeToggleDesc: "├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├åÔÇÖ├ïÔÇá/├â┬ú├åÔÇÖ├óÔÇÜ┬¼├â┬ú├åÔÇÖ├é┬╝├â┬ú├óÔé¼┼í├é┬»├â┬ú├åÔÇÖ├é┬ó├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├óÔé¼┬░├â┬Ñ├ïÔÇá├óÔé¼┬í├â┬ª├óÔé¼┬║├é┬┐",
+    langSelectDesc: "├¿├é┬¿├óÔÇÜ┬¼├¿├é┬¬├à┬¥├â┬ú├óÔé¼┼í├óÔé¼Ôäó├®├é┬ü├é┬©├â┬ª├à┬á├à┬¥├â┬ú├é┬ü├óÔé¼ÔÇØ├â┬ú├é┬ü├é┬ª├â┬ú├é┬ü├é┬Å├â┬ú├é┬ü├é┬á├â┬ú├é┬ü├óÔé¼┬ó├â┬ú├é┬ü├óÔé¼┼¥",
+    connectLcu: "├â┬ú├óÔé¼┼í├é┬»├â┬ú├åÔÇÖ├é┬®├â┬ú├óÔé¼┼í├é┬ñ├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├é┬│├â┬ú├åÔÇÖ├ïÔÇá├â┬ú├é┬ü├é┬½├â┬ª├à┬¢├é┬Ñ├º├é┬Â├à┬í├â┬ñ├é┬©├é┬¡...", vs1w: "1├®├óÔÇÜ┬¼├é┬▒├®├óÔé¼ÔÇ£├óÔé¼┼ô├â┬Ñ├óÔé¼┬░├é┬ì",
     cat_core: "ORACLE CORE", cat_app: "ORACLE APP", cat_insights: "ORACLE INSIGHTS",
-    dashboard: "Ã¦Â¦â€šèÂ¦Â", tierlist: "Ã£Æ’â€ Ã£â€šÂ£Ã£â€šÂ¢Ã£Æ’ÂªÃ£â€šÂ¹Ã£Æ’Ë†", leaderboards: "Ã£Æ’Â©Ã£Æ’Â³Ã£â€šÂ­Ã£Æ’Â³Ã£â€šÂ°",
-    replays: "Ã£Æ’ÂªÃ£Æ’â€”Ã£Æ’Â¬Ã£â€šÂ¤", overlays: "Ã£â€šÂªÃ£Æ’Â¼Ã£Æ’ÂÃ£Æ’Â¼Ã£Æ’Â¬Ã£â€šÂ¤", collections: "Ã£â€šÂ³Ã£Æ’Â¬Ã£â€šÂ¯Ã£â€šÂ·Ã£Æ’Â§Ã£Æ’Â³",
-    esports: "eÃ£â€šÂ¹Ã£Æ’ÂÃ£Æ’Â¼Ã£Æ’â€ž", datastudio: "Ã£Æ’â€¡Ã£Æ’Â¼Ã£â€šÂ¿Ã£â€šÂ¹Ã£â€šÂ¿Ã£â€šÂ¸Ã£â€šÂª", matchups: "Ã£Æ’Å¾Ã£Æ’Æ’Ã£Æ’ÂÃ£â€šÂ¢Ã£Æ’Æ’Ã£Æ’â€”",
-    watch: "èÂ¦Â³Ã¦Ë†Â¦"
+    dashboard: "├â┬ª├é┬ª├óÔé¼┼í├¿├é┬ª├é┬ü", tierlist: "├â┬ú├åÔÇÖ├óÔé¼┬á├â┬ú├óÔé¼┼í├é┬ú├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├é┬¬├â┬ú├óÔé¼┼í├é┬╣├â┬ú├åÔÇÖ├ïÔÇá", leaderboards: "├â┬ú├åÔÇÖ├é┬®├â┬ú├åÔÇÖ├é┬│├â┬ú├óÔé¼┼í├é┬¡├â┬ú├åÔÇÖ├é┬│├â┬ú├óÔé¼┼í├é┬░",
+    replays: "├â┬ú├åÔÇÖ├é┬¬├â┬ú├åÔÇÖ├óÔé¼ÔÇØ├â┬ú├åÔÇÖ├é┬¼├â┬ú├óÔé¼┼í├é┬ñ", overlays: "├â┬ú├óÔé¼┼í├é┬¬├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├é┬É├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├é┬¼├â┬ú├óÔé¼┼í├é┬ñ", collections: "├â┬ú├óÔé¼┼í├é┬│├â┬ú├åÔÇÖ├é┬¼├â┬ú├óÔé¼┼í├é┬»├â┬ú├óÔé¼┼í├é┬À├â┬ú├åÔÇÖ├é┬º├â┬ú├åÔÇÖ├é┬│",
+    esports: "e├â┬ú├óÔé¼┼í├é┬╣├â┬ú├åÔÇÖ├é┬Ø├â┬ú├åÔÇÖ├é┬╝├â┬ú├åÔÇÖ├óÔé¼┼¥", datastudio: "├â┬ú├åÔÇÖ├óÔé¼┬í├â┬ú├åÔÇÖ├é┬╝├â┬ú├óÔé¼┼í├é┬┐├â┬ú├óÔé¼┼í├é┬╣├â┬ú├óÔé¼┼í├é┬┐├â┬ú├óÔé¼┼í├é┬©├â┬ú├óÔé¼┼í├é┬¬", matchups: "├â┬ú├åÔÇÖ├à┬¥├â┬ú├åÔÇÖ├åÔÇÖ├â┬ú├åÔÇÖ├é┬ü├â┬ú├óÔé¼┼í├é┬ó├â┬ú├åÔÇÖ├åÔÇÖ├â┬ú├åÔÇÖ├óÔé¼ÔÇØ",
+    watch: "├¿├é┬ª├é┬│├â┬ª├ïÔÇá├é┬ª"
   },
   ko: {
-    overview: "ÃªÂ°Å“Ã¬Å¡â€", champions: "Ã¬Â±â€Ã­â€Â¼Ã¬â€“Â¸", prohub: "Ã­â€â€žëÂ¡Å“ Ã­â€”Ë†ëÂ¸Å’", draft: "ëâ€œÅ“ëÅ¾ËœÃ­â€â€žÃ­Å Â¸", live: "ëÂÂ¼Ã¬ÂÂ´ëÂ¸Å’",
-    profile: "Ã­â€â€žëÂ¡Å“Ã­â€¢â€ž", settings: "Ã¬â€žÂ¤Ã¬Â â€¢", connected: "Ã¬â€”Â°ÃªÂ²Â°ëÂÂ¨", disconnected: "Ã¬â€”Â°ÃªÂ²Â° ëÂÅ ÃªÂ¹â‚¬",
-    searchPlaceholder: "Ã¬â€ Å’Ã­â„¢ËœÃ¬â€šÂ¬ ÃªÂ²â‚¬Ã¬Æ’â€°...", visualStyle: "ëÂ¹â€žÃ¬Â£Â¼Ã¬â€“Â¼ Ã¬Å Â¤Ã­Æ’â‚¬Ã¬ÂÂ¼", colorTheme: "Ã­â€¦Å’ëÂ§Ë†",
-    language: "Ã¬â€“Â¸Ã¬â€“Â´", startup: "Ã¬â€¹Å“Ã¬Å¾â€˜ Ã­â€â€žëÂ¡Å“ÃªÂ·Â¸ëÅ¾Â¨", glass: "ÃªÂ¸â‚¬ëÅ¾ËœÃ¬Å Â¤", opaque: "ëÂ¶Ë†Ã­Ë†Â¬ëÂªâ€¦",
-    themeToggle: "ëÂÂ¼Ã¬ÂÂ´Ã­Å Â¸/ëâ€¹Â¤Ã­ÂÂ¬ Ã¬Â â€žÃ­â„¢Ëœ", chooseStyle: "Ã¬Å Â¤Ã­Æ’â‚¬Ã¬ÂÂ¼ Ã¬â€žÂ Ã­Æ’Â",
-    chooseLang: "Ã¬â€“Â¸Ã¬â€“Â´ Ã¬â€žÂ Ã­Æ’Â", startupDesc: "Windows Ã¬â€¹Å“Ã¬Å¾â€˜ Ã¬â€¹Å“ Ã¬Å¾ÂëÂâ„¢ Ã¬â€¹Â¤Ã­â€“â€°",
-    metaTierList: "ëÂ©â€Ã­Æ’â‚¬ Ã­â€¹Â°Ã¬â€“Â´ ëÂ¦Â¬Ã¬Å Â¤Ã­Å Â¸", proReplays: "Ã­â€â€žëÂ¡Å“ ëÂ¦Â¬Ã­â€Å’ëÂ Ë†Ã¬ÂÂ´", waitingMatch: "ëÂ§Â¤Ã¬Â¹Ëœ ëÅ’â‚¬ÃªÂ¸Â° Ã¬Â¤â€˜",
-    clientDisconnected: "Ã­ÂÂ´ëÂÂ¼Ã¬ÂÂ´Ã¬â€“Â¸Ã­Å Â¸ Ã¬â€”Â°ÃªÂ²Â° ëÂÅ ÃªÂ¹â‚¬", liveMatch: "ëÂÂ¼Ã¬ÂÂ´ëÂ¸Å’ ëÂ§Â¤Ã¬Â¹Ëœ",
-    rank: "Ã¬Ë†Å“Ã¬Å“â€ž", champion: "Ã¬Â±â€Ã­â€Â¼Ã¬â€“Â¸", role: "Ã¬â€”Â­Ã­â€¢Â ", winrate: "Ã¬Å Â¹ëÂ¥Â ", ban: "ëÂ°Â´Ã¬Å“Â¨", tier: "Ã­â€¹Â°Ã¬â€“Â´",
-    kda: "KDA", dpmScore: "Oracle Ã¬Â ÂÃ¬Ë†Ëœ", kp: "KP", csm: "CSM", vision: "Ã¬â€¹Å“Ã¬â€¢Â¼ Ã¬Â ÂÃ¬Ë†Ëœ", gpm: "GPM",
-    match_history: "ÃªÂ²Â½ÃªÂ¸Â° ÃªÂ¸Â°ëÂ¡Â", records: "ÃªÂ¸Â°ëÂ¡Â", coming_soon: "Ã¬Â¶Å“Ã¬â€¹Å“ Ã¬ËœË†Ã¬Â â€¢...",
-    behavioral: "Ã­â€“â€°ëÂâ„¢", lens: "Oracle ëÂ Å’Ã¬Â¦Ë†", performance: "Ã¬Â±â€Ã­â€Â¼Ã¬â€“Â¸ëÂ³â€ž Ã¬â€žÂ±ëÅ Â¥", pings: "Ã¬Â´Â Ã­â€¢â€˜",
-    all: "ëÂªÂ¨ëâ€˜Â",
-    explore_oracle: "Oracle Ã¬â€¢Â± Ã­Æ’ÂÃ¬Æ’â€°", season: "Ã¬â€¹Å“Ã¬Â¦Å’ 15", owned_skins: "ëÂ³Â´Ã¬Å“Â  Ã¬Å Â¤Ã­â€šÂ¨",
-    survivability: "Ã¬Æ’ÂÃ¬Â¡Â´ëÂ Â¥", tf_deaths: "Ã­â€¢Å“Ã­Æ’â‚¬ ëÂÂ°Ã¬Å Â¤",
-    mvp: "MVP", score: "Ã¬Â ÂÃ¬Ë†Ëœ", deaths: "ëÂÂ°Ã¬Å Â¤", ka: "Ã­â€šÂ¬ + Ã¬â€“Â´Ã¬â€¹Å“Ã¬Å Â¤Ã­Å Â¸",
-    early: "Ã¬Â´Ë†ëÂ°Ëœ", mid: "Ã¬Â¤â€˜ëÂ°Ëœ", late: "Ã­â€ºâ€žëÂ°Ëœ", live_pro: "ëÂÂ¼Ã¬ÂÂ´ëÂ¸Å’ Ã­â€â€žëÂ¡Å“", spectate: "ÃªÂ´â‚¬Ã¬Â â€ž",
-    replay: "ëÂ¦Â¬Ã­â€Å’ëÂ Ë†Ã¬ÂÂ´", victory: "Ã¬Å Â¹ëÂ¦Â¬", defeat: "Ã­Å’Â¨ëÂ°Â°", theme_dark: "ëâ€¹Â¤Ã­ÂÂ¬", theme_light: "ëÂÂ¼Ã¬ÂÂ´Ã­Å Â¸",
-    visual_glass: "ÃªÂ¸â‚¬ëÅ¾ËœÃ¬Å Â¤", visual_opaque: "ëÂ¶Ë†Ã­Ë†Â¬ëÂªâ€¦",
-    appearance: "Ã¬â„¢Â¸ÃªÂ´â‚¬", chooseStyleDesc: "ÃªÂ¸â‚¬ëÅ¾ËœÃ¬Å Â¤ ëËœÂëÅ â€ Ã¬â€ â€ëÂ¦Â¬ëâ€œÅ“ Ã¬Å Â¤Ã­Æ’â‚¬Ã¬ÂÂ¼ Ã¬â€žÂ Ã­Æ’Â",
-    themeToggleDesc: "ëÂÂ¼Ã¬ÂÂ´Ã­Å Â¸/ëâ€¹Â¤Ã­ÂÂ¬ ëÂªÂ¨ëâ€œÅ“ Ã¬Â â€žÃ­â„¢Ëœ",
-    langSelectDesc: "Ã¬â€“Â¸Ã¬â€“Â´ëÂ¥Â¼ Ã¬â€žÂ Ã­Æ’ÂÃ­â€¢ËœÃ¬â€žÂ¸Ã¬Å¡â€",
-    connectLcu: "ëÂ¦Â¬ÃªÂ·Â¸ Ã­ÂÂ´ëÂÂ¼Ã¬ÂÂ´Ã¬â€“Â¸Ã­Å Â¸ Ã¬â€”Â°ÃªÂ²Â° Ã¬Â¤â€˜...", vs1w: "1Ã¬Â£Â¼ Ã¬Â â€ž",
+    overview: "├â┬¬├é┬░├àÔÇ£├â┬¼├à┬í├óÔé¼┬Ø", champions: "├â┬¼├é┬▒├óÔé¼┬Ø├â┬¡├óÔé¼┬Ø├é┬╝├â┬¼├óÔé¼ÔÇ£├é┬©", prohub: "├â┬¡├óÔé¼┬Ø├óÔé¼┼¥├½├é┬í├àÔÇ£ ├â┬¡├óÔé¼ÔÇØ├ïÔÇá├½├é┬©├àÔÇÖ", draft: "├½├óÔé¼┼ô├àÔÇ£├½├à┬¥├ï┼ô├â┬¡├óÔé¼┬Ø├óÔé¼┼¥├â┬¡├à┬á├é┬©", live: "├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├½├é┬©├àÔÇÖ",
+    profile: "├â┬¡├óÔé¼┬Ø├óÔé¼┼¥├½├é┬í├àÔÇ£├â┬¡├óÔé¼┬ó├óÔé¼┼¥", settings: "├â┬¼├óÔé¼┼¥├é┬ñ├â┬¼├é┬á├óÔé¼┬ó", connected: "├â┬¼├óÔé¼ÔÇØ├é┬░├â┬¬├é┬▓├é┬░├½├é┬É├é┬¿", disconnected: "├â┬¼├óÔé¼ÔÇØ├é┬░├â┬¬├é┬▓├é┬░ ├½├é┬ü├à┬á├â┬¬├é┬╣├óÔÇÜ┬¼",
+    searchPlaceholder: "├â┬¼├óÔé¼┬á├àÔÇÖ├â┬¡├óÔÇ×┬ó├ï┼ô├â┬¼├óÔé¼┼í├é┬¼ ├â┬¬├é┬▓├óÔÇÜ┬¼├â┬¼├åÔÇÖ├óÔé¼┬░...", visualStyle: "├½├é┬╣├óÔé¼┼¥├â┬¼├é┬ú├é┬╝├â┬¼├óÔé¼ÔÇ£├é┬╝ ├â┬¼├à┬á├é┬ñ├â┬¡├åÔÇÖ├óÔÇÜ┬¼├â┬¼├é┬Ø├é┬╝", colorTheme: "├â┬¡├óÔé¼┬ª├àÔÇÖ├½├é┬º├ïÔÇá",
+    language: "├â┬¼├óÔé¼ÔÇ£├é┬©├â┬¼├óÔé¼ÔÇ£├é┬┤", startup: "├â┬¼├óÔé¼┬╣├àÔÇ£├â┬¼├à┬¥├óÔé¼╦£ ├â┬¡├óÔé¼┬Ø├óÔé¼┼¥├½├é┬í├àÔÇ£├â┬¬├é┬À├é┬©├½├à┬¥├é┬¿", glass: "├â┬¬├é┬©├óÔÇÜ┬¼├½├à┬¥├ï┼ô├â┬¼├à┬á├é┬ñ", opaque: "├½├é┬Â├ïÔÇá├â┬¡├ïÔÇá├é┬¼├½├é┬¬├óÔé¼┬ª",
+    themeToggle: "├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├â┬¡├à┬á├é┬©/├½├óÔé¼┬╣├é┬ñ├â┬¡├é┬ü├é┬¼ ├â┬¼├é┬á├óÔé¼┼¥├â┬¡├óÔÇ×┬ó├ï┼ô", chooseStyle: "├â┬¼├à┬á├é┬ñ├â┬¡├åÔÇÖ├óÔÇÜ┬¼├â┬¼├é┬Ø├é┬╝ ├â┬¼├óÔé¼┼¥├é┬á├â┬¡├åÔÇÖ├é┬Ø",
+    chooseLang: "├â┬¼├óÔé¼ÔÇ£├é┬©├â┬¼├óÔé¼ÔÇ£├é┬┤ ├â┬¼├óÔé¼┼¥├é┬á├â┬¡├åÔÇÖ├é┬Ø", startupDesc: "Windows ├â┬¼├óÔé¼┬╣├àÔÇ£├â┬¼├à┬¥├óÔé¼╦£ ├â┬¼├óÔé¼┬╣├àÔÇ£ ├â┬¼├à┬¥├é┬É├½├é┬Å├óÔÇ×┬ó ├â┬¼├óÔé¼┬╣├é┬ñ├â┬¡├óÔé¼ÔÇ£├óÔé¼┬░",
+    metaTierList: "├½├é┬®├óÔé¼┬Ø├â┬¡├åÔÇÖ├óÔÇÜ┬¼ ├â┬¡├óÔé¼┬╣├é┬░├â┬¼├óÔé¼ÔÇ£├é┬┤ ├½├é┬ª├é┬¼├â┬¼├à┬á├é┬ñ├â┬¡├à┬á├é┬©", proReplays: "├â┬¡├óÔé¼┬Ø├óÔé¼┼¥├½├é┬í├àÔÇ£ ├½├é┬ª├é┬¼├â┬¡├óÔé¼┬Ø├àÔÇÖ├½├é┬á├ïÔÇá├â┬¼├é┬Ø├é┬┤", waitingMatch: "├½├é┬º├é┬ñ├â┬¼├é┬╣├ï┼ô ├½├àÔÇÖ├óÔÇÜ┬¼├â┬¬├é┬©├é┬░ ├â┬¼├é┬ñ├óÔé¼╦£",
+    clientDisconnected: "├â┬¡├é┬ü├é┬┤├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├â┬¼├óÔé¼ÔÇ£├é┬©├â┬¡├à┬á├é┬© ├â┬¼├óÔé¼ÔÇØ├é┬░├â┬¬├é┬▓├é┬░ ├½├é┬ü├à┬á├â┬¬├é┬╣├óÔÇÜ┬¼", liveMatch: "├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├½├é┬©├àÔÇÖ ├½├é┬º├é┬ñ├â┬¼├é┬╣├ï┼ô",
+    rank: "├â┬¼├ïÔÇá├àÔÇ£├â┬¼├àÔÇ£├óÔé¼┼¥", champion: "├â┬¼├é┬▒├óÔé¼┬Ø├â┬¡├óÔé¼┬Ø├é┬╝├â┬¼├óÔé¼ÔÇ£├é┬©", role: "├â┬¼├óÔé¼ÔÇØ├é┬¡├â┬¡├óÔé¼┬ó├é┬á", winrate: "├â┬¼├à┬á├é┬╣├½├é┬Ñ├é┬á", ban: "├½├é┬░├é┬┤├â┬¼├àÔÇ£├é┬¿", tier: "├â┬¡├óÔé¼┬╣├é┬░├â┬¼├óÔé¼ÔÇ£├é┬┤",
+    kda: "KDA", dpmScore: "Oracle ├â┬¼├é┬á├é┬É├â┬¼├ïÔÇá├ï┼ô", kp: "KP", csm: "CSM", vision: "├â┬¼├óÔé¼┬╣├àÔÇ£├â┬¼├óÔé¼┬ó├é┬╝ ├â┬¼├é┬á├é┬É├â┬¼├ïÔÇá├ï┼ô", gpm: "GPM",
+    match_history: "├â┬¬├é┬▓├é┬¢├â┬¬├é┬©├é┬░ ├â┬¬├é┬©├é┬░├½├é┬í├é┬Ø", records: "├â┬¬├é┬©├é┬░├½├é┬í├é┬Ø", coming_soon: "├â┬¼├é┬Â├àÔÇ£├â┬¼├óÔé¼┬╣├àÔÇ£ ├â┬¼├ï┼ô├ïÔÇá├â┬¼├é┬á├óÔé¼┬ó...",
+    behavioral: "├â┬¡├óÔé¼ÔÇ£├óÔé¼┬░├½├é┬Å├óÔÇ×┬ó", lens: "Oracle ├½├é┬á├àÔÇÖ├â┬¼├é┬ª├ïÔÇá", performance: "├â┬¼├é┬▒├óÔé¼┬Ø├â┬¡├óÔé¼┬Ø├é┬╝├â┬¼├óÔé¼ÔÇ£├é┬©├½├é┬│├óÔé¼┼¥ ├â┬¼├óÔé¼┼¥├é┬▒├½├à┬á├é┬Ñ", pings: "├â┬¼├é┬┤├é┬Ø ├â┬¡├óÔé¼┬ó├óÔé¼╦£",
+    all: "├½├é┬¬├é┬¿├½├óÔé¼╦£├é┬É",
+    explore_oracle: "Oracle ├â┬¼├óÔé¼┬ó├é┬▒ ├â┬¡├åÔÇÖ├é┬É├â┬¼├åÔÇÖ├óÔé¼┬░", season: "├â┬¼├óÔé¼┬╣├àÔÇ£├â┬¼├é┬ª├àÔÇÖ 15", owned_skins: "├½├é┬│├é┬┤├â┬¼├àÔÇ£├é┬á ├â┬¼├à┬á├é┬ñ├â┬¡├óÔé¼┼í├é┬¿",
+    survivability: "├â┬¼├åÔÇÖ├é┬Ø├â┬¼├é┬í├é┬┤├½├é┬á├é┬Ñ", tf_deaths: "├â┬¡├óÔé¼┬ó├àÔÇ£├â┬¡├åÔÇÖ├óÔÇÜ┬¼ ├½├é┬ì├é┬░├â┬¼├à┬á├é┬ñ",
+    mvp: "MVP", score: "├â┬¼├é┬á├é┬É├â┬¼├ïÔÇá├ï┼ô", deaths: "├½├é┬ì├é┬░├â┬¼├à┬á├é┬ñ", ka: "├â┬¡├óÔé¼┼í├é┬¼ + ├â┬¼├óÔé¼ÔÇ£├é┬┤├â┬¼├óÔé¼┬╣├àÔÇ£├â┬¼├à┬á├é┬ñ├â┬¡├à┬á├é┬©",
+    early: "├â┬¼├é┬┤├ïÔÇá├½├é┬░├ï┼ô", mid: "├â┬¼├é┬ñ├óÔé¼╦£├½├é┬░├ï┼ô", late: "├â┬¡├óÔé¼┬║├óÔé¼┼¥├½├é┬░├ï┼ô", live_pro: "├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├½├é┬©├àÔÇÖ ├â┬¡├óÔé¼┬Ø├óÔé¼┼¥├½├é┬í├àÔÇ£", spectate: "├â┬¬├é┬┤├óÔÇÜ┬¼├â┬¼├é┬á├óÔé¼┼¥",
+    replay: "├½├é┬ª├é┬¼├â┬¡├óÔé¼┬Ø├àÔÇÖ├½├é┬á├ïÔÇá├â┬¼├é┬Ø├é┬┤", victory: "├â┬¼├à┬á├é┬╣├½├é┬ª├é┬¼", defeat: "├â┬¡├àÔÇÖ├é┬¿├½├é┬░├é┬░", theme_dark: "├½├óÔé¼┬╣├é┬ñ├â┬¡├é┬ü├é┬¼", theme_light: "├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├â┬¡├à┬á├é┬©",
+    visual_glass: "├â┬¬├é┬©├óÔÇÜ┬¼├½├à┬¥├ï┼ô├â┬¼├à┬á├é┬ñ", visual_opaque: "├½├é┬Â├ïÔÇá├â┬¡├ïÔÇá├é┬¼├½├é┬¬├óÔé¼┬ª",
+    appearance: "├â┬¼├óÔÇ×┬ó├é┬©├â┬¬├é┬┤├óÔÇÜ┬¼", chooseStyleDesc: "├â┬¬├é┬©├óÔÇÜ┬¼├½├à┬¥├ï┼ô├â┬¼├à┬á├é┬ñ ├½├ï┼ô├é┬É├½├à┬á├óÔé¼┬Ø ├â┬¼├óÔé¼┬á├óÔé¼┬Ø├½├é┬ª├é┬¼├½├óÔé¼┼ô├àÔÇ£ ├â┬¼├à┬á├é┬ñ├â┬¡├åÔÇÖ├óÔÇÜ┬¼├â┬¼├é┬Ø├é┬╝ ├â┬¼├óÔé¼┼¥├é┬á├â┬¡├åÔÇÖ├é┬Ø",
+    themeToggleDesc: "├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├â┬¡├à┬á├é┬©/├½├óÔé¼┬╣├é┬ñ├â┬¡├é┬ü├é┬¼ ├½├é┬¬├é┬¿├½├óÔé¼┼ô├àÔÇ£ ├â┬¼├é┬á├óÔé¼┼¥├â┬¡├óÔÇ×┬ó├ï┼ô",
+    langSelectDesc: "├â┬¼├óÔé¼ÔÇ£├é┬©├â┬¼├óÔé¼ÔÇ£├é┬┤├½├é┬Ñ├é┬╝ ├â┬¼├óÔé¼┼¥├é┬á├â┬¡├åÔÇÖ├é┬Ø├â┬¡├óÔé¼┬ó├ï┼ô├â┬¼├óÔé¼┼¥├é┬©├â┬¼├à┬í├óÔé¼┬Ø",
+    connectLcu: "├½├é┬ª├é┬¼├â┬¬├é┬À├é┬© ├â┬¡├é┬ü├é┬┤├½├é┬Ø├é┬╝├â┬¼├é┬Ø├é┬┤├â┬¼├óÔé¼ÔÇ£├é┬©├â┬¡├à┬á├é┬© ├â┬¼├óÔé¼ÔÇØ├é┬░├â┬¬├é┬▓├é┬░ ├â┬¼├é┬ñ├óÔé¼╦£...", vs1w: "1├â┬¼├é┬ú├é┬╝ ├â┬¼├é┬á├óÔé¼┼¥",
     cat_core: "ORACLE CORE", cat_app: "ORACLE APP", cat_insights: "ORACLE INSIGHTS",
-    dashboard: "ÃªÂ°Å“Ã¬Å¡â€", tierlist: "Ã­â€¹Â°Ã¬â€“Â´ëÂ¦Â¬Ã¬Å Â¤Ã­Å Â¸", leaderboards: "ëÅ¾Â­Ã­â€šÂ¹",
-    replays: "ëÂ¦Â¬Ã­â€Å’ëÂ Ë†Ã¬ÂÂ´", overlays: "Ã¬ËœÂ¤ëÂ²â€žëÂ Ë†Ã¬ÂÂ´", collections: "Ã¬Â»Â¬ëÂ â€°Ã¬â€¦Ëœ",
-    esports: "eÃ¬Å Â¤Ã­ÂÂ¬Ã¬Â¸Â ", datastudio: "ëÂÂ°Ã¬ÂÂ´Ã­â€žÂ° Ã¬Å Â¤Ã­Å Å“ëâ€â€Ã¬ËœÂ¤", matchups: "ëÂ§Â¤Ã¬Â¹ËœÃ¬â€”â€¦",
-    watch: "ÃªÂ´â‚¬Ã¬Â â€ž"
+    dashboard: "├â┬¬├é┬░├àÔÇ£├â┬¼├à┬í├óÔé¼┬Ø", tierlist: "├â┬¡├óÔé¼┬╣├é┬░├â┬¼├óÔé¼ÔÇ£├é┬┤├½├é┬ª├é┬¼├â┬¼├à┬á├é┬ñ├â┬¡├à┬á├é┬©", leaderboards: "├½├à┬¥├é┬¡├â┬¡├óÔé¼┼í├é┬╣",
+    replays: "├½├é┬ª├é┬¼├â┬¡├óÔé¼┬Ø├àÔÇÖ├½├é┬á├ïÔÇá├â┬¼├é┬Ø├é┬┤", overlays: "├â┬¼├ï┼ô├é┬ñ├½├é┬▓├óÔé¼┼¥├½├é┬á├ïÔÇá├â┬¼├é┬Ø├é┬┤", collections: "├â┬¼├é┬╗├é┬¼├½├é┬á├óÔé¼┬░├â┬¼├óÔé¼┬ª├ï┼ô",
+    esports: "e├â┬¼├à┬á├é┬ñ├â┬¡├é┬Å├é┬¼├â┬¼├é┬©├é┬á", datastudio: "├½├é┬ì├é┬░├â┬¼├é┬Ø├é┬┤├â┬¡├óÔé¼┼¥├é┬░ ├â┬¼├à┬á├é┬ñ├â┬¡├à┬á├àÔÇ£├½├óÔé¼┬Ø├óÔé¼┬Ø├â┬¼├ï┼ô├é┬ñ", matchups: "├½├é┬º├é┬ñ├â┬¼├é┬╣├ï┼ô├â┬¼├óÔé¼ÔÇØ├óÔé¼┬ª",
+    watch: "├â┬¬├é┬┤├óÔÇÜ┬¼├â┬¼├é┬á├óÔé¼┼¥"
   },
   zh: {
-    overview: "Ã¦Â¦â€šèÂ§Ë†", champions: "èâ€¹Â±éâ€ºâ€ž", prohub: "èÂÅ’Ã¤Â¸Å¡Ã¤Â¸Â­Ã¥Â¿Æ’", draft: "BPçÅ½Â¯èÅ â€š", live: "Ã¥Â®Å¾Ã¦â€”Â¶Ã¥Â¯Â¹Ã¥Â±â‚¬",
-    profile: "Ã¤Â¸ÂªÃ¤ÂºÂºèÂµâ€žÃ¦â€“â„¢", settings: "èÂ®Â¾çÂ½Â®", connected: "Ã¥Â·Â²èÂ¿Å¾Ã¦Å½Â¥", disconnected: "Ã¦Å“ÂªèÂ¿Å¾Ã¦Å½Â¥",
-    searchPlaceholder: "Ã¦ÂÅ“çÂ´Â¢Ã¥ÂÂ¬Ã¥â€Â¤Ã¥Â¸Ë†...", visualStyle: "èÂ§â€ èÂ§â€°éÂ£Å½Ã¦Â Â¼", colorTheme: "éÂ¢Å“èâ€°Â²Ã¤Â¸Â»éÂ¢Ëœ",
-    language: "èÂ¯Â­èÂ¨â‚¬", startup: "Ã¥Â¼â‚¬Ã¦Å“Âºèâ€¡ÂªÃ¥ÂÂ¯", glass: "çÅ½Â»çâ€™Æ’", opaque: "Ã¤Â¸Âéâ‚¬ÂÃ¦ËœÅ½",
-    themeToggle: "Ã¥Ë†â€¡Ã¦ÂÂ¢ Ã¤ÂºÂ®èâ€°Â²/Ã¦Å¡â€”èâ€°Â²", chooseStyle: "éâ‚¬â€°Ã¦â€¹Â©çÅ½Â»çâ€™Æ’Ã¦Ë†â€“Ã¤Â¸Âéâ‚¬ÂÃ¦ËœÅ½éÂ£Å½Ã¦Â Â¼",
-    chooseLang: "éâ‚¬â€°Ã¦â€¹Â©Ã¤Â½Â çÅ¡â€žèÂ¯Â­èÂ¨â‚¬", startupDesc: "WindowsÃ¥ÂÂ¯Ã¥Å Â¨Ã¦â€”Â¶èâ€¡ÂªÃ¥Å Â¨èÂ¿ÂèÂ¡Å’",
-    metaTierList: "çâ€°Ë†Ã¦Å“Â¬Ã¦Â¢Â¯éËœÅ¸", proReplays: "èÂÅ’Ã¤Â¸Å¡Ã¥â€ºÅ¾Ã¦â€Â¾", waitingMatch: "çÂ­â€°Ã¥Â¾â€¦Ã¥Â¯Â¹Ã¥Â±â‚¬",
-    clientDisconnected: "Ã¥Â®Â¢Ã¦Ë†Â·çÂ«Â¯Ã¦Å“ÂªèÂ¿Å¾Ã¦Å½Â¥", liveMatch: "Ã¥Â®Å¾Ã¦â€”Â¶Ã¥Â¯Â¹Ã¥Â±â‚¬",
-    rank: "Ã¦Å½â€™Ã¥ÂÂ", champion: "èâ€¹Â±éâ€ºâ€ž", role: "Ã¤Â½ÂçÂ½Â®", winrate: "èÆ’Å“çÅ½â€¡", ban: "çÂ¦Âçâ€Â¨çÅ½â€¡", tier: "Ã¦Â¢Â¯éËœÅ¸",
-    kda: "KDA", dpmScore: "OracleèÂ¯â€žÃ¥Ë†â€ ", kp: "Ã¥Ââ€šÃ¥â€ºÂ¢çÅ½â€¡", csm: "Ã¥Ë†â€ Ã¥Ââ€¡èÂ¡Â¥Ã¥Ë†â‚¬", vision: "èÂ§â€ éâ€¡Å½Ã¥Â¾â€”Ã¥Ë†â€ ", gpm: "Ã¥Ë†â€ Ã¥Ââ€¡çÂ»ÂÃ¦ÂµÅ½",
-    match_history: "Ã¥Â¯Â¹Ã¥Â±â‚¬Ã¥Å½â€ Ã¥ÂÂ²", records: "èÂ®Â°Ã¥Â½â€¢", coming_soon: "Ã¥ÂÂ³Ã¥Â°â€ Ã¦Å½Â¨Ã¥â€¡Âº...",
-    behavioral: "èÂ¡Å’Ã¤Â¸Âº", lens: "Oracleéâ‚¬Âéâ€¢Å“", performance: "èâ€¹Â±éâ€ºâ€žèÂ¡Â¨çÅ½Â°", pings: "Ã¦â‚¬Â»Ã¤Â¿Â¡Ã¥ÂÂ·",
-    all: "Ã¥â€¦Â¨éÆ’Â¨",
-    explore_oracle: "Ã¦Å½Â¢çÂ´Â¢OracleÃ¥Âºâ€çâ€Â¨", season: "èÂµâ€ºÃ¥Â­Â£ 15", owned_skins: "Ã¥Â·Â²Ã¦â€¹Â¥Ã¦Å“â€°çÅ¡â€žçÅ¡Â®èâ€šÂ¤",
-    survivability: "çâ€Å¸Ã¥Â­ËœèÆ’Â½Ã¥Å â€º", tf_deaths: "Ã¥â€ºÂ¢Ã¦Ë†ËœÃ¦Â­Â»Ã¤ÂºÂ¡",
-    mvp: "MVP", score: "èÂ¯â€žÃ¥Ë†â€ ", deaths: "Ã¦Â­Â»Ã¤ÂºÂ¡", ka: "Ã¥â€¡Â»Ã¦Ââ‚¬ + Ã¥Å Â©Ã¦â€Â»",
-    early: "Ã¥â€°ÂÃ¦Å“Å¸", mid: "Ã¤Â¸Â­Ã¦Å“Å¸", late: "Ã¥ÂÅ½Ã¦Å“Å¸", live_pro: "èÂÅ’Ã¤Â¸Å¡çâ€ºÂ´Ã¦â€™Â­", spectate: "èÂ§â€šÃ¦Ë†Ëœ",
-    replay: "Ã¥â€ºÅ¾Ã¦â€Â¾", victory: "èÆ’Å“Ã¥Ë†Â©", defeat: "Ã¥Â¤Â±èÂ´Â¥", theme_dark: "Ã¦Â·Â±èâ€°Â²", theme_light: "Ã¦Âµâ€¦èâ€°Â²",
-    visual_glass: "çÅ½Â»çâ€™Æ’", visual_opaque: "Ã¤Â¸Âéâ‚¬ÂÃ¦ËœÅ½",
-    appearance: "Ã¥Â¤â€“èÂ§â€š", chooseStyleDesc: "éâ‚¬â€°Ã¦â€¹Â©çÅ½Â»çâ€™Æ’Ã¦Ë†â€“Ã¤Â¸Âéâ‚¬ÂÃ¦ËœÅ½éÂ£Å½Ã¦Â Â¼",
-    themeToggleDesc: "Ã¥Ë†â€¡Ã¦ÂÂ¢Ã¤ÂºÂ®èâ€°Â²/Ã¦Å¡â€”èâ€°Â²Ã¦Â¨Â¡Ã¥Â¼Â",
-    langSelectDesc: "éâ‚¬â€°Ã¦â€¹Â©Ã¤Â½Â çÅ¡â€žéÂ¦â€“éâ‚¬â€°èÂ¯Â­èÂ¨â‚¬",
-    connectLcu: "èÂ¿Å¾Ã¦Å½Â¥èâ€¹Â±éâ€ºâ€žèÂâ€çâ€ºÅ¸Ã¥Â®Â¢Ã¦Ë†Â·çÂ«Â¯...", vs1w: "1Ã¥â€˜Â¨Ã¥â€°Â",
+    overview: "├â┬ª├é┬ª├óÔé¼┼í├¿├é┬º├ïÔÇá", champions: "├¿├óÔé¼┬╣├é┬▒├®├óÔé¼┬║├óÔé¼┼¥", prohub: "├¿├é┬ü├àÔÇÖ├â┬ñ├é┬©├à┬í├â┬ñ├é┬©├é┬¡├â┬Ñ├é┬┐├åÔÇÖ", draft: "BP├º├à┬¢├é┬»├¿├à┬á├óÔé¼┼í", live: "├â┬Ñ├é┬«├à┬¥├â┬ª├óÔé¼ÔÇØ├é┬Â├â┬Ñ├é┬»├é┬╣├â┬Ñ├é┬▒├óÔÇÜ┬¼",
+    profile: "├â┬ñ├é┬©├é┬¬├â┬ñ├é┬║├é┬║├¿├é┬Á├óÔé¼┼¥├â┬ª├óÔé¼ÔÇ£├óÔÇ×┬ó", settings: "├¿├é┬«├é┬¥├º├é┬¢├é┬«", connected: "├â┬Ñ├é┬À├é┬▓├¿├é┬┐├à┬¥├â┬ª├à┬¢├é┬Ñ", disconnected: "├â┬ª├àÔÇ£├é┬¬├¿├é┬┐├à┬¥├â┬ª├à┬¢├é┬Ñ",
+    searchPlaceholder: "├â┬ª├é┬É├àÔÇ£├º├é┬┤├é┬ó├â┬Ñ├é┬Å├é┬¼├â┬Ñ├óÔé¼┬Ø├é┬ñ├â┬Ñ├é┬©├ïÔÇá...", visualStyle: "├¿├é┬º├óÔé¼┬á├¿├é┬º├óÔé¼┬░├®├é┬ú├à┬¢├â┬ª├é┬á├é┬╝", colorTheme: "├®├é┬ó├àÔÇ£├¿├óÔé¼┬░├é┬▓├â┬ñ├é┬©├é┬╗├®├é┬ó├ï┼ô",
+    language: "├¿├é┬»├é┬¡├¿├é┬¿├óÔÇÜ┬¼", startup: "├â┬Ñ├é┬╝├óÔÇÜ┬¼├â┬ª├àÔÇ£├é┬║├¿├óÔé¼┬í├é┬¬├â┬Ñ├é┬É├é┬»", glass: "├º├à┬¢├é┬╗├º├óÔé¼Ôäó├åÔÇÖ", opaque: "├â┬ñ├é┬©├é┬ì├®├óÔÇÜ┬¼├é┬Å├â┬ª├ï┼ô├à┬¢",
+    themeToggle: "├â┬Ñ├ïÔÇá├óÔé¼┬í├â┬ª├é┬ì├é┬ó ├â┬ñ├é┬║├é┬«├¿├óÔé¼┬░├é┬▓/├â┬ª├à┬í├óÔé¼ÔÇØ├¿├óÔé¼┬░├é┬▓", chooseStyle: "├®├óÔÇÜ┬¼├óÔé¼┬░├â┬ª├óÔé¼┬╣├é┬®├º├à┬¢├é┬╗├º├óÔé¼Ôäó├åÔÇÖ├â┬ª├ïÔÇá├óÔé¼ÔÇ£├â┬ñ├é┬©├é┬ì├®├óÔÇÜ┬¼├é┬Å├â┬ª├ï┼ô├à┬¢├®├é┬ú├à┬¢├â┬ª├é┬á├é┬╝",
+    chooseLang: "├®├óÔÇÜ┬¼├óÔé¼┬░├â┬ª├óÔé¼┬╣├é┬®├â┬ñ├é┬¢├é┬á├º├à┬í├óÔé¼┼¥├¿├é┬»├é┬¡├¿├é┬¿├óÔÇÜ┬¼", startupDesc: "Windows├â┬Ñ├é┬É├é┬»├â┬Ñ├à┬á├é┬¿├â┬ª├óÔé¼ÔÇØ├é┬Â├¿├óÔé¼┬í├é┬¬├â┬Ñ├à┬á├é┬¿├¿├é┬┐├é┬É├¿├é┬í├àÔÇÖ",
+    metaTierList: "├º├óÔé¼┬░├ïÔÇá├â┬ª├àÔÇ£├é┬¼├â┬ª├é┬ó├é┬»├®├ï┼ô├à┬©", proReplays: "├¿├é┬ü├àÔÇÖ├â┬ñ├é┬©├à┬í├â┬Ñ├óÔé¼┬║├à┬¥├â┬ª├óÔé¼┬Ø├é┬¥", waitingMatch: "├º├é┬¡├óÔé¼┬░├â┬Ñ├é┬¥├óÔé¼┬ª├â┬Ñ├é┬»├é┬╣├â┬Ñ├é┬▒├óÔÇÜ┬¼",
+    clientDisconnected: "├â┬Ñ├é┬«├é┬ó├â┬ª├ïÔÇá├é┬À├º├é┬½├é┬»├â┬ª├àÔÇ£├é┬¬├¿├é┬┐├à┬¥├â┬ª├à┬¢├é┬Ñ", liveMatch: "├â┬Ñ├é┬«├à┬¥├â┬ª├óÔé¼ÔÇØ├é┬Â├â┬Ñ├é┬»├é┬╣├â┬Ñ├é┬▒├óÔÇÜ┬¼",
+    rank: "├â┬ª├à┬¢├óÔé¼Ôäó├â┬Ñ├é┬É├é┬ì", champion: "├¿├óÔé¼┬╣├é┬▒├®├óÔé¼┬║├óÔé¼┼¥", role: "├â┬ñ├é┬¢├é┬ì├º├é┬¢├é┬«", winrate: "├¿├åÔÇÖ├àÔÇ£├º├à┬¢├óÔé¼┬í", ban: "├º├é┬ª├é┬ü├º├óÔé¼┬Ø├é┬¿├º├à┬¢├óÔé¼┬í", tier: "├â┬ª├é┬ó├é┬»├®├ï┼ô├à┬©",
+    kda: "KDA", dpmScore: "Oracle├¿├é┬»├óÔé¼┼¥├â┬Ñ├ïÔÇá├óÔé¼┬á", kp: "├â┬Ñ├é┬Å├óÔé¼┼í├â┬Ñ├óÔé¼┬║├é┬ó├º├à┬¢├óÔé¼┬í", csm: "├â┬Ñ├ïÔÇá├óÔé¼┬á├â┬Ñ├é┬Ø├óÔé¼┬í├¿├é┬í├é┬Ñ├â┬Ñ├ïÔÇá├óÔÇÜ┬¼", vision: "├¿├é┬º├óÔé¼┬á├®├óÔé¼┬í├à┬¢├â┬Ñ├é┬¥├óÔé¼ÔÇØ├â┬Ñ├ïÔÇá├óÔé¼┬á", gpm: "├â┬Ñ├ïÔÇá├óÔé¼┬á├â┬Ñ├é┬Ø├óÔé¼┬í├º├é┬╗├é┬Å├â┬ª├é┬Á├à┬¢",
+    match_history: "├â┬Ñ├é┬»├é┬╣├â┬Ñ├é┬▒├óÔÇÜ┬¼├â┬Ñ├à┬¢├óÔé¼┬á├â┬Ñ├é┬Å├é┬▓", records: "├¿├é┬«├é┬░├â┬Ñ├é┬¢├óÔé¼┬ó", coming_soon: "├â┬Ñ├é┬ì├é┬│├â┬Ñ├é┬░├óÔé¼┬á├â┬ª├à┬¢├é┬¿├â┬Ñ├óÔé¼┬í├é┬║...",
+    behavioral: "├¿├é┬í├àÔÇÖ├â┬ñ├é┬©├é┬║", lens: "Oracle├®├óÔÇÜ┬¼├é┬Å├®├óÔé¼┬ó├àÔÇ£", performance: "├¿├óÔé¼┬╣├é┬▒├®├óÔé¼┬║├óÔé¼┼¥├¿├é┬í├é┬¿├º├à┬¢├é┬░", pings: "├â┬ª├óÔÇÜ┬¼├é┬╗├â┬ñ├é┬┐├é┬í├â┬Ñ├é┬Å├é┬À",
+    all: "├â┬Ñ├óÔé¼┬ª├é┬¿├®├åÔÇÖ├é┬¿",
+    explore_oracle: "├â┬ª├à┬¢├é┬ó├º├é┬┤├é┬óOracle├â┬Ñ├é┬║├óÔé¼┬Ø├º├óÔé¼┬Ø├é┬¿", season: "├¿├é┬Á├óÔé¼┬║├â┬Ñ├é┬¡├é┬ú 15", owned_skins: "├â┬Ñ├é┬À├é┬▓├â┬ª├óÔé¼┬╣├é┬Ñ├â┬ª├àÔÇ£├óÔé¼┬░├º├à┬í├óÔé¼┼¥├º├à┬í├é┬«├¿├óÔé¼┼í├é┬ñ",
+    survivability: "├º├óÔé¼┬Ø├à┬©├â┬Ñ├é┬¡├ï┼ô├¿├åÔÇÖ├é┬¢├â┬Ñ├à┬á├óÔé¼┬║", tf_deaths: "├â┬Ñ├óÔé¼┬║├é┬ó├â┬ª├ïÔÇá├ï┼ô├â┬ª├é┬¡├é┬╗├â┬ñ├é┬║├é┬í",
+    mvp: "MVP", score: "├¿├é┬»├óÔé¼┼¥├â┬Ñ├ïÔÇá├óÔé¼┬á", deaths: "├â┬ª├é┬¡├é┬╗├â┬ñ├é┬║├é┬í", ka: "├â┬Ñ├óÔé¼┬í├é┬╗├â┬ª├é┬Ø├óÔÇÜ┬¼ + ├â┬Ñ├à┬á├é┬®├â┬ª├óÔé¼┬Ø├é┬╗",
+    early: "├â┬Ñ├óÔé¼┬░├é┬ì├â┬ª├àÔÇ£├à┬©", mid: "├â┬ñ├é┬©├é┬¡├â┬ª├àÔÇ£├à┬©", late: "├â┬Ñ├é┬É├à┬¢├â┬ª├àÔÇ£├à┬©", live_pro: "├¿├é┬ü├àÔÇÖ├â┬ñ├é┬©├à┬í├º├óÔé¼┬║├é┬┤├â┬ª├óÔé¼Ôäó├é┬¡", spectate: "├¿├é┬º├óÔé¼┼í├â┬ª├ïÔÇá├ï┼ô",
+    replay: "├â┬Ñ├óÔé¼┬║├à┬¥├â┬ª├óÔé¼┬Ø├é┬¥", victory: "├¿├åÔÇÖ├àÔÇ£├â┬Ñ├ïÔÇá├é┬®", defeat: "├â┬Ñ├é┬ñ├é┬▒├¿├é┬┤├é┬Ñ", theme_dark: "├â┬ª├é┬À├é┬▒├¿├óÔé¼┬░├é┬▓", theme_light: "├â┬ª├é┬Á├óÔé¼┬ª├¿├óÔé¼┬░├é┬▓",
+    visual_glass: "├º├à┬¢├é┬╗├º├óÔé¼Ôäó├åÔÇÖ", visual_opaque: "├â┬ñ├é┬©├é┬ì├®├óÔÇÜ┬¼├é┬Å├â┬ª├ï┼ô├à┬¢",
+    appearance: "├â┬Ñ├é┬ñ├óÔé¼ÔÇ£├¿├é┬º├óÔé¼┼í", chooseStyleDesc: "├®├óÔÇÜ┬¼├óÔé¼┬░├â┬ª├óÔé¼┬╣├é┬®├º├à┬¢├é┬╗├º├óÔé¼Ôäó├åÔÇÖ├â┬ª├ïÔÇá├óÔé¼ÔÇ£├â┬ñ├é┬©├é┬ì├®├óÔÇÜ┬¼├é┬Å├â┬ª├ï┼ô├à┬¢├®├é┬ú├à┬¢├â┬ª├é┬á├é┬╝",
+    themeToggleDesc: "├â┬Ñ├ïÔÇá├óÔé¼┬í├â┬ª├é┬ì├é┬ó├â┬ñ├é┬║├é┬«├¿├óÔé¼┬░├é┬▓/├â┬ª├à┬í├óÔé¼ÔÇØ├¿├óÔé¼┬░├é┬▓├â┬ª├é┬¿├é┬í├â┬Ñ├é┬╝├é┬Å",
+    langSelectDesc: "├®├óÔÇÜ┬¼├óÔé¼┬░├â┬ª├óÔé¼┬╣├é┬®├â┬ñ├é┬¢├é┬á├º├à┬í├óÔé¼┼¥├®├é┬ª├óÔé¼ÔÇ£├®├óÔÇÜ┬¼├óÔé¼┬░├¿├é┬»├é┬¡├¿├é┬¿├óÔÇÜ┬¼",
+    connectLcu: "├¿├é┬┐├à┬¥├â┬ª├à┬¢├é┬Ñ├¿├óÔé¼┬╣├é┬▒├®├óÔé¼┬║├óÔé¼┼¥├¿├é┬ü├óÔé¼┬Ø├º├óÔé¼┬║├à┬©├â┬Ñ├é┬«├é┬ó├â┬ª├ïÔÇá├é┬À├º├é┬½├é┬»...", vs1w: "1├â┬Ñ├óÔé¼╦£├é┬¿├â┬Ñ├óÔé¼┬░├é┬ì",
     cat_core: "ORACLE CORE", cat_app: "ORACLE APP", cat_insights: "ORACLE INSIGHTS",
-    dashboard: "Ã¦Â¦â€šèÂ§Ë†", tierlist: "Ã¦Â¢Â¯éËœÅ¸ & Ã¥â€¡ÂºèÂ£â€¦", leaderboards: "Ã¦Å½â€™èÂ¡Å’Ã¦Â¦Å“",
-    replays: "Ã¥â€ºÅ¾Ã¦â€Â¾", overlays: "èÂ¦â€ çâ€ºâ€“Ã¥Â±â€š", collections: "Ã¦â€Â¶èâ€”Â",
-    esports: "çâ€ÂµçÂ«Å¾", datastudio: "Ã¦â€¢Â°Ã¦ÂÂ®Ã¥Â·Â¥Ã¤Â½Å“Ã¥Â®Â¤", matchups: "Ã¥Â¯Â¹Ã¤Â½Â",
-    watch: "èÂ§â€šçÅ“â€¹"
+    dashboard: "├â┬ª├é┬ª├óÔé¼┼í├¿├é┬º├ïÔÇá", tierlist: "├â┬ª├é┬ó├é┬»├®├ï┼ô├à┬© & ├â┬Ñ├óÔé¼┬í├é┬║├¿├é┬ú├óÔé¼┬ª", leaderboards: "├â┬ª├à┬¢├óÔé¼Ôäó├¿├é┬í├àÔÇÖ├â┬ª├é┬ª├àÔÇ£",
+    replays: "├â┬Ñ├óÔé¼┬║├à┬¥├â┬ª├óÔé¼┬Ø├é┬¥", overlays: "├¿├é┬ª├óÔé¼┬á├º├óÔé¼┬║├óÔé¼ÔÇ£├â┬Ñ├é┬▒├óÔé¼┼í", collections: "├â┬ª├óÔé¼┬Ø├é┬Â├¿├óÔé¼ÔÇØ├é┬Å",
+    esports: "├º├óÔé¼┬Ø├é┬Á├º├é┬½├à┬¥", datastudio: "├â┬ª├óÔé¼┬ó├é┬░├â┬ª├é┬ì├é┬«├â┬Ñ├é┬À├é┬Ñ├â┬ñ├é┬¢├àÔÇ£├â┬Ñ├é┬«├é┬ñ", matchups: "├â┬Ñ├é┬»├é┬╣├â┬ñ├é┬¢├é┬ì",
+    watch: "├¿├é┬º├óÔé¼┼í├º├àÔÇ£├óÔé¼┬╣"
   }
 };
 
@@ -1369,7 +1368,7 @@ function FloatingParticles() {
   );
 }
 
-function GlobalFullScreenLoader({ text = "Chargement...", subtext = "Les données sont en train d'être récupéré..." }) {
+function GlobalFullScreenLoader({ text = "Chargement...", subtext = "Les donn├®es sont en train d'├¬tre r├®cup├®r├®..." }) {
   return (
     <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-[#f5f5f7] dark:bg-[rgb(var(--bg-main))] animate-in fade-in duration-300 rounded-3xl overflow-hidden">
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-3xl">
@@ -1505,8 +1504,8 @@ function App() {
         });
       }
 
-      if (['CTRL+X', 'CommandOrControl+Shift+O', 'CommandOrControl+X', '.'].includes(parsed.winProbabilityShortcut)) {
-        parsed.winProbabilityShortcut = 'Alt+O';
+      if (parsed.winProbabilityShortcut === 'CTRL+X' || parsed.winProbabilityShortcut === 'CommandOrControl+Shift+O') {
+        parsed.winProbabilityShortcut = 'CommandOrControl+X';
       }
 
       return {
@@ -1528,11 +1527,8 @@ function App() {
   useEffect(() => {
     localStorage.setItem('oracle_overlay_settings', JSON.stringify(overlaySettings));
 
-    let currentShortcut = overlaySettings.winProbabilityShortcut || 'Alt+O';
-    // Clean up broken or dangerous bindings (Cut/Paste keys, or accidental dots)
-    if (['CTRL+X', 'CommandOrControl+Shift+O', 'CommandOrControl+X', '.'].includes(currentShortcut)) {
-        currentShortcut = 'Alt+O';
-    }
+    let currentShortcut = overlaySettings.winProbabilityShortcut || 'CommandOrControl+X';
+    if (currentShortcut === 'CTRL+X' || currentShortcut === 'CommandOrControl+Shift+O') currentShortcut = 'CommandOrControl+X';
 
     if (window.ipcRenderer) {
       window.ipcRenderer.invoke('app:register-shortcut', currentShortcut);
@@ -1659,7 +1655,7 @@ function App() {
               Quitter Oracle
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6 text-sm">
-              Voulez-vous fermer complètement l'application ou la réduire dans la zone de notification ?
+              Voulez-vous fermer compl├¿tement l'application ou la r├®duire dans la zone de notification ?
             </p>
 
             <div className="flex flex-col gap-3">
@@ -1667,7 +1663,7 @@ function App() {
                 onClick={() => handleQuitChoice('close')}
                 className="w-full relative group overflow-hidden bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between border border-red-500/20"
               >
-                <span>Fermer complètement</span>
+                <span>Fermer compl├¿tement</span>
                 <X size={18} className="translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
               </button>
 
@@ -1675,7 +1671,7 @@ function App() {
                 onClick={() => handleQuitChoice('minimize')}
                 className="w-full relative group overflow-hidden bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-gray-900 dark:text-white font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between border border-gray-200 dark:border-white/10"
               >
-                <span>Réduire dans la zone de notification</span>
+                <span>R├®duire dans la zone de notification</span>
                 <Minus size={18} className="translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
               </button>
 
@@ -1699,7 +1695,7 @@ function App() {
                 <Check size={14} className="absolute text-white scale-0 peer-checked:scale-100 transition-transform" />
               </div>
               <span className="text-xs text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
-                Se souvenir de mon choix (modifiable dans les paramètres)
+                Se souvenir de mon choix (modifiable dans les param├¿tres)
               </span>
             </label>
           </div>
@@ -1712,10 +1708,10 @@ function App() {
           <div className="glass-panel max-w-md w-full p-6 mx-4 animate-in zoom-in-95 duration-300 shadow-2xl border border-white/10 dark:border-white/5">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
               <RefreshCw size={20} className="text-accent-primary" />
-              Mise à jour disponible
+              Mise ├á jour disponible
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6 text-sm">
-              La version {newVersion} est prête à être installée. Voulez-vous redémarrer l'application maintenant pour appliquer la mise à jour ?
+              La version {newVersion} est pr├¬te ├á ├¬tre install├®e. Voulez-vous red├®marrer l'application maintenant pour appliquer la mise ├á jour ?
             </p>
 
             <div className="flex flex-col gap-3">
@@ -1725,7 +1721,7 @@ function App() {
                 }}
                 className="w-full relative group overflow-hidden bg-accent-primary/10 hover:bg-accent-primary/20 text-accent-primary font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-between border border-accent-primary/20"
               >
-                <span>Installer et redémarrer</span>
+                <span>Installer et red├®marrer</span>
                 <RefreshCw size={18} className="translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
               </button>
 
@@ -1970,26 +1966,8 @@ function MusicOverlay() {
     }
   };
 
-  const handleMouseEnter = () => {
-    if (window.ipcRenderer) {
-      window.ipcRenderer.invoke('window:set-ignore-mouse-events', false);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (window.ipcRenderer) {
-      window.ipcRenderer.invoke('window:set-ignore-mouse-events', true, { forward: true });
-    }
-  };
-
   return (
-    <div 
-      className="w-full h-full p-2 select-none" 
-      style={{ WebkitAppRegion: 'drag' }} 
-      onContextMenu={(e) => e.preventDefault()}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="w-full h-full p-2 select-none" style={{ WebkitAppRegion: 'drag' }} onContextMenu={(e) => e.preventDefault()}>
       <div
         className="bg-black/50 hover:bg-black/60 dark:bg-[#080a14]/80 dark:hover:bg-[#080a14]/90 backdrop-blur-[24px] rounded-3xl border border-white/20 p-3 flex flex-col justify-between relative h-full transition-all duration-500 overflow-hidden shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
         style={{ transform: 'translateZ(0)' }}
@@ -2238,7 +2216,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               type: 'system',
               title: data.title || 'ORACLE ADMIN',
               name: data.name || data.message || 'Nouvelle notification',
-              status: data.status || 'Message système',
+              status: data.status || 'Message syst├¿me',
               tag: data.tag || 'ANNONCE',
               lucideName: data.lucideName || 'Bell',
               duration: data.duration || 10000,
@@ -2249,7 +2227,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
             };
 
             setAdminMessages(prev => {
-              // Vérifier si on a déjà ce message
+              // V├®rifier si on a d├®j├á ce message
               if (prev.some(m => m.id === globalMsg.id)) return prev;
               const next = [globalMsg, ...prev].slice(0, 50);
               localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
@@ -2274,17 +2252,9 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
         return next;
       });
       window.ipcRenderer.on('admin:broadcast', handler);
-
-      const navHandler = (_, name) => {
-        setTargetSummoner({ name, region: searchRegion, skipLcu: false });
-        setActiveTab('profile');
-      };
-      window.ipcRenderer.on('app:navigate-to-profile', navHandler);
-
       return () => {
         clearInterval(interval);
         window.ipcRenderer.removeListener('admin:broadcast', handler);
-        window.ipcRenderer.removeListener('app:navigate-to-profile', navHandler);
       };
     }
     
@@ -3022,7 +2992,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase">{s.name}</span>
                           <span className="text-[9px] text-gray-500 uppercase tracking-widest flex items-center gap-1 group-hover:text-blue-400">
-                            Profil Récents <span className="opacity-50">•</span> {s.region}
+                            Profil R├®cents <span className="opacity-50">ÔÇó</span> {s.region}
                           </span>
                         </div>
                       </div>
@@ -3188,7 +3158,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                       <Wrench size={56} className="mb-6 opacity-30 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
                       <h2 className="text-3xl font-black text-white italic tracking-tighter mb-4 drop-shadow-md">En Maintenance</h2>
                       <p className="text-gray-400 max-w-sm text-center font-medium leading-relaxed">
-                        Cette section <b>Oracle Gold</b> est actuellement en cours de mise à jour pour vous offrir les meilleurs outils interactifs.
+                        Cette section <b>Oracle Gold</b> est actuellement en cours de mise ├á jour pour vous offrir les meilleurs outils interactifs.
                       </p>
                     </div>
                   )
@@ -3262,11 +3232,11 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               </div>
               <div className="p-6 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
                 <div>
-                  <div className="text-[10px] font-black text-accent-primary uppercase tracking-[0.2em] mb-1">{selectedArticle.date || "ACTUALITÉ"}</div>
+                  <div className="text-[10px] font-black text-accent-primary uppercase tracking-[0.2em] mb-1">{selectedArticle.date || "ACTUALIT├ë"}</div>
                   <h3 className="text-xl font-bold text-white leading-tight">{selectedArticle.title}</h3>
                 </div>
                 <p className="text-sm text-gray-400 leading-relaxed">
-                  {selectedArticle.summary || selectedArticle.description || "Aucun résumé disponible pour cet article."}
+                  {selectedArticle.summary || selectedArticle.description || "Aucun r├®sum├® disponible pour cet article."}
                 </p>
                 {selectedArticle.url && (
                   <button
@@ -4133,7 +4103,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
               <div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-gray-100 uppercase tracking-tighter flex items-center gap-3">
                   <Swords size={18} className="text-blue-500 animate-pulse" />
-                  {t ? t('metaTierList') : t('meta_current')} • <span className="text-blue-400 capitalize">{ROLES[currentRoleIdx] || "Top"}</span>
+                  {t ? t('metaTierList') : t('meta_current')} ÔÇó <span className="text-blue-400 capitalize">{ROLES[currentRoleIdx] || "Top"}</span>
                 </h3>
               </div>
               <button
@@ -4194,7 +4164,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
             <div className="relative z-10 flex flex-col items-center text-center mt-auto">
               <div className="text-gray-900 dark:text-gray-100 font-black uppercase text-sm mb-1 tracking-tight">{t('last_game')}</div>
               <div className="text-gray-900 dark:text-gray-100/30 text-[10px] font-bold uppercase tracking-widest mb-4 italic">
-                {getQueueName(matchHistory[0], t)} • {matchHistory[0]?.gameDuration ? Math.floor(matchHistory[0].gameDuration / 60) + ":" + (matchHistory[0].gameDuration % 60).toString().padStart(2, '0') : "00:00"} • {matchHistory[0] ? (() => { try { return new Date(matchHistory[0].gameCreation).toLocaleDateString(); } catch { return "-"; } })() : "-"}
+                {getQueueName(matchHistory[0], t)} ÔÇó {matchHistory[0]?.gameDuration ? Math.floor(matchHistory[0].gameDuration / 60) + ":" + (matchHistory[0].gameDuration % 60).toString().padStart(2, '0') : "00:00"} ÔÇó {matchHistory[0] ? (() => { try { return new Date(matchHistory[0].gameCreation).toLocaleDateString(); } catch { return "-"; } })() : "-"}
               </div>
               <div className="text-lg font-black text-gray-900 dark:text-gray-100">
                 {p.stats?.kills || 0} <span className="text-gray-900 dark:text-gray-100/20">/</span> <span className="text-red-500">{p.stats?.deaths || 0}</span> <span className="text-gray-900 dark:text-gray-100/20">/</span> {p.stats?.assists || 0}
@@ -4508,13 +4478,13 @@ const PremiumOverlay = ({ title, text, onAction }) => (
       {title || "Oracle Gold Requis"}
     </h3>
     <p className="text-gray-400 text-xs text-center px-8 mb-6 max-w-sm font-medium leading-relaxed">
-      {text || "Pour débloquer cette fonctionnalité avancée et prendre l'avantage, abonnez-vous à Oracle Gold."}
+      {text || "Pour d├®bloquer cette fonctionnalit├® avanc├®e et prendre l'avantage, abonnez-vous ├á Oracle Gold."}
     </p>
     <button
       onClick={onAction}
       className="px-6 py-2 bg-gradient-to-r from-yellow-600 to-yellow-400 text-black font-black uppercase tracking-widest text-[10px] rounded-xl hover:scale-105 transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.4)] pointer-events-auto"
     >
-      Découvrir
+      D├®couvrir
     </button>
   </div>
 );
@@ -5441,7 +5411,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   }, [history, displayUser]);
 
   if (loading) {
-    return <GlobalFullScreenLoader text="Chargement..." subtext="Les données sont en train d'être récupéré..." />;
+    return <GlobalFullScreenLoader text="Chargement..." subtext="Les donn├®es sont en train d'├¬tre r├®cup├®r├®..." />;
   }
 
   if (!loading && !displayUser) {
@@ -5698,7 +5668,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
           </div>
 
           <div className="relative rounded-2xl overflow-hidden w-full flex flex-col shadow-2xl" style={{ minHeight: "480px" }}>
-            {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Analyse Comportementale" text="Débloquez l'analyse psychologique avancée de votre profil de joueur avec Oracle Gold." />}
+            {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Analyse Comportementale" text="D├®bloquez l'analyse psychologique avanc├®e de votre profil de joueur avec Oracle Gold." />}
             <div className={cn("w-full h-full flex flex-col", !isPremium && "blur-lg pointer-events-none opacity-60 scale-[1.02]")}>
               <BehavioralCard data={behavioralData} t={t} />
             </div>
@@ -5722,7 +5692,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
 
           {/* Lens Card (Radar Chart) - Moved here as requested */}
           <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-            {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Oracle Lens" text="L'analyse en araignée de vos KPI est réservée aux membres Oracle Gold." />}
+            {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Oracle Lens" text="L'analyse en araign├®e de vos KPI est r├®serv├®e aux membres Oracle Gold." />}
             <div className={!isPremium ? "blur-xl pointer-events-none opacity-50 scale-105" : ""}>
               <LensCard data={lensData} t={t} rankedStats={rankedStats} />
             </div>
@@ -6617,7 +6587,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
 
         <div className="px-6 py-4 flex gap-3 relative z-10 bg-white/[0.02] border-b border-white/5">
           {[
-            { id: '20_games', label: '20 Dernières Games' },
+            { id: '20_games', label: '20 Derni├¿res Games' },
             { id: '30_days', label: '30 Derniers Jours' }
           ].map(f => (
             <button
@@ -6639,7 +6609,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
             <div className="flex justify-between items-end mb-6 pl-[110px]">
               <div className="flex gap-4">
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Total période</span>
+                  <span className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Total p├®riode</span>
                   <div className="flex gap-2 text-base font-black items-center">
                     {(filterWins > 0 || filterLosses > 0 || filter === '20_games') && (
                       <>
@@ -6659,7 +6629,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
             <div
               className="relative w-full h-[350px] group mt-2 flex bg-black/20 rounded-2xl border border-white/5 p-4 pl-0 overflow-visible"
             >
-              {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Évolution des LP" text="Suivez avec précision vos gains et pertes de LP grâce à l'historique premium." />}
+              {!isPremium && <PremiumOverlay onAction={onSubscribe} title="├ëvolution des LP" text="Suivez avec pr├®cision vos gains et pertes de LP gr├óce ├á l'historique premium." />}
 
               <div className={cn("flex w-full h-full", !isPremium && "blur-xl pointer-events-none opacity-40 scale-[1.03]")}>
                 {/* Left Y-Axis Labeling */}
@@ -7437,16 +7407,16 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
     const livePlayers = session.liveData.allPlayers;
     const spellNameToId = (name) => {
       const m = {
-        "summonerflash": 4, "flash": 4, "sautéclair": 4, "sauteclair": 4,
-        "summonersmite": 11, "smite": 11, "châtiment": 11, "chatiment": 11,
-        "summonerteleport": 12, "teleport": 12, "téléportation": 12, "teleportation": 12,
-        "summonerdot": 14, "ignite": 14, "embrasement": 14, "brûlure": 14,
+        "summonerflash": 4, "flash": 4, "saut├®clair": 4, "sauteclair": 4,
+        "summonersmite": 11, "smite": 11, "ch├ótiment": 11, "chatiment": 11,
+        "summonerteleport": 12, "teleport": 12, "t├®l├®portation": 12, "teleportation": 12,
+        "summonerdot": 14, "ignite": 14, "embrasement": 14, "br├╗lure": 14,
         "summonerheal": 7, "heal": 7, "soins": 7, "soin": 7,
-        "summonerbarrier": 21, "barrier": 21, "barrière": 21, "barriere": 21,
+        "summonerbarrier": 21, "barrier": 21, "barri├¿re": 21, "barriere": 21,
         "summonerboost": 1, "cleanse": 1, "purge": 1,
         "summonerexhaust": 3, "exhaust": 3, "fatigue": 3,
-        "summonerhaste": 6, "ghost": 6, "fantôme": 6, "fantome": 6,
-        "summonermana": 13, "clarity": 13, "clarté": 13, "clarte": 13,
+        "summonerhaste": 6, "ghost": 6, "fant├┤me": 6, "fantome": 6,
+        "summonermana": 13, "clarity": 13, "clart├®": 13, "clarte": 13,
         "summonerpororecall": 30, "summonerporothrow": 31, "summonersnowball": 32, "marquage": 32
       };
       let sName = name ? name.toLowerCase().replace(/[\s']/g, "") : "";
@@ -7605,7 +7575,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
     ? getChampSelectBans(session?.bans?.theirTeamBans)
     : (session?.gameData?.bannedChampions?.filter(b => b.teamId === 200) || []);
 
-  if (loading) return <GlobalFullScreenLoader text="Tracker Live" subtext="Connexion en temps réel..." />;
+  if (loading) return <GlobalFullScreenLoader text="Tracker Live" subtext="Connexion en temps r├®el..." />;
 
   if (!session || (phase !== 'ChampSelect' && phase !== 'InProgress' && phase !== 'GameStart')) {
     return (
@@ -7639,7 +7609,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
             </div>
           )}
           <div className="h-8 bg-gradient-to-r from-blue-600/30 via-blue-900/10 to-transparent border-t-2 border-l-2 border-blue-500 rounded-tl-xl flex items-center px-4 relative overflow-hidden shrink-0 mt-2">
-            <span className="text-xs font-black text-blue-400 uppercase tracking-widest z-10 drop-shadow-md">Alliés</span>
+            <span className="text-xs font-black text-blue-400 uppercase tracking-widest z-10 drop-shadow-md">Alli├®s</span>
             <div className="ml-auto flex items-center gap-2">
               <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Winrate</span>
               <span className="text-sm font-black text-blue-100">{finalT1Winrate}%</span>
@@ -7663,7 +7633,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                   <img src={cid > 0 ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${cid}.png` : 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png'} className="w-10 h-10 rounded-md shadow-[0_0_10px_rgba(0,0,0,0.8)] object-cover bg-black" />
                   <div className="flex flex-col flex-1 truncate justify-center">
                     <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">{phase === 'ChampSelect' ? "Joueur" : (p.summonerName || "Joueur")}</span>
-                    <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "Sélection..."}</span>
+                    <span className="text-xs font-black text-gray-100 italic truncate group-hover:text-white transition-colors leading-none">{cid > 0 ? getChampName(cid) : "S├®lection..."}</span>
                   </div>
                   {(p.spell1Id > 0 || p.spell2Id > 0) && (
                     <div className="flex flex-col gap-0.5 justify-center opacity-80 pl-2">
@@ -7721,7 +7691,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
               <span className="text-[10px] font-black uppercase text-orange-400 tracking-widest z-10">Analyse de Matchup</span>
             </div>
             <p className="text-[11px] font-medium text-orange-100/70 leading-relaxed z-10 italic">
-              {earlySpike.val1 > earlySpike.val2 ? "Votre composition est dominante en début de partie. Jouez agressivement pour prendre l'avantage." : "Soyez prudent en phase de ligne, privilégiez le farm et atteignez votre pic de puissance en fin de partie."}
+              {earlySpike.val1 > earlySpike.val2 ? "Votre composition est dominante en d├®but de partie. Jouez agressivement pour prendre l'avantage." : "Soyez prudent en phase de ligne, privil├®giez le farm et atteignez votre pic de puissance en fin de partie."}
             </p>
           </div>
         </div>
@@ -7811,9 +7781,9 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                 <span className="text-xs font-black uppercase tracking-widest text-white">Items</span>
               </div>
               <div className="flex gap-8 items-start mb-6">
-                {/* Départ */}
+                {/* D├®part */}
                 <div className="flex flex-col gap-3">
-                  <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase">Départ</span>
+                  <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase">D├®part</span>
                   <div className="flex gap-2.5">
                     {(recommendedBuild?.items?.starting || [1055, 2003]).slice(0, 2).map((item, i) => (
                       <img key={i} src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-blue-500/30 shadow-md" onError={(e) => e.target.style.display = 'none'} />
@@ -7984,33 +7954,21 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const languages = [
     { code: 'en', label: 'English (US)' },
-    { code: 'fr', label: 'Français' }
+    { code: 'fr', label: 'Fran├ºais' }
   ];
 
   const [launchOnStartup, setLaunchOnStartup] = useState(false);
   const [closeBehavior, setCloseBehavior] = useState('ask');
 
-  const [loadingScreenEnabled, setLoadingScreenEnabled] = useState(true);
-
   useEffect(() => {
     ipcRenderer.invoke('app:get-auto-launch').then(setLaunchOnStartup);
-    ipcRenderer.invoke('app:get-settings').then(s => {
-      setCloseBehavior(s?.closeBehavior || 'ask');
-      if (s?.loadingScreenEnabled !== undefined) setLoadingScreenEnabled(s.loadingScreenEnabled);
-    });
+    ipcRenderer.invoke('app:get-settings').then(s => setCloseBehavior(s?.closeBehavior || 'ask'));
   }, []);
 
   const updateCloseBehavior = async (val) => {
     setCloseBehavior(val);
     const s = await ipcRenderer.invoke('app:get-settings') || {};
     s.closeBehavior = val;
-    await ipcRenderer.invoke('app:set-settings', s);
-  };
-
-  const updateLoadingScreenToggle = async (val) => {
-    setLoadingScreenEnabled(val);
-    const s = await ipcRenderer.invoke('app:get-settings') || {};
-    s.loadingScreenEnabled = val;
     await ipcRenderer.invoke('app:set-settings', s);
   };
 
@@ -8034,8 +7992,8 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           </div>
         </div>
 
-        {/* Section: Expérience App */}
-        <SettingsSection title="Expérience App" icon={LayoutGrid}>
+        {/* Section: Exp├®rience App */}
+        <SettingsSection title="Exp├®rience App" icon={LayoutGrid}>
           <SettingCard
             icon={Sun} color="purple"
             title={t('visualStyle')} desc={t('chooseStyleDesc')}
@@ -8113,12 +8071,12 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           />
           <SettingCard
             icon={XCircle} color="red"
-            title="Fermeture" desc="Action exécutée en fermant la fenêtre"
+            title="Fermeture" desc="Action ex├®cut├®e en fermant la fen├¬tre"
             action={
               <div className="flex gap-1 p-1 bg-black/5 dark:bg-black/40 rounded-xl border border-gray-200 dark:border-white/5">
                 {[
                   { id: 'ask', label: 'Demander' },
-                  { id: 'minimize', label: 'Réduire' },
+                  { id: 'minimize', label: 'R├®duire' },
                   { id: 'close', label: 'Quitter' }
                 ].map(opt => (
                   <button
@@ -8159,14 +8117,14 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           />
           <SettingCard
             icon={Zap} color="yellow"
-            title="Auto-Import Runes & Builds" desc="Importe automatiquement les meilleures runes de votre champion lors de la phase de sélection."
+            title="Auto-Import Runes & Builds" desc="Importe automatiquement les meilleures runes de votre champion lors de la phase de s├®lection."
             action={
               <SettingsToggle active={autoImportRunes} onToggle={() => setAutoImportRunes(!autoImportRunes)} />
             }
           />
           <SettingCard
             icon={Flame} color="orange"
-            title="Position du Flash" desc="Force automatiquement le Flash sur la touche sélectionnée lors de l'import."
+            title="Position du Flash" desc="Force automatiquement le Flash sur la touche s├®lectionn├®e lors de l'import."
             action={
               <div className="flex gap-2">
                 <button onClick={() => setFlashPosition(null)} className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm", flashPosition === null || flashPosition === undefined ? "bg-accent-primary text-black border-transparent" : "text-gray-500 bg-white/5 border border-white/10 hover:border-white/30")}>OFF</button>
@@ -8201,27 +8159,22 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
           />
           <SettingCard
             icon={Map} color="purple"
-            title={"In-Game Stats"} desc={"Affiche une comparaison de vos statistiques en direct (GPM, CSM, etc.) en bas à droite de l'écran."}
+            title={"In-Game Stats"} desc={"Affiche une comparaison de vos statistiques en direct (GPM, CSM, etc.) en bas ├á droite de l'├®cran."}
             action={<SettingsToggle active={overlaySettings.inGameStats !== false} onToggle={() => setOverlaySettings(p => ({ ...p, inGameStats: p.inGameStats === false ? true : false }))} />}
           />
           <SettingCard
             icon={Sparkles} color="amber"
-            title={"Item Build Recommandation"} desc={"Affiche en continu le prochain item à acheter en bas à droite de l'écran."}
+            title={"Item Build Recommandation"} desc={"Affiche en continu le prochain item ├á acheter en bas ├á droite de l'├®cran."}
             action={<SettingsToggle active={overlaySettings.itemBuild !== false} onToggle={() => setOverlaySettings(p => ({ ...p, itemBuild: p.itemBuild === false ? true : false }))} />}
           />
           <SettingCard
             icon={Activity} color="indigo"
-            title={"Prédiction de Victoire"} desc={"Active l'overlay prédictif (Winrate). Raccourci pour l'afficher : CTRL+X"}
+            title={"Pr├®diction de Victoire"} desc={"Active l'overlay pr├®dictif (Winrate). Raccourci pour l'afficher : CTRL+X"}
             action={
               <div className="flex items-center gap-2">
                 <SettingsToggle active={overlaySettings.winProbability !== false} onToggle={() => setOverlaySettings(p => ({ ...p, winProbability: p.winProbability === false ? true : false }))} />
               </div>
             }
-          />
-          <SettingCard
-            icon={Monitor} color="blue"
-            title={"Écran de Chargement Visuel"} desc={"Affiche les rangs et winrates au lancement de la partie (Alt+B pour masquer)"}
-            action={<SettingsToggle active={loadingScreenEnabled} onToggle={() => updateLoadingScreenToggle(!loadingScreenEnabled)} />}
           />
         </SettingsSection>
 
@@ -8229,12 +8182,12 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
         <SettingsSection title="Notifications & Social" icon={Bell}>
           <SettingCard
             icon={Users} color="indigo"
-            title="Overlay Social" desc="Affiche une notification visuelle en haut à droite de l'écran quand vos amis se connectent ou lancent une partie."
+            title="Overlay Social" desc="Affiche une notification visuelle en haut ├á droite de l'├®cran quand vos amis se connectent ou lancent une partie."
             action={<SettingsToggle active={socialOverlayEnabled} onToggle={() => setSocialOverlayEnabled(!socialOverlayEnabled)} />}
           />
           <SettingCard
             icon={Music} color="green"
-            title="Overlay Musique" desc="Affiche un mini-lecteur transparent en haut à droite pour contrôler votre musique."
+            title="Overlay Musique" desc="Affiche un mini-lecteur transparent en haut ├á droite pour contr├┤ler votre musique."
             action={
               !isPremium ? (
                 <button onClick={() => setActiveTab('subscription')} className="px-5 py-2 bg-yellow-500/5 hover:bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-bold text-xs uppercase rounded-xl transition-all hover:scale-[1.02] flex items-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
@@ -8264,11 +8217,11 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
               <div className="flex items-center gap-4 relative z-10">
                 <div>
                   <h3 className="text-xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600">Oracle Gold</h3>
-                  <p className="mt-1 text-sm font-medium text-gray-400 transition-colors group-hover:text-yellow-100/70">Gérer mon moyen de paiement, abonnement...</p>
+                  <p className="mt-1 text-sm font-medium text-gray-400 transition-colors group-hover:text-yellow-100/70">G├®rer mon moyen de paiement, abonnement...</p>
                 </div>
               </div>
               <button onClick={(e) => { e.stopPropagation(); window.ipcRenderer.invoke('app:open-url', 'https://shoxcx.github.io/oracle-web/'); }} className="flex items-center gap-2 rounded-xl bg-yellow-500/10 px-5 py-2.5 font-bold uppercase tracking-widest text-yellow-400 transition-all duration-300 group-hover:bg-yellow-400 group-hover:text-black border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.15)] z-10 cursor-pointer">
-                {isPremium ? "Gérer" : "Découvrir"} <ArrowRight size={16} />
+                {isPremium ? "G├®rer" : "D├®couvrir"} <ArrowRight size={16} />
               </button>
             </div>
           </div>
@@ -8296,12 +8249,12 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
 
   if (!isPremium) {
     const premiumFeatures = [
-      { icon: Music, color: "text-yellow-400", bg: "bg-yellow-400/10", title: "Music Overlay", desc: "Contrôlez Spotify directement depuis votre partie sans altérer. Précision tactique et ambiance audio réunies." },
-      { icon: Brain, color: "text-blue-400", bg: "bg-blue-400/10", title: "Analyse IA", desc: "Notre algorithme analyse vos actions et trajectoires pour vous délivrer un coaching professionnel automatisé." },
+      { icon: Music, color: "text-yellow-400", bg: "bg-yellow-400/10", title: "Music Overlay", desc: "Contr├┤lez Spotify directement depuis votre partie sans alt├®rer. Pr├®cision tactique et ambiance audio r├®unies." },
+      { icon: Brain, color: "text-blue-400", bg: "bg-blue-400/10", title: "Analyse IA", desc: "Notre algorithme analyse vos actions et trajectoires pour vous d├®livrer un coaching professionnel automatis├®." },
       { icon: Eye, color: "text-emerald-400", bg: "bg-emerald-400/10", title: "In-Game Overlays", desc: "Des outils tactiques exclusifs en jeu (Ward timer, stats) pour garder une longueur d'avance sur vos ennemis." },
-      { icon: Target, color: "text-purple-400", bg: "bg-purple-400/10", title: "Training Avancé", desc: "Des entraînements ciblés et personnalisés construits sur les données de notre algorithme." },
-      { icon: Palette, color: "text-pink-400", bg: "bg-pink-400/10", title: "Thèmes Custom", desc: "Personnalisez votre interface en débloquant les styles premiums (Radiant, Storm ou Purple)." },
-      { icon: Zap, color: "text-orange-400", bg: "bg-orange-400/10", title: "Auto-Accept", desc: "Laissez Oracle gérer vos files d'attentes automatiquement." }
+      { icon: Target, color: "text-purple-400", bg: "bg-purple-400/10", title: "Training Avanc├®", desc: "Des entra├«nements cibl├®s et personnalis├®s construits sur les donn├®es de notre algorithme." },
+      { icon: Palette, color: "text-pink-400", bg: "bg-pink-400/10", title: "Th├¿mes Custom", desc: "Personnalisez votre interface en d├®bloquant les styles premiums (Radiant, Storm ou Purple)." },
+      { icon: Zap, color: "text-orange-400", bg: "bg-orange-400/10", title: "Auto-Accept", desc: "Laissez Oracle g├®rer vos files d'attentes automatiquement." }
     ];
 
     return (
@@ -8328,7 +8281,7 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
             Deviens Oracle Gold
           </h1>
           <p className="text-lg text-gray-400 font-medium mb-12 max-w-xl mx-auto leading-relaxed">
-            Passez au niveau supérieur. Accédez à l'ensemble des fonctionnalités premium dont l'analyse IA, l'overlay In-Game avancé et des statistiques illimitées.
+            Passez au niveau sup├®rieur. Acc├®dez ├á l'ensemble des fonctionnalit├®s premium dont l'analyse IA, l'overlay In-Game avanc├® et des statistiques illimit├®es.
           </p>
 
           <div
@@ -8355,7 +8308,7 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
             className="px-12 py-4 rounded-xl bg-gradient-to-r from-yellow-600 to-yellow-400 text-black font-black uppercase tracking-widest text-lg shadow-[0_0_30px_rgba(234,179,8,0.4)] hover:shadow-[0_0_50px_rgba(234,179,8,0.6)] hover:scale-105 transition-all duration-300"
             onClick={() => setIsPremium(true)}
           >
-            S'abonner (4.99€/mois)
+            S'abonner (4.99Ôé¼/mois)
           </button>
         </div>
       </div>
@@ -8393,7 +8346,7 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
                 <span className="text-xs font-black uppercase tracking-widest text-gray-400">Statut</span>
               </div>
               <h3 className="text-2xl font-bold text-white mb-6">
-                {isCanceled ? "Annulation programmée" : "Actif"}
+                {isCanceled ? "Annulation programm├®e" : "Actif"}
               </h3>
             </div>
             <div className="p-3 bg-white/5 rounded-xl border border-white/10">
@@ -8409,13 +8362,13 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
             <div className="flex justify-between items-center py-3 border-b border-white/5">
               <span className="text-gray-400 text-sm">Moyen de paiement</span>
               <span className="text-white font-bold flex items-center gap-2">
-                •••• 4242 <CreditCard size={14} />
+                ÔÇóÔÇóÔÇóÔÇó 4242 <CreditCard size={14} />
               </span>
             </div>
 
             {isCanceled && (
               <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400 text-sm font-medium">
-                Vous conserverez vos avantages Oracle Gold jusqu'au <strong className="text-orange-300">{expirationDate}</strong>. Aucun autre prélèvement ne sera effectué.
+                Vous conserverez vos avantages Oracle Gold jusqu'au <strong className="text-orange-300">{expirationDate}</strong>. Aucun autre pr├®l├¿vement ne sera effectu├®.
               </div>
             )}
           </div>
@@ -8425,7 +8378,7 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
         <div className="glass-panel p-8 border-t border-white/10 flex flex-col justify-between">
           <div>
             <h3 className="text-xl font-bold text-white mb-2">Actions</h3>
-            <p className="text-gray-500 text-sm">Mettez à jour vos informations ou gérez le renouvellement de l'abonnement.</p>
+            <p className="text-gray-500 text-sm">Mettez ├á jour vos informations ou g├®rez le renouvellement de l'abonnement.</p>
 
             <div className="space-y-3 mt-6">
               <button className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition text-white font-bold text-left">
@@ -8456,7 +8409,7 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
                 className="w-full py-3 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400 font-bold hover:bg-green-500/20 shadow-[0_0_15px_rgba(74,222,128,0.1)] transition"
                 onClick={() => setIsCanceled(false)}
               >
-                Réactiver Oracle Gold
+                R├®activer Oracle Gold
               </button>
             )}
           </div>
@@ -9433,7 +9386,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
   };
 
   if (loading) {
-    return <GlobalFullScreenLoader text="Analyse..." subtext="Traitement de l'historique et des données..." />;
+    return <GlobalFullScreenLoader text="Analyse..." subtext="Traitement de l'historique et des donn├®es..." />;
   }
 
   return (
@@ -9499,7 +9452,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
                     <div className="font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       {p.stats.kills}/{p.stats.deaths}/{p.stats.assists}
                       <span className={cn("text-[9px] px-1.5 py-0.5 rounded-md font-black italic", p.stats.win ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400")}>
-                        {p.stats.win ? "VICTOIRE" : "DÉFAITE"}
+                        {p.stats.win ? "VICTOIRE" : "D├ëFAITE"}
                       </span>
                       {lpInfo && lpInfo.lpStr && (
                         <span className={cn(
@@ -9511,7 +9464,7 @@ function ReplaysView({ t, panelClass, currentUser }) {
                       )}
                     </div>
                     <div className="text-[10px] text-gray-500 font-mono uppercase mt-0.5">
-                      {champName} • {mode}
+                      {champName} ÔÇó {mode}
                     </div>
                   </div>
                 </div>
@@ -9551,9 +9504,9 @@ function ReplaysView({ t, panelClass, currentUser }) {
                 <Brain size={48} className="text-accent-primary animate-pulse" />
                 <div className="absolute inset-0 bg-accent-primary/20 rounded-full blur-2xl"></div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2 italic">Sélectionnez une partie</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2 italic">S├®lectionnez une partie</h3>
               <p className="text-gray-500 text-sm max-w-sm">
-                Cliquez sur une partie dans la liste à gauche pour lancer l'analyse IA de vos performances.
+                Cliquez sur une partie dans la liste ├á gauche pour lancer l'analyse IA de vos performances.
               </p>
             </div>
           )}
@@ -9677,7 +9630,7 @@ function AICoachingPanel({ game, t, onWatch }) {
   // State for internal browser
   const [showGuide, setShowGuide] = useState(false);
 
-  // --- CHRONOLOGIE (Analyses Positives/Négatives & Dynamiques) ---
+  // --- CHRONOLOGIE (Analyses Positives/N├®gatives & Dynamiques) ---
   const timelineAnalysis = useMemo(() => {
     const positives = [];
     const negatives = [];
@@ -9780,7 +9733,7 @@ function AICoachingPanel({ game, t, onWatch }) {
     return t(key);
   }, [stats, game, opponent, t]);
 
-  // --- 3. CONSEILS CLÉS (Localized & Dynamic) ---
+  // --- 3. CONSEILS CL├ëS (Localized & Dynamic) ---
   const advicePoints = useMemo(() => {
     const points = [];
     const durationMin = game.gameDuration / 60;
@@ -10057,7 +10010,7 @@ function AICoachingPanel({ game, t, onWatch }) {
               <div className="grid grid-cols-2 gap-4">
                 {advicePoints.slice(0, 2).map((tip, i) => (
                   <div key={i} className="bg-black/5 dark:bg-black/30 p-4 rounded-2xl border border-gray-200 dark:border-white/5 text-[10px] text-gray-300 font-bold leading-relaxed flex items-start gap-3">
-                    <span className="text-accent-primary text-base leading-none mt-0.5">•</span>
+                    <span className="text-accent-primary text-base leading-none mt-0.5">ÔÇó</span>
                     {tip}
                   </div>
                 ))}
@@ -10114,7 +10067,7 @@ function AICoachingPanel({ game, t, onWatch }) {
               </div>
             </section>
 
-            {/* 3. Conseils Clés */}
+            {/* 3. Conseils Cl├®s */}
             <section className="space-y-3 pb-2">
               <h4 className="flex items-center gap-2 text-sm font-black text-gray-900 dark:text-gray-100 uppercase tracking-wider">
                 <Target size={16} className="text-accent-primary" /> {t('key_tips')}
@@ -10439,7 +10392,7 @@ function LiveGameLoadingView({ t, panelClass }) {
             <Sword className="text-accent-primary" />
             {t('liveMatch') || "Live Match"}
           </h2>
-          <p className="text-gray-500 text-sm">{gameData.gameData.mapName} • {gameData.gameData.gameMode}</p>
+          <p className="text-gray-500 text-sm">{gameData.gameData.mapName} ÔÇó {gameData.gameData.gameMode}</p>
         </div>
         <div className="flex items-center gap-4 text-sm font-mono text-gray-600 dark:text-gray-400">
           <span className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div> {gameTime}</span>
@@ -10507,7 +10460,7 @@ function LivePlayerCard({ player, side, isMe, t }) {
             {player.name}
           </div>
           <div className={cn("text-xs font-mono", isBlue ? "text-blue-300" : "text-red-300")}>
-            {player.rank} • {player.wr}% WR
+            {player.rank} ÔÇó {player.wr}% WR
           </div>
         </div>
 
@@ -10518,7 +10471,7 @@ function LivePlayerCard({ player, side, isMe, t }) {
               <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-icons/${player.runes}.png`} className="w-full h-full object-contain" />
             </div>
           )}
-          {player.wr > 55 && <div className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-[9px] border border-orange-500/20 font-bold">Ã°Å¸â€Â¥ {t('hot_streak')}</div>}
+          {player.wr > 55 && <div className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-[9px] border border-orange-500/20 font-bold">├â┬░├à┬©├óÔé¼┬Ø├é┬Ñ {t('hot_streak')}</div>}
         </div>
       </div>
     </div>
@@ -10546,7 +10499,7 @@ function BanCard({ name }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="w-12 h-12 rounded-full bg-red-900/50 border-2 border-red-500 flex items-center justify-center text-xs">
-        âÂÅ’
+        ├ó├é┬Ø├àÔÇÖ
       </div>
       <span className="text-xs font-medium">{name}</span>
     </div>
@@ -10761,7 +10714,7 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
               CHOISIS TON CHAMPION
             </h3>
             <p className="text-gray-400 font-medium text-lg leading-relaxed">
-              Sélectionnez votre champion pour accéder aux builds, contres, et stratégies.
+              S├®lectionnez votre champion pour acc├®der aux builds, contres, et strat├®gies.
             </p>
           </div>
         </div>
@@ -11372,7 +11325,7 @@ function EsportsView({ t, prefetchedData }) {
               ) : (
                 <div className="flex flex-col items-center justify-center p-10 opacity-30">
                   <Trophy size={48} className="mb-4 text-gray-500" />
-                  <span className="text-sm font-bold uppercase tracking-widest text-gray-500">En attente des données Riot</span>
+                  <span className="text-sm font-bold uppercase tracking-widest text-gray-500">En attente des donn├®es Riot</span>
                   <span className="text-xs text-gray-500 mt-2">Le classement mondial n'est pas encore disponible</span>
                 </div>
               )}
@@ -11507,7 +11460,7 @@ function MatchScheduleItem({ team1, team2, logo1, logo2, time, date, league, hig
         </div>
         <span className="font-mono">
           {date !== "Upcoming" && date !== "TBD" ? date : ""}
-          {date !== "Upcoming" && date !== "TBD" && time && time !== "TBD" ? ` • ` : ""}
+          {date !== "Upcoming" && date !== "TBD" && time && time !== "TBD" ? ` ÔÇó ` : ""}
           {time !== "TBD" && time ? time : ""}
         </span>
       </div>
@@ -11962,14 +11915,14 @@ function CollectionsView({ t, panelClass, ddragonVersion, currentUser, championL
             <div className="flex flex-col items-center justify-center h-64 text-gray-900 dark:text-gray-100/20 gap-4">
               <Activity size={48} className="opacity-10 animate-pulse" />
               <div className="text-sm font-black uppercase tracking-[0.3em] text-center">
-                Aucune collection trouvée <br />
-                <span className="text-[10px] opacity-50 normal-case tracking-normal">Vérifiez que le client League est ouvert et connecté.</span>
+                Aucune collection trouv├®e <br />
+                <span className="text-[10px] opacity-50 normal-case tracking-normal">V├®rifiez que le client League est ouvert et connect├®.</span>
               </div>
               <button
                 onClick={() => { setLoading(true); setSkins([]); setWards([]); fetchCollections(); }}
                 className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-gray-900 dark:text-gray-100 rounded-lg text-xs font-bold uppercase tracking-widest transition-all"
               >
-                Réessayer
+                R├®essayer
               </button>
             </div>
           )
@@ -12087,8 +12040,8 @@ function RankingsView({ panelClass, setTargetSummoner, setActiveTab, ddragonVers
         ) : !data || data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-12 opacity-50">
             <Trophy size={48} className="mb-4 text-gray-600" />
-            <div className="text-lg font-bold text-gray-400">Aucune donnée trouvée</div>
-            <div className="text-xs text-gray-500 mt-2">Vérifiez votre connexion ou essayez une autre région.</div>
+            <div className="text-lg font-bold text-gray-400">Aucune donn├®e trouv├®e</div>
+            <div className="text-xs text-gray-500 mt-2">V├®rifiez votre connexion ou essayez une autre r├®gion.</div>
           </div>
         ) : (
           <div className="flex flex-col gap-2 relative">
@@ -12403,29 +12356,10 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
       className="fixed inset-0 pointer-events-none select-none z-[9999]"
       style={{ display: 'block' }} /* Ensure it's not hidden by some weird CSS state */
     >
-      {/* Win% Widget (ALT+O) - RESTORED ORIGINAL DESIGN */}
-      {overlaySettings.winProbability !== false && (
-        <div
-          style={{ left: `${pos?.winrate?.x ?? 5}px`, top: `${pos?.winrate?.y ?? 5}%` }}
-          className="absolute bg-[#16171b] rounded-xl flex items-center p-3 pr-10 overflow-hidden shadow-[0_15px_60px_-10px_rgba(0,0,0,0.8)] border border-white/5 pointer-events-auto group touch-none"
-        >
-          {/* Left Purple Border */}
-          <div className="absolute top-0 bottom-0 left-0 w-[5px] bg-[#a855f7]"></div>
-          {/* Bottom Purple Progress */}
-          <div className="absolute bottom-0 left-0 h-[3px] bg-[#a855f7]" style={{ width: '65.2%' }}></div>
+      {/* Win% Widget (ALT+O) - REMOVED AS PER USER REQUEST */}
 
-          {/* Cyan Icon Box */}
-          <div className="w-[3.25rem] h-[3.25rem] rounded-xl bg-[#06b6d4] flex items-center justify-center shrink-0 ml-1.5 mr-4 shadow-inner">
-            <Activity size={28} className="text-white drop-shadow-md" strokeWidth={2}/>
-          </div>
-          
-          <div className="flex flex-col z-10">
-            <div className="text-[10px] font-black tracking-[0.2em] text-[#6b7280] uppercase mb-0.5">ORACLE PREDICTION</div>
-            <div className="text-white font-extrabold text-[15px] tracking-tight">Probabilité : 65.2%</div>
-            <div className="text-[11px] text-[#9ca3af] italic mt-0.5 tracking-tight truncate max-w-[200px]">Votre équipe mène la danse ! Mainte...</div>
-          </div>
-        </div>
-      )}      {/* Jungle Clear Helper / Pathing */}
+
+      {/* Jungle Clear Helper / Pathing */}
       {(isJungle && (overlaySettings.junglePathing || overlaySettings.jungleTimers)) && (
         <div
           style={{ left: `${pos?.jungle?.x ?? 2}%`, top: `${pos?.jungle?.y ?? 40}%` }}
@@ -12498,212 +12432,45 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
 }
 
 function LoadingOverlay({ t, visualMode, theme }) {
-  const [players, setPlayers] = useState({ order: [], chaos: [] });
-  const [champMap, setChampMap] = useState({});
-
-  useEffect(() => {
-    let interval;
-    async function loadData() {
-      try {
-        let _champMap = champMap;
-        if (Object.keys(_champMap).length === 0) {
-          const sum = await window.ipcRenderer.invoke('lcu:get-current-summoner');
-          if (sum) {
-            const champs = await window.ipcRenderer.invoke('lcu:get-champions', sum.summonerId);
-            if (champs) {
-              const newMap = {};
-              champs.forEach(c => newMap[c.id] = c.name);
-              _champMap = newMap;
-              setChampMap(newMap);
-            }
-          }
-        }
-
-        const session = await window.ipcRenderer.invoke('lcu:get-gameflow-session');
-        let livePlayers = [];
-        try { livePlayers = await window.ipcRenderer.invoke('live:get-player-list') || []; } catch(e){}
-
-        if (session && session.gameData) {
-          const mergeTeam = (lcuTeam, teamString) => {
-             const finalTeam = [...lcuTeam];
-             const lTeam = livePlayers.filter(p => p.team === teamString);
-             for (const lp of lTeam) {
-                 const exists = finalTeam.find(p => p.summonerName === lp.summonerName || (_champMap[p.championId] && _champMap[p.championId].toLowerCase() === (lp.championName||'').toLowerCase()));
-                 if (!exists) {
-                     finalTeam.push({ puuid: null, summonerName: lp.summonerName, championId: 0, championName: lp.championName });
-                 }
-                 // Fast-patch hidden summoner names directly into final lcuTeam object here!
-                 if (exists && (!exists.summonerName || exists.summonerName.trim() === '')) {
-                     exists.summonerName = lp.summonerName;
-                 }
-             }
-             while (finalTeam.length < 5) {
-                 finalTeam.push({ puuid: null, summonerName: "INCONNU", championId: 0, championName: "?" });
-             }
-             return finalTeam.slice(0, 5); // STRICTLY PREVENT OVERFLOW
-          };
-
-          const enrichTeam = async (teamList) => {
-            return Promise.all(teamList.map(async (p) => {
-              let rankName = "Vérification...";
-              let globalWr = 0; let globalGames = 0; let globalWins = 0, globalLosses = 0; let champMasteryRank = 0;
-              const champName = _champMap[p.championId] || p.championName || "?";
-              
-              let name = p.summonerName || p.name;
-              if (!name || name.toLowerCase() === "inconnu" || name.trim() === "") name = "INCONNU";
-              
-              // Filter out anonymous champion aliases incorrectly passed as summonerName
-              if (name !== "INCONNU" && name.toLowerCase() === champName.toLowerCase()) {
-                  name = "INCONNU";
-              }
-
-              let currentPuuid = p.puuid;
-              let statsPopulated = false;
-              try {
-                if (!currentPuuid && name !== "INCONNU") {
-                    const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', false);
-                    if (sumData && sumData.puuid) currentPuuid = sumData.puuid;
-                }
-
-                if (currentPuuid && !currentPuuid.startsWith('ext~')) {
-                  const ranked = await window.ipcRenderer.invoke('lcu:get-ranked-stats', currentPuuid);
-                  if (ranked && ranked.queueMap && ranked.queueMap.RANKED_SOLO_5x5) {
-                    const solo = ranked.queueMap.RANKED_SOLO_5x5;
-                    globalWins = solo.wins || 0; globalLosses = solo.losses || 0;
-                    if (globalLosses === 0 && globalWins > 5) {
-                        statsPopulated = false; 
-                    } else {
-                        rankName = `${solo.tier} ${solo.division}`;
-                        globalGames = globalWins + globalLosses;
-                        if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
-                        statsPopulated = true;
-                    }
-                  } else rankName = "UNRANKED";
-                  const masteries = await window.ipcRenderer.invoke('lcu:get-champion-mastery', currentPuuid);
-                  if (masteries && Array.isArray(masteries)) {
-                      const m = masteries.find(x => x.championId === p.championId);
-                      if (m) champMasteryRank = m.championLevel || 0;
-                  }
-                }
-
-                if (!statsPopulated && name !== "INCONNU") {
-                    const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', true);
-                    if (sumData) {
-                       rankName = sumData.rank || rankName;
-                       if (sumData.winRate) globalWr = parseInt(sumData.winRate);
-                       if (sumData.games) {
-                          globalGames = sumData.games;
-                          globalWins = Math.round((globalWr / 100) * globalGames);
-                          globalLosses = globalGames - globalWins;
-                       }
-                    }
-                } else if (!statsPopulated && name === "INCONNU") {
-                    rankName = "CACHÉ";
-                }
-              } catch(e){}
-              return { ...p, name: name, puuid: currentPuuid, champId: p.championId, champName, rank: rankName, globalWr, globalGames, globalWins, globalLosses, mastery: champMasteryRank };
-            }));
-          };
-
-          const orderPlayers = await enrichTeam(mergeTeam(session.gameData.teamOne || [], 'ORDER'));
-          const chaosPlayers = await enrichTeam(mergeTeam(session.gameData.teamTwo || [], 'CHAOS'));
-          setPlayers({ order: orderPlayers, chaos: chaosPlayers });
-        }
-      } catch(e) { console.error("Loading overlay error", e); }
-    }
-    
-    loadData();
-    interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const openProfile = (name) => {
-    if (window.ipcRenderer && name !== "INCONNU") {
-      window.ipcRenderer.send('app:navigate-to-profile', name);
-    }
-  };
-
-  const getTeamWr = (team) => {
-    const valid = team.filter(p => p.globalWr > 0);
-    return valid.length ? (valid.reduce((s, p) => s + p.globalWr, 0) / valid.length).toFixed(1) : 0;
-  };
-
-  const orderWr = getTeamWr(players.order);
-  const chaosWr = getTeamWr(players.chaos);
-
+  // Loading Screen Stats
   return (
-    <>
-    <style>{`body { background: transparent !important; }`}</style>
-    <div className="fixed inset-0 m-4 sm:m-8 lg:m-12 z-[9999] p-8 flex flex-col items-center justify-start py-12 gap-6 animate-in fade-in transition-all bg-black/50 backdrop-blur-md rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] font-inter no-drag">
-      
-      {/* Oracle Prediction Top Left */}
-      {(orderWr > 0 || chaosWr > 0) && (
-        <div className="absolute top-10 left-10 flex flex-col gap-2 font-bold text-[10px] uppercase tracking-widest pointer-events-none drop-shadow-md">
-           <div className="text-blue-300">Équipe Bleu : {orderWr}%</div>
-           <div className="text-red-300">Équipe Rouge : {chaosWr}%</div>
-        </div>
-      )}
-
-      <div className="flex flex-col items-center pointer-events-none drop-shadow-md shrink-0">
-        <h1 className="text-4xl font-black text-gray-100 tracking-widest italic mb-1 uppercase">ORACLE <span className="text-accent-primary drop-shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.5)]">VISION</span></h1>
-        <div className="text-gray-400 font-bold uppercase tracking-[0.3em] text-[10px]">Analyse de l'Opposant</div>
+    <div className="fixed inset-0 bg-black/5 dark:bg-black/95 z-[9999] p-12 flex flex-col items-center justify-center gap-12 animate-in fade-in">
+      <div className="text-center">
+        <h1 className="text-5xl font-black text-gray-900 dark:text-gray-100 tracking-widest italic mb-2">ORACLE <span className="text-accent-primary">VISION</span></h1>
+        <div className="text-gray-500 font-bold uppercase tracking-[0.2em] text-sm">Chargement de la Faille...</div>
       </div>
 
-      {players.order.length > 0 || players.chaos.length > 0 ? (
-        <div className="w-full max-w-7xl grid grid-cols-2 gap-12 sm:gap-24 w-full h-[700px] py-4 px-2 pointer-events-auto shrink-0">
-          {/* TEAM BLEU */}
-          <div className="space-y-3 flex flex-col pt-2 block" style={{ height: 'max-content' }}>
-            {players.order.map((p, i) => (
-              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-3 px-4 rounded-2xl border border-blue-500/10 hover:border-blue-500/40 hover:bg-blue-500/10 shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer group" onClick={() => openProfile(p.name)}>
-                <div className="w-14 h-14 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner text-[8px] flex items-center justify-center font-bold text-gray-700">
-                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?")}
-                  {p.mastery > 0 && <div className="absolute bottom-0 right-0 z-20 bg-black/70 text-blue-300 font-extrabold text-[8px] px-1 rounded-sm border-t border-l border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
-                </div>
-                <div className="flex-1 min-w-0 pr-1">
-                  <div className="flex justify-between items-baseline mb-0 gap-2">
-                    <div className="font-black text-base text-white truncate drop-shadow-sm group-hover:text-blue-300 transition-colors uppercase tracking-tight">{p.name}</div>
-                    <span className="text-[9px] text-blue-300 font-extrabold uppercase tracking-widest bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
-                  </div>
-                  <div className="flex items-center justify-start gap-2 text-[10px] font-bold text-gray-300">
-                    <span className="opacity-75 uppercase tracking-wide">WR:</span>
-                    <span>{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
-                  </div>
-                </div>
+      <div className="w-full max-w-7xl grid grid-cols-2 gap-24">
+        <div className="space-y-4">
+          <div className="h-px bg-gradient-to-r from-blue-500 to-transparent opacity-50"></div>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 bg-blue-500/5 p-3 rounded-xl border border-blue-500/10">
+              <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded border border-gray-200 dark:border-white/10"></div>
+              <div className="flex-1">
+                <div className="font-bold text-gray-900 dark:text-gray-100">Joueur Bleu {i + 1}</div>
+                <div className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Platine II ÔÇó 58% WR</div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
+        </div>
 
-          {/* TEAM ROUGE */}
-          <div className="space-y-3 flex flex-col pt-2 block" style={{ height: 'max-content' }}>
-            {players.chaos.map((p, i) => (
-              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-3 px-4 rounded-2xl border border-red-500/10 hover:border-red-500/40 hover:bg-red-500/10 shadow-lg hover:shadow-red-500/20 transition-all cursor-pointer group flex-row-reverse text-right" onClick={() => openProfile(p.name)}>
-                <div className="w-14 h-14 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner text-[8px] flex items-center justify-center font-bold text-gray-700">
-                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?")}
-                  {p.mastery > 0 && <div className="absolute bottom-0 left-0 z-20 bg-black/70 text-red-300 font-extrabold text-[8px] px-1 rounded-sm border-t border-r border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
-                </div>
-                <div className="flex-1 min-w-0 pl-1">
-                  <div className="flex justify-between items-baseline mb-0 flex-row-reverse gap-2">
-                    <div className="font-black text-base text-white truncate drop-shadow-sm group-hover:text-red-400 transition-colors uppercase tracking-tight">{p.name}</div>
-                    <span className="text-[9px] text-red-300 font-extrabold uppercase tracking-widest bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
-                  </div>
-                  <div className="flex items-center justify-end gap-2 text-[10px] font-bold text-gray-300">
-                    <span className="text-white">{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
-                    <span className="opacity-75 uppercase tracking-wide">:WR</span>
-                  </div>
-                </div>
+        <div className="space-y-4">
+          <div className="h-px bg-gradient-to-l from-red-500 to-transparent opacity-50 text-right"></div>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 bg-red-500/5 p-3 rounded-xl border border-red-500/10 flex-row-reverse text-right">
+              <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded border border-gray-200 dark:border-white/10"></div>
+              <div className="flex-1">
+                <div className="font-bold text-gray-900 dark:text-gray-100">Joueur Rouge {i + 1}</div>
+                <div className="text-[10px] text-red-400 font-bold uppercase tracking-widest">Emeraude IV ÔÇó 42% WR</div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center h-[500px] pointer-events-none">
-           <div className="w-16 h-16 border-[4px] border-accent-primary border-t-transparent rounded-full animate-spin mb-6"></div>
-           <div className="text-white font-bold uppercase tracking-[0.2em] text-xs">Patientez...</div>
-        </div>
-      )}
+      </div>
+
+      <div className="mt-12 text-gray-600 dark:text-gray-400 font-medium text-sm animate-pulse italic">Appuyez sur [CTRL+X] en jeu pour activer l'analyse pr├®dictive</div>
     </div>
-    </>
-  );
+  )
 }
 
 
@@ -12789,7 +12556,7 @@ function NotificationsView({ panelClass, setActiveTab, patchNotes, prefetchedDat
                 Patch {latestPatch.version || latestPatch.title.match(/\d+\.\d+/)?.[0] || ""}
                 <span className="bg-accent-primary/20 text-accent-primary text-[8px] px-1.5 py-0.5 rounded font-black">MAJ</span>
               </div>
-              <div className="text-[11px] text-gray-400 truncate mt-0.5">{latestPatch.summary || "Découvrez les derniers changements."}</div>
+              <div className="text-[11px] text-gray-400 truncate mt-0.5">{latestPatch.summary || "D├®couvrez les derniers changements."}</div>
             </div>
             {latestPatch.image && (
               <div className="shrink-0 w-16 h-10 rounded-lg overflow-hidden border border-white/5">
@@ -12806,7 +12573,7 @@ function NotificationsView({ panelClass, setActiveTab, patchNotes, prefetchedDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-sm text-white truncate">{news.title}</div>
-              <div className="text-[11px] text-gray-400 truncate mt-0.5">{news.summary || news.description || "Actualité tournois officiels."}</div>
+              <div className="text-[11px] text-gray-400 truncate mt-0.5">{news.summary || news.description || "Actualit├® tournois officiels."}</div>
             </div>
             {news.image && (
               <div className="shrink-0 w-16 h-10 rounded-lg overflow-hidden border border-white/5">
@@ -12815,13 +12582,13 @@ function NotificationsView({ panelClass, setActiveTab, patchNotes, prefetchedDat
             )}
           </div>
         )) : (
-          <div className="p-8 text-center text-gray-500 italic text-xs">Aucune actualité récente.</div>
+          <div className="p-8 text-center text-gray-500 italic text-xs">Aucune actualit├® r├®cente.</div>
         )}
       </div>
 
       <div className="pt-4 mt-auto border-t border-white/5">
         <button onClick={() => setActiveTab('esports')} className="w-full py-2.5 text-xs text-gray-400 hover:text-white font-bold transition-colors">
-          Voir tout l'actualité
+          Voir tout l'actualit├®
         </button>
       </div>
     </div>
