@@ -39,6 +39,7 @@ let isAppQuitting = false;
 
 let mainWindow;
 let liveWindow;
+let loadingWindow;
 let draftWindow;
 let toastWindow;
 let voiceWindow; // New Voice Assistant Window
@@ -210,6 +211,39 @@ function createLiveWindow() {
         : `file://${path.join(__dirname, '../dist/index.html')}?mode=live`;
 
     liveWindow.loadURL(url);
+}
+
+function createLoadingWindow() {
+    loadingWindow = new BrowserWindow({
+        width: 1400,
+        height: 900,
+        x: 0,
+        y: 0,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false
+        },
+        title: 'Oracle Loading Screen',
+        backgroundColor: '#00FFFFFF',
+        show: false,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        skipTaskbar: true,
+        resizable: false,
+        type: 'toolbar'
+    });
+    
+    loadingWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+
+    const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+    const url = isDev
+        ? 'http://localhost:5173?mode=loading'
+        : `file://${path.join(__dirname, '../dist/index.html')}?mode=loading`;
+
+    loadingWindow.loadURL(url);
 }
 
 function createDraftWindow() {
@@ -606,6 +640,11 @@ ipcMain.handle('lcu:download-replay', async (_, { gameId, platformId }) => lcu.d
 ipcMain.handle('lcu:get-owned-skins', async (_, summonerId) => lcu.getOwnedSkins(summonerId));
 ipcMain.handle('lcu:get-owned-wards', async (_, summonerId) => lcu.getOwnedWards(summonerId));
 ipcMain.handle('lcu:get-owned-icons', async (_, summonerId) => lcu.getOwnedIcons(summonerId));
+ipcMain.handle('lcu:get-champions', async (_, summonerId) => {
+    try {
+        return await lcu._request('GET', `/lol-champions/v1/inventories/${summonerId}/champions-minimal`);
+    } catch(e) { return null; }
+});
 
 ipcMain.handle('live:get-all-data', async () => liveApi.getAllGameData());
 ipcMain.handle('live:get-active-player', async () => liveApi.getActivePlayer());
@@ -639,6 +678,18 @@ ipcMain.handle('app:open-url', (_, url) => {
     }
 });
 
+ipcMain.on('app:navigate-to-profile', (_, name) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app:navigate-to-profile', name);
+        if (!mainWindow.isVisible()) {
+            mainWindow.show();
+        } else if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+        }
+        mainWindow.focus();
+    }
+});
+
 ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+X') => {
     console.log(`[IPC] app:register-shortcut called with: ${winrateShortcut}`);
     try {
@@ -647,6 +698,30 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
             if (liveWindow) {
                 if (liveWindow.isVisible()) liveWindow.hide();
                 else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
+            }
+        });
+        
+        globalShortcut.register('Alt+B', () => {
+            if (lastPhase !== 'GameStart' && lastPhase !== 'InProgress') {
+                return; // Only allow toggling during the game phase
+            }
+            const settings = getSettings();
+            if (settings.loadingScreenEnabled !== false) {
+                if (loadingWindow) {
+                    if (loadingWindow.isVisible()) loadingWindow.hide();
+                    else { 
+                        loadingWindow.showInactive(); 
+                        loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        loadingWindow.setIgnoreMouseEvents(false); 
+                    }
+                } else {
+                    createLoadingWindow();
+                    loadingWindow.webContents.once('did-finish-load', () => {
+                        loadingWindow.showInactive();
+                        loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        loadingWindow.setIgnoreMouseEvents(false);
+                    });
+                }
             }
         });
 
@@ -690,6 +765,30 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
             if (liveWindow) {
                 if (liveWindow.isVisible()) liveWindow.hide();
                 else { liveWindow.show(); liveWindow.setIgnoreMouseEvents(true, { forward: true }); }
+            }
+        });
+        
+        globalShortcut.register('Alt+B', () => {
+            if (lastPhase !== 'GameStart' && lastPhase !== 'InProgress') {
+                return; // Only allow toggling during the game phase
+            }
+            const settings = getSettings();
+            if (settings.loadingScreenEnabled !== false) {
+                if (loadingWindow) {
+                    if (loadingWindow.isVisible()) loadingWindow.hide();
+                    else { 
+                        loadingWindow.show(); 
+                        loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        loadingWindow.setIgnoreMouseEvents(false); 
+                    }
+                } else {
+                    createLoadingWindow();
+                    loadingWindow.webContents.once('did-finish-load', () => {
+                        loadingWindow.showInactive();
+                        loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        loadingWindow.setIgnoreMouseEvents(false);
+                    });
+                }
             }
         });
 
@@ -873,6 +972,19 @@ async function monitorGameLoop() {
                 }
             }
 
+            const settings = getSettings();
+            if (['GameStart', 'InProgress'].includes(phase)) {
+                if (settings.loadingScreenEnabled !== false) {
+                    if (!loadingWindow) createLoadingWindow();
+                    loadingWindow.showInactive();
+                    loadingWindow.setIgnoreMouseEvents(false);
+                }
+            } else if (!['GameStart', 'InProgress'].includes(phase)) {
+                if (loadingWindow && !loadingWindow.isDestroyed() && loadingWindow.isVisible()) {
+                    fadeOutAndHide(loadingWindow);
+                }
+            }
+
             if (!['ChampSelect', 'GameStart', 'InProgress', 'Reconnect', 'WaitingForStats'].includes(phase)) {
                 lastLockedChampId = 0; // Reset
                 lastLockedSpells = { spell1Id: 0, spell2Id: 0 };
@@ -963,8 +1075,9 @@ async function monitorGameLoop() {
                                 const pages = await lcu.getRunePages();
                                 const oraclePage = pages.find(p => p.name.startsWith('Oracle'));
 
+                                const capRole = targetRole.charAt(0).toUpperCase() + targetRole.slice(1).toLowerCase();
                                 const pageData = {
-                                    name: `Oracle (${champName})`,
+                                    name: `Oracle ${champName} ${capRole}`,
                                     primaryStyleId: primaryStyleId,
                                     subStyleId: parseInt(build.runes.secondary) || 8200,
                                     selectedPerkIds: selectedPerkIds.slice(0, 9),

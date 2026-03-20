@@ -899,121 +899,130 @@ class Scraper {
     }
     async getChampionBuild(name, role = 'mid', region = 'EUW') {
         const REGION_MAP = { 'EUW': 'euw1', 'NA': 'na1', 'KR': 'kr' };
-        const rKey = REGION_MAP[region.toUpperCase()] || 'euw1';
-
-        // Consistent name mapping
-        const nameMap = {
-            'wukong': 'monkeyking', 'bel\'veth': 'belveth', 'cho\'gath': 'chogath',
-            'dr. mundo': 'drmundo', 'kai\'sa': 'kaisa', 'kha\'zix': 'khazix',
-            'kog\'maw': 'kogmaw', 'leblanc': 'leblanc', 'lee sin': 'leesin',
-            'master yi': 'masteryi', 'nunu & willump': 'nunu', 'reksai': 'reksai',
-            'renata glasc': 'renata', 'tahm kench': 'tahmkench', 'twisted fate': 'twistedfate',
-            'vel\'koz': 'velkoz', 'xin zhao': 'xinzhao'
-        };
-        const searchName = nameMap[name.toLowerCase()] || name.toLowerCase().replace(/['\s.&#]/g, '');
-
-        // We now prioritize U.GG because its JSON extraction is 100% reliable
+        
+        const searchName = name.toLowerCase().replace(/['\s.&#]/g, '');
         const validRoles = ['top', 'jungle', 'mid', 'adc', 'support'];
         const normalizedRole = validRoles.includes(role?.toLowerCase()) ? role.toLowerCase() : 'mid';
-        const url = `https://u.gg/lol/champions/${searchName}/build/${normalizedRole}`;
+        
+        const url = `https://op.gg/fr/lol/champions/${searchName}/build/${normalizedRole}`;
         console.log(`[Scraper] Fetching ROBUST build for ${name} [${normalizedRole}] from ${url}`);
 
         return this.runBrowserTask(url, async (win) => {
             try {
-                // Wait briefly for content
-                await this.waitForSelector(win, 'body', 5000);
+                // Wait for the main container to load
+                await this.waitForSelector(win, 'table, .content', 6000);
+                await new Promise(r => setTimeout(r, 2000)); // Additional wait for react to render
 
                 const data = await win.webContents.executeJavaScript(`
                     (() => {
+                        let result = {
+                            stats: { winRate: "50.0%", pickRate: "Meta", tier: "A" },
+                            skillOrder: ["Q", "W", "E"],
+                            items: { starting: ["1055", "2003"], core: [], boots: [], situational: [] },
+                            spells: ["4", "12"],
+                            runes: {
+                                primary: "8100",
+                                secondary: "8200",
+                                active: []
+                            }
+                        };
+
                         try {
-                            const str = document.documentElement.innerHTML;
-                            let start = str.indexOf('__SSR_DATA__ = {');
-                            if (start === -1) start = str.indexOf('window.__SSR_DATA__ = {');
-                            if (start !== -1) {
-                                start = str.indexOf('{', start);
-                                let braceCount = 0;
-                                let end = -1;
-                                let inString = false;
-                                let escape = false;
+                            // 1. EXTRACT RUNES (DOM based)
+                            // OP.GG displays the runes in a specific layout.
+                            // The easiest way is to find all active rune icons.
+                            const allRuneImages = Array.from(document.querySelectorAll('img[src*="/perk"]'));
+                            
+                            // We look for the main rune block. Usually it's the first big group.
+                            // Non-selected runes usually have an opacity inline style or a grayscale class.
+                            const activeRunes = allRuneImages.filter(img => {
+                                const style = window.getComputedStyle(img);
+                                const parentStyle = window.getComputedStyle(img.parentElement);
+                                const isGrayscale = style.filter.includes("grayscale") || parentStyle.filter.includes("grayscale");
+                                const isLowOpacity = parseFloat(style.opacity) < 0.8 || parseFloat(parentStyle.opacity) < 0.8;
+                                return !isGrayscale && !isLowOpacity;
+                            });
 
-                                for(let i=start; i<str.length; i++) {
-                                    let c = str[i];
-                                    if (escape) {
-                                        escape = false;
-                                        continue;
-                                    }
-                                    if (c === '\\\\') {
-                                        escape = true;
-                                        continue;
-                                    }
-                                    if (c === '"') {
-                                        inString = !inString;
-                                        continue;
-                                    }
+                            // Extract IDs
+                            const runeIds = activeRunes.map(img => {
+                                const m = img.src.match(/\\/perk[A-Za-z]*\\/(\\d+)\\.png/i);
+                                return m ? m[1] : null;
+                            }).filter(id => id !== null);
 
-                                    if (!inString) {
-                                        if (c === '{') braceCount++;
-                                        else if (c === '}') {
-                                            braceCount--;
-                                            if (braceCount === 0) {
-                                                end = i + 1;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
+                            // The first two "Style" IDs are primary and secondary paths (e.g. 8100, 8200)
+                            const styles = runeIds.filter(id => ["8000", "8100", "8200", "8300", "8400"].includes(id));
+                            if (styles.length >= 2) {
+                                result.runes.primary = String(styles[0]);
+                                result.runes.secondary = String(styles[1]);
+                            }
 
-                                if (end !== -1) {
-                                    let jsonStr = str.substring(start, end);
-                                    ssr = JSON.parse(jsonStr);
+                            // The rest are perks + stat shards (stat shards are in the 5000s range)
+                            let perks = runeIds.filter(id => !["8000", "8100", "8200", "8300", "8400"].includes(id));
+                            
+                            // Remove duplicates but keep order for stat mods
+                            let uniquePerks = [];
+                            let counts = {};
+                            for (const p of perks) {
+                                if (!counts[p] || parseInt(p) >= 5000) {
+                                    uniquePerks.push(p);
+                                    counts[p] = (counts[p] || 0) + 1;
                                 }
                             }
                             
-                            if (!ssr) {
-                                const match = str.match(/window\\.__SSR_DATA__\\s*=\\s*({.*?});/s);
-                                if (!match) return null;
-                                ssr = JSON.parse(match[1]);
+                            // A valid runepage needs exactly 9 perks
+                            if (uniquePerks.length >= 9) {
+                                result.runes.active = uniquePerks.slice(0, 9).map(String);
+                            } else {
+                                // Fallback to raw parsing of the first 9 valid IDs
+                                if (perks.length >= 9) result.runes.active = perks.slice(0, 9).map(String);
                             }
 
-                            const key = Object.keys(ssr).find(k => k.includes('overview') && k.includes('world') && k.includes('recommended'));
-                            if (!key || !ssr[key]?.data) return null;
-                            const buildObj = ssr[key].data;
-                            // Priority: role specific, then first available
-                            const pathArr = window.location.pathname.split('/');
-                            const role = (pathArr[pathArr.length-1] || 'mid').toLowerCase();
-                            const build = buildObj['world_emerald_plus_' + role] || Object.values(buildObj)[0];
-                            if (!build) return null;
+                            // 2. EXTRACT SPELLS
+                            const spellImages = Array.from(document.querySelectorAll('img[src*="/Spell/Summoner"]'));
+                            const spellIds = spellImages.map(img => {
+                                const match = img.src.match(/Summoner(?!Dot)(\\w+)/i); // Dot is usually ignite, we parse properly
+                                // Actually, DDragon ID is safer
+                                const idMatch = img.src.match(/\\/(\\d+)\\.png/);
+                                if (idMatch) return idMatch[1];
+                                
+                                const name = img.src.split('/').pop().split('.')[0].replace('Summoner', '').toLowerCase();
+                                const map = { 'flash': 4, 'smite': 11, 'ignite': 14, 'exhaust': 3, 'heal': 7, 'teleport': 12, 'barrier': 21, 'ghost': 6, 'cleanse': 1 };
+                                return map[name] || null;
+                            }).filter(id => id);
+                            
+                            if (spellIds.length >= 2) {
+                                result.spells = [String(spellIds[0]), String(spellIds[1])];
+                            }
 
-                            return {
-                                stats: { 
-                                    winRate: (build.win_rate || 50).toFixed(1) + "%", 
-                                    pickRate: "Meta", 
-                                    tier: build.win_rate > 51.5 ? "S" : (build.win_rate > 49.5 ? "A" : "B")
-                                },
-                                skillOrder: build.rec_skill_path?.slots || build.rec_skills?.slots || ["Q", "W", "E"],
-                                items: {
-                                    starting: (build.rec_starting_items?.ids || ["1056", "2003"]).map(String),
-                                    core: (build.rec_core_items?.ids || ["3118", "3020", "4645"]).map(String),
-                                    boots: (build.rec_boots_options?.filter(b => b.win_rate > 50).map(b => b.id) || ["3020"]).map(String),
-                                    situational: (build.item_options_1 || []).slice(0, 4).map(i => String(i.id))
-                                },
-                                spells: (build.rec_summoner_spells?.ids || ["4", "12"]).map(String),
-                                runes: {
-                                    primary: String(build.rec_runes?.primary_style || "8100"),
-                                    secondary: String(build.rec_runes?.sub_style || "8200"),
-                                    active: (build.rec_runes?.active_perks || []).map(String)
-                                }
-                            };
-                        } catch(e) { return null; }
+                            // 3. EXTRACT ITEMS
+                            // Usually wrapped in rows
+                            const itemImages = Array.from(document.querySelectorAll('img[src*="/item/"]'));
+                            const itemIds = [...new Set(itemImages.map(img => {
+                                const match = img.src.match(/\\/(\\d+)\\.png/);
+                                return match ? match[1] : null;
+                            }).filter(id => id))];
+                            
+                            if (itemIds.length >= 3) {
+                                result.items.core = itemIds.slice(0, 3).map(String);
+                                result.items.boots = itemIds.slice(3, 4).map(String);
+                            }
+
+                            // 4. EXTRACT WR
+                            const wrEl = document.querySelector('.win-rate');
+                            if (wrEl) result.stats.winRate = wrEl.innerText.trim();
+
+                        } catch(e) {}
+
+                        return result;
                     })()
                 `);
 
-                if (data && data.runes.active.length > 0) {
-                    console.log("[Scraper] Successfully extracted build data for " + name);
+                if (data && data.runes.active.length === 9) {
+                    console.log("[Scraper] Successfully extracted OP.GG build data for " + name);
                     return data;
                 }
 
-                console.log("[Scraper] JSON extraction yielded incomplete data for " + name + ", using robust fallback.");
+                console.log("[Scraper] OP.GG extraction yielded incomplete data for " + name + ", falling back to static default.");
                 return {
                     stats: { winRate: "51.8%", pickRate: "Meta", tier: "A" },
                     skillOrder: ["Q", "W", "E"],
@@ -1022,18 +1031,12 @@ class Scraper {
                     runes: {
                         primary: "8100",
                         secondary: "8200",
-                        active: ["8112", "8139", "8138", "8106", "8226", "8237"]
+                        active: ["8112", "8139", "8138", "8106", "8226", "8237", "5008", "5008", "5002"]
                     }
                 };
             } catch (e) {
-                console.error("[Scraper] Build ROBUST fetch failed for " + name + ":", e.message);
-                return {
-                    stats: { winRate: "50.0%", pickRate: "Meta", tier: "B" },
-                    skillOrder: ["Q", "W", "E"],
-                    items: { starting: ["1055", "2003"], core: ["3078", "3053", "3006"], boots: ["3006"], situational: ["3153"] },
-                    spells: ["4", "12"],
-                    runes: { primary: "8100", secondary: "8200", active: ["8112", "8139", "8138", "8106", "8226", "8237"] }
-                };
+                console.error("[Scraper] OP.GG build fetch failed for " + name + ":", e.message);
+                return null;
             }
         });
     }

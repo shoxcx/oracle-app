@@ -2252,9 +2252,17 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
         return next;
       });
       window.ipcRenderer.on('admin:broadcast', handler);
+
+      const navHandler = (_, name) => {
+        setTargetSummoner({ name, region: searchRegion, skipLcu: false });
+        setActiveTab('profile');
+      };
+      window.ipcRenderer.on('app:navigate-to-profile', navHandler);
+
       return () => {
         clearInterval(interval);
         window.ipcRenderer.removeListener('admin:broadcast', handler);
+        window.ipcRenderer.removeListener('app:navigate-to-profile', navHandler);
       };
     }
     
@@ -7960,15 +7968,27 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
   const [launchOnStartup, setLaunchOnStartup] = useState(false);
   const [closeBehavior, setCloseBehavior] = useState('ask');
 
+  const [loadingScreenEnabled, setLoadingScreenEnabled] = useState(true);
+
   useEffect(() => {
     ipcRenderer.invoke('app:get-auto-launch').then(setLaunchOnStartup);
-    ipcRenderer.invoke('app:get-settings').then(s => setCloseBehavior(s?.closeBehavior || 'ask'));
+    ipcRenderer.invoke('app:get-settings').then(s => {
+      setCloseBehavior(s?.closeBehavior || 'ask');
+      if (s?.loadingScreenEnabled !== undefined) setLoadingScreenEnabled(s.loadingScreenEnabled);
+    });
   }, []);
 
   const updateCloseBehavior = async (val) => {
     setCloseBehavior(val);
     const s = await ipcRenderer.invoke('app:get-settings') || {};
     s.closeBehavior = val;
+    await ipcRenderer.invoke('app:set-settings', s);
+  };
+
+  const updateLoadingScreenToggle = async (val) => {
+    setLoadingScreenEnabled(val);
+    const s = await ipcRenderer.invoke('app:get-settings') || {};
+    s.loadingScreenEnabled = val;
     await ipcRenderer.invoke('app:set-settings', s);
   };
 
@@ -8175,6 +8195,11 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
                 <SettingsToggle active={overlaySettings.winProbability !== false} onToggle={() => setOverlaySettings(p => ({ ...p, winProbability: p.winProbability === false ? true : false }))} />
               </div>
             }
+          />
+          <SettingCard
+            icon={Monitor} color="blue"
+            title={"Écran de Chargement Visuel"} desc={"Affiche les rangs et winrates au lancement de la partie (Alt+B pour masquer)"}
+            action={<SettingsToggle active={loadingScreenEnabled} onToggle={() => updateLoadingScreenToggle(!loadingScreenEnabled)} />}
           />
         </SettingsSection>
 
@@ -12432,45 +12457,166 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
 }
 
 function LoadingOverlay({ t, visualMode, theme }) {
-  // Loading Screen Stats
+  const [players, setPlayers] = useState({ order: [], chaos: [] });
+  const [champMap, setChampMap] = useState({});
+
+  useEffect(() => {
+    let interval;
+    async function loadData() {
+      try {
+        let _champMap = champMap;
+        if (Object.keys(_champMap).length === 0) {
+          const sum = await window.ipcRenderer.invoke('lcu:get-current-summoner');
+          if (sum) {
+            const champs = await window.ipcRenderer.invoke('lcu:get-champions', sum.summonerId);
+            if (champs) {
+              const newMap = {};
+              champs.forEach(c => newMap[c.id] = c.name);
+              _champMap = newMap;
+              setChampMap(newMap);
+            }
+          }
+        }
+
+        const session = await window.ipcRenderer.invoke('lcu:get-gameflow-session');
+        let livePlayers = [];
+        try { livePlayers = await window.ipcRenderer.invoke('live:get-player-list') || []; } catch(e){}
+
+        if (session && session.gameData) {
+          const enrichTeam = async (teamList) => {
+            return Promise.all(teamList.map(async (p) => {
+              let rankName = "Vérification...";
+              let globalWr = 0;
+              let globalGames = 0;
+              let globalWins = 0, globalLosses = 0;
+              let champMasteryRank = 0;
+              
+              const champName = _champMap[p.championId] || "Unknown";
+              
+              let name = p.summonerName;
+              if (!name || name === "Inconnu" || name === "") {
+                  const match = livePlayers.find(lp => lp.championName === champName || (lp.championName && champName && lp.championName.toLowerCase() === champName.toLowerCase()));
+                  if (match && match.summonerName) name = match.summonerName;
+              }
+              if (!name || name === "") name = "INCONNU";
+
+              let currentPuuid = p.puuid;
+              try {
+                if (!currentPuuid && name !== "INCONNU") {
+                    // Force LCU lookup for enemies hidden in Ranked
+                    const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', false);
+                    if (sumData && sumData.puuid) currentPuuid = sumData.puuid;
+                }
+
+                if (currentPuuid) {
+                  const ranked = await window.ipcRenderer.invoke('lcu:get-ranked-stats', currentPuuid);
+                  if (ranked && ranked.queueMap && ranked.queueMap.RANKED_SOLO_5x5) {
+                    const solo = ranked.queueMap.RANKED_SOLO_5x5;
+                    rankName = `${solo.tier} ${solo.division}`;
+                    globalWins = solo.wins || 0;
+                    globalLosses = solo.losses || 0;
+                    globalGames = globalWins + globalLosses;
+                    if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
+                  } else {
+                    rankName = "UNRANKED";
+                  }
+                  
+                  const masteries = await window.ipcRenderer.invoke('lcu:get-champion-mastery', currentPuuid);
+                  if (masteries && Array.isArray(masteries)) {
+                      const m = masteries.find(x => x.championId === p.championId);
+                      if (m) champMasteryRank = m.championLevel || 0;
+                  }
+                } else if (name === "INCONNU") {
+                    rankName = "CACHÉ";
+                }
+              } catch(e){}
+
+              return { name, puuid: currentPuuid, champId: p.championId, champName, rank: rankName, globalWr, globalGames, globalWins, globalLosses, mastery: champMasteryRank };
+            }));
+          };
+
+          const orderPlayers = await enrichTeam(session.gameData.teamOne || []);
+          const chaosPlayers = await enrichTeam(session.gameData.teamTwo || []);
+          setPlayers({ order: orderPlayers, chaos: chaosPlayers });
+        }
+      } catch(e) { console.error("Loading overlay error", e); }
+    }
+    
+    loadData();
+    interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const openProfile = (name) => {
+    if (window.ipcRenderer && name !== "INCONNU") {
+      window.ipcRenderer.send('app:navigate-to-profile', name);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/5 dark:bg-black/95 z-[9999] p-12 flex flex-col items-center justify-center gap-12 animate-in fade-in">
-      <div className="text-center">
-        <h1 className="text-5xl font-black text-gray-900 dark:text-gray-100 tracking-widest italic mb-2">ORACLE <span className="text-accent-primary">VISION</span></h1>
-        <div className="text-gray-500 font-bold uppercase tracking-[0.2em] text-sm">Chargement de la Faille...</div>
+    <>
+    <style>{`body { background: transparent !important; }`}</style>
+    <div className="fixed inset-0 m-4 sm:m-8 lg:m-12 z-[9999] p-8 flex flex-col items-center justify-center gap-8 animate-in fade-in transition-all bg-gradient-to-br from-indigo-950/90 to-purple-950/90 backdrop-blur-md rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] font-inter overflow-hidden no-drag">
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none drop-shadow-md">
+        <h1 className="text-4xl font-black text-gray-100 tracking-widest italic mb-1 uppercase">ORACLE <span className="text-accent-primary drop-shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.5)]">VISION</span></h1>
+        <div className="text-gray-400 font-bold uppercase tracking-[0.3em] text-[10px]">Analyse de l'Opposant</div>
       </div>
 
-      <div className="w-full max-w-7xl grid grid-cols-2 gap-24">
-        <div className="space-y-4">
-          <div className="h-px bg-gradient-to-r from-blue-500 to-transparent opacity-50"></div>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 bg-blue-500/5 p-3 rounded-xl border border-blue-500/10">
-              <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded border border-gray-200 dark:border-white/10"></div>
-              <div className="flex-1">
-                <div className="font-bold text-gray-900 dark:text-gray-100">Joueur Bleu {i + 1}</div>
-                <div className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Platine II • 58% WR</div>
+      {players.order.length > 0 || players.chaos.length > 0 ? (
+        <div className="w-full max-w-7xl grid grid-cols-2 gap-12 sm:gap-24 mt-16 overflow-y-auto custom-scrollbar h-full py-4 px-2 pointer-events-auto">
+          {/* TEAM BLEU */}
+          <div className="space-y-4 flex flex-col justify-center">
+            {players.order.map((p, i) => (
+              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-4 rounded-[1.5rem] border border-blue-500/10 hover:border-blue-500/40 hover:bg-blue-500/10 shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer group" onClick={() => openProfile(p.name)}>
+                <div className="w-16 h-16 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner">
+                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : null}
+                  {p.mastery > 0 && <div className="absolute bottom-1 right-1 z-20 bg-black/70 text-blue-300 font-extrabold text-[9px] px-1.5 rounded-md border border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
+                </div>
+                <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex justify-between items-baseline mb-1 gap-2">
+                    <div className="font-black text-lg text-white truncate drop-shadow-sm group-hover:text-blue-300 transition-colors uppercase tracking-tight">{p.name}</div>
+                    <span className="text-[10px] text-blue-300 font-extrabold uppercase tracking-widest bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-bold mt-2 text-gray-300">
+                    <span className="opacity-75 uppercase tracking-wide">Global WR</span>
+                    <span>{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="space-y-4">
-          <div className="h-px bg-gradient-to-l from-red-500 to-transparent opacity-50 text-right"></div>
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-4 bg-red-500/5 p-3 rounded-xl border border-red-500/10 flex-row-reverse text-right">
-              <div className="w-12 h-12 bg-gray-200 dark:bg-gray-800 rounded border border-gray-200 dark:border-white/10"></div>
-              <div className="flex-1">
-                <div className="font-bold text-gray-900 dark:text-gray-100">Joueur Rouge {i + 1}</div>
-                <div className="text-[10px] text-red-400 font-bold uppercase tracking-widest">Emeraude IV • 42% WR</div>
+          {/* TEAM ROUGE */}
+          <div className="space-y-4 flex flex-col justify-center">
+            {players.chaos.map((p, i) => (
+              <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-4 rounded-[1.5rem] border border-red-500/10 hover:border-red-500/40 hover:bg-red-500/10 shadow-lg hover:shadow-red-500/20 transition-all cursor-pointer group flex-row-reverse text-right" onClick={() => openProfile(p.name)}>
+                <div className="w-16 h-16 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner">
+                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : null}
+                  {p.mastery > 0 && <div className="absolute bottom-1 auto-left-1 z-20 bg-black/70 text-red-300 font-extrabold text-[9px] px-1.5 rounded-md border border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
+                </div>
+                <div className="flex-1 min-w-0 pl-2">
+                  <div className="flex justify-between items-baseline mb-1 flex-row-reverse gap-2">
+                    <div className="font-black text-lg text-white truncate drop-shadow-sm group-hover:text-red-400 transition-colors uppercase tracking-tight">{p.name}</div>
+                    <span className="text-[10px] text-red-300 font-extrabold uppercase tracking-widest bg-red-500/20 border border-red-500/30 px-2 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                  </div>
+                  <div className="flex items-center justify-between flex-row-reverse text-[11px] font-bold mt-2 text-gray-300">
+                    <span className="opacity-75 uppercase tracking-wide">Global WR</span>
+                    <span>{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-
-      <div className="mt-12 text-gray-600 dark:text-gray-400 font-medium text-sm animate-pulse italic">Appuyez sur [CTRL+X] en jeu pour activer l'analyse prédictive</div>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full pointer-events-none">
+           <div className="w-16 h-16 border-[4px] border-accent-primary border-t-transparent rounded-full animate-spin mb-6"></div>
+           <div className="text-white font-bold uppercase tracking-[0.2em] text-xs">Patientez...</div>
+        </div>
+      )}
     </div>
-  )
+    </>
+  );
 }
 
 
