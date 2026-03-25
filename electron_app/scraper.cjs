@@ -13,6 +13,11 @@ class Scraper {
         this.path = require('path');
         this.cacheFile = this.path.join(process.cwd(), 'scraper_cache.json');
         this.globalDataCacheFile = this.path.join(process.cwd(), 'global_data_cache.json');
+        
+        // Force clear cache once to fix broken builds
+        try { if(this.fs.existsSync(this.cacheFile)) this.fs.unlinkSync(this.cacheFile); } catch(e){}
+        try { if(this.fs.existsSync(this.globalDataCacheFile)) this.fs.unlinkSync(this.globalDataCacheFile); } catch(e){}
+        
         this.loadCache();
         this.loadGlobalDataCache();
 
@@ -85,22 +90,6 @@ class Scraper {
             }
             this.fs.writeFileSync(this.cacheFile, JSON.stringify(data));
         } catch (e) { }
-    }
-
-    async initWorker() {
-        try {
-            if (this.workerWindow && !this.workerWindow.isDestroyed()) return;
-            const { BrowserWindow } = require('electron');
-            this.workerWindow = new BrowserWindow({
-                show: false, width: 1600, height: 1200,
-                webPreferences: { offscreen: false, contextIsolation: true, webSecurity: false, images: true, nodeIntegration: false }
-            });
-            // Removed cache clearing to allow faster site loading
-            this.workerWindow.on('closed', () => { this.workerWindow = null; });
-            console.log("[Scraper] Worker window reused/initialized.");
-        } catch (e) {
-            console.error("[Scraper] Failed to init worker", e);
-        }
     }
 
     enqueue(task) {
@@ -556,6 +545,33 @@ class Scraper {
         return { gameName, tagLine, slug };
     }
 
+    async initWorker() {
+        if (this.workerWindow && !this.workerWindow.isDestroyed()) {
+            return;
+        }
+        try {
+            this.workerWindow = new BrowserWindow({
+                show: false,
+                webPreferences: { offscreen: false, contextIsolation: true, webSecurity: false, images: true, nodeIntegration: false }
+            });
+
+            // Block common ads and trackers
+            const ses = this.workerWindow.webContents.session;
+            ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (d, cb) => {
+                const u = d.url.toLowerCase();
+                const b = ['google-analytics', 'doubleclick', 'amazon-adsystem', 'adnxs', 'googleads', 'analytics', 'tracking', 'ads-api', 'taboola', 'outbrain', '.mp4', '.woff', '.ttf'];
+                if (b.some(x => u.includes(x))) return cb({ cancel: true });
+                cb({ cancel: false });
+            });
+
+            // Removed cache clearing to allow faster site loading
+            this.workerWindow.on('closed', () => { this.workerWindow = null; });
+            console.log("[Scraper] Worker window initialized with optimizations.");
+        } catch (e) {
+            console.error("[Scraper] Failed to init worker", e);
+        }
+    }
+
     async runBrowserTask(url, callback, options = {}) {
         return this.enqueue(async () => {
             let attempts = 0;
@@ -565,9 +581,9 @@ class Scraper {
                 await this.initWorker();
                 const win = this.workerWindow;
 
-                const finalTimeout = options.timeout || 30000;
+                const finalTimeout = options.timeout || 10000; // Drastically reduced from 30s to 10s to ensure fast fallback to OP.GG
                 const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error(`Operation timeout (${finalTimeout / 1000}s)`)), finalTimeout);
+                    setTimeout(() => reject(new Error(`Status: TIMEOUT loading ${url}`)), finalTimeout);
                 });
 
                 try {
@@ -582,6 +598,10 @@ class Scraper {
                     ]);
                     return result;
                 } catch (e) {
+                    // Log more info if executeJavaScript failed
+                    if (e.message.includes('Script failed to execute')) {
+                        console.error("[Scraper] Payload error! Likely syntax issue in jsPayload.");
+                    }
                     console.error(`[Scraper] Task failed on worker (Attempt ${attempts + 1}): ${e.message}`);
                     if (win && !win.isDestroyed()) {
                         try { win.webContents.stop(); } catch (err) { }
@@ -897,149 +917,199 @@ class Scraper {
             }
         });
     }
-    async getChampionBuild(name, role = 'mid', region = 'EUW') {
-        const REGION_MAP = { 'EUW': 'euw1', 'NA': 'na1', 'KR': 'kr' };
-        
+                                async getChampionBuild(name, role = null, region = 'EUW') {
         const searchName = name.toLowerCase().replace(/['\s.&#]/g, '');
-        const validRoles = ['top', 'jungle', 'mid', 'adc', 'support'];
-        const normalizedRole = validRoles.includes(role?.toLowerCase()) ? role.toLowerCase() : 'mid';
+        const roleStr = role ? role.toLowerCase() : 'any';
         
-        const url = `https://op.gg/fr/lol/champions/${searchName}/build/${normalizedRole}`;
-        console.log(`[Scraper] Fetching ROBUST build for ${name} [${normalizedRole}] from ${url}`);
+        const cacheK = 'build_' + searchName + '_' + roleStr + '_v23';
+        const cached = this.getCachedData(cacheK);
+        if (cached) {
+             console.log(`[Scraper] Retrieved LOG build for ${name} [${roleStr}] from cache.`);
+             return cached;
+        }
+        const cleanRole = (role === 'none' || !role) ? null : role.toLowerCase();
+        const url = cleanRole ? `https://www.leagueofgraphs.com/fr/champions/tier-list/${searchName}/${cleanRole}` 
+                           : `https://www.leagueofgraphs.com/fr/champions/tier-list/${searchName}`;
 
-        return this.runBrowserTask(url, async (win) => {
-            try {
-                // Wait for the main container to load
-                await this.waitForSelector(win, 'table, .content', 6000);
-                await new Promise(r => setTimeout(r, 2000)); // Additional wait for react to render
+        
+        console.log(`[Scraper] Fetching LOG build for ${name} [Role: ${roleStr}] from ${url}`);
 
-                const data = await win.webContents.executeJavaScript(`
-                    (() => {
-                        let result = {
-                            stats: { winRate: "50.0%", pickRate: "Meta", tier: "A" },
-                            skillOrder: ["Q", "W", "E"],
-                            items: { starting: ["1055", "2003"], core: [], boots: [], situational: [] },
-                            spells: ["4", "12"],
-                            runes: {
-                                primary: "8100",
-                                secondary: "8200",
-                                active: []
-                            }
+        return await this.runBrowserTask(url, async (win) => {
+            // Wait specifically for the rune tables to ensure the DOM is fully hydrated
+            await this.waitForSelector(win, '.perksTableOverview', 5000).catch(() => {});
+
+            const jsPayload = `
+                (() => {
+                    try {
+                        const result = {
+                            stats: { winRate: "?", pickRate: "?", tier: "?" },
+                            skillOrder: [],
+                            items: { starting: [], core: [], boots: [], situational: [] },
+                            spells: [],
+                            runes: { primary: "8000", secondary: "8400", active: [] }
+                        };
+                        // Helper to get item IDs from src
+                        const getItemId = (img) => {
+                            if (!img) return null;
+                            const m = img.src.match(/(\\d+)\\.png/);
+                            return m ? m[1] : null;
                         };
 
-                        try {
-                            // 1. EXTRACT RUNES (DOM based)
-                            // OP.GG displays the runes in a specific layout.
-                            // The easiest way is to find all active rune icons.
-                            const allRuneImages = Array.from(document.querySelectorAll('img[src*="/perk"]'));
-                            
-                            // We look for the main rune block. Usually it's the first big group.
-                            // Non-selected runes usually have an opacity inline style or a grayscale class.
-                            const activeRunes = allRuneImages.filter(img => {
-                                const style = window.getComputedStyle(img);
-                                const parentStyle = window.getComputedStyle(img.parentElement);
-                                const isGrayscale = style.filter.includes("grayscale") || parentStyle.filter.includes("grayscale");
-                                const isLowOpacity = parseFloat(style.opacity) < 0.8 || parseFloat(parentStyle.opacity) < 0.8;
-                                return !isGrayscale && !isLowOpacity;
+                        const extractItemsFromBox = (keywords) => {
+                            const titleEl = Array.from(document.querySelectorAll('.box-title, .box h3, b')).find(el => {
+                                const txt = el.innerText.toLowerCase();
+                                return keywords.some(k => txt.includes(k));
                             });
+                            if (!titleEl) return [];
+                            const box = titleEl.closest('.box');
+                            if (!box) return [];
+                            const imgs = Array.from(box.querySelectorAll('img')).filter(img => img.src.includes('items/'));
+                            return [...new Set(imgs.map(img => getItemId(img)).filter(id => id && id.length >= 3))].slice(0, 6);
+                        };
+                        result.items.starting = extractItemsFromBox(['départ', 'starting', 'starter']);
+                        result.items.boots = extractItemsFromBox(['bottes', 'boots', 'boot']);
+                        result.items.core = extractItemsFromBox(['principaux', 'core', 'principal', 'essentiels']);
+                        result.items.situational = extractItemsFromBox(['fin', 'final', 'situational', 'situations']);
 
-                            // Extract IDs
-                            const runeIds = activeRunes.map(img => {
-                                const m = img.src.match(/\\/perk[A-Za-z]*\\/(\\d+)\\.png/i);
-                                return m ? m[1] : null;
-                            }).filter(id => id !== null);
+                        // 1. Find Rune Tables (Strictly LOG detailed tables to preserve perfect order)
+                        const runeTables = Array.from(document.querySelectorAll('.perksTableOverview'));
+                        
+                        const trees = [];
+                        const perkIds = [];
+                        const shardIds = [];
 
-                            // The first two "Style" IDs are primary and secondary paths (e.g. 8100, 8200)
-                            const styles = runeIds.filter(id => ["8000", "8100", "8200", "8300", "8400"].includes(id));
-                            if (styles.length >= 2) {
-                                result.runes.primary = String(styles[0]);
-                                result.runes.secondary = String(styles[1]);
-                            }
-
-                            // The rest are perks + stat shards (stat shards are in the 5000s range)
-                            let perks = runeIds.filter(id => !["8000", "8100", "8200", "8300", "8400"].includes(id));
-                            
-                            // Remove duplicates but keep order for stat mods
-                            let uniquePerks = [];
-                            let counts = {};
-                            for (const p of perks) {
-                                if (!counts[p] || parseInt(p) >= 5000) {
-                                    uniquePerks.push(p);
-                                    counts[p] = (counts[p] || 0) + 1;
+                        if (runeTables.length > 0) {
+                            runeTables.forEach((table) => {
+                                // Tree ID in header (Check both styles)
+                                const treeImg = table.querySelector('th img[src*="/perks/styles/"], th img[src*="8000.png"], th img[src*="8100.png"], th img[src*="8200.png"], th img[src*="8300.png"], th img[src*="8400.png"]');
+                                if (treeImg) {
+                                    const tid = treeImg.src.split('/').pop().split('.')[0].replace(/[^0-9]/g, '');
+                                    if (tid.length >= 4 && !trees.includes(tid)) trees.push(tid);
                                 }
-                            }
-                            
-                            // A valid runepage needs exactly 9 perks
-                            if (uniquePerks.length >= 9) {
-                                result.runes.active = uniquePerks.slice(0, 9).map(String);
-                            } else {
-                                // Fallback to raw parsing of the first 9 valid IDs
-                                if (perks.length >= 9) result.runes.active = perks.slice(0, 9).map(String);
-                            }
 
-                            // 2. EXTRACT SPELLS
-                            const spellImages = Array.from(document.querySelectorAll('img[src*="/Spell/Summoner"]'));
-                            const spellIds = spellImages.map(img => {
-                                const match = img.src.match(/Summoner(?!Dot)(\\w+)/i); // Dot is usually ignite, we parse properly
-                                // Actually, DDragon ID is safer
-                                const idMatch = img.src.match(/\\/(\\d+)\\.png/);
-                                if (idMatch) return idMatch[1];
-                                
-                                const name = img.src.split('/').pop().split('.')[0].replace('Summoner', '').toLowerCase();
-                                const map = { 'flash': 4, 'smite': 11, 'ignite': 14, 'exhaust': 3, 'heal': 7, 'teleport': 12, 'barrier': 21, 'ghost': 6, 'cleanse': 1 };
-                                return map[name] || null;
-                            }).filter(id => id);
-                            
-                            if (spellIds.length >= 2) {
-                                result.spells = [String(spellIds[0]), String(spellIds[1])];
-                            }
+                                // Runes/Shards in table cells
+                                table.querySelectorAll('img').forEach(img => {
+                                    // Check if it's a perk
+                                    const classes = Array.from(img.classList);
+                                    const perkClass = classes.find(c => c.startsWith('perk-'));
+                                    if (!perkClass && !img.src.includes('/perks/')) return;
 
-                            // 3. EXTRACT ITEMS
-                            // Usually wrapped in rows
-                            const itemImages = Array.from(document.querySelectorAll('img[src*="/item/"]'));
-                            const itemIds = [...new Set(itemImages.map(img => {
-                                const match = img.src.match(/\\/(\\d+)\\.png/);
-                                return match ? match[1] : null;
-                            }).filter(id => id))];
-                            
-                            if (itemIds.length >= 3) {
-                                result.items.core = itemIds.slice(0, 3).map(String);
-                                result.items.boots = itemIds.slice(3, 4).map(String);
-                            }
+                                    // Selection check (Parent opacity)
+                                    let isSelected = true;
+                                    let curr = img.parentElement;
+                                    for(let i=0; i<4 && curr && curr.tagName !== 'TABLE'; i++) {
+                                        const st = window.getComputedStyle(curr);
+                                        const op = parseFloat(st.opacity || "1");
+                                        if(op < 0.5 || (st.filter && st.filter.includes('grayscale(1)'))) { 
+                                            isSelected = false; 
+                                            break; 
+                                        }
+                                        curr = curr.parentElement;
+                                    }
+                                    if(!isSelected) return;
 
-                            // 4. EXTRACT WR
-                            const wrEl = document.querySelector('.win-rate');
-                            if (wrEl) result.stats.winRate = wrEl.innerText.trim();
+                                    // Extract ID strictly with regex to avoid non-numeric classes shifting the array
+                                    let id = null;
+                                    const perkMatch = img.className.match(/perk-(\\d+)/);
+                                    if (perkMatch) {
+                                        id = perkMatch[1];
+                                    } else {
+                                        const m = img.src.match(/(\\d+)\\.png/);
+                                        if(m) id = m[1];
+                                    }
 
-                        } catch(e) {}
+                                    if (id && id.length >= 4) {
+                                        if ([8000, 8100, 8200, 8300, 8400].includes(parseInt(id))) {
+                                            if(!trees.includes(id)) trees.push(id);
+                                            return;
+                                        }
+                                        if (img.src.includes('shard') || img.src.includes('StatMods') || parseInt(id) < 6000) {
+                                            if (!shardIds.includes(id)) shardIds.push(id);
+                                        } else {
+                                            if (!perkIds.includes(id)) perkIds.push(id);
+                                        }
+                                    }
+                                });
+                            });
+                        }
 
-                        return result;
-                    })()
-                `);
+                        // 3. Finalize
+                        // Slot 0-3: Primary, 4-5: Secondary, 6-8: Shards
+                        const finalPerks = perkIds.slice(0, 6);
+                        
+                        // Fallbacks MUST be structurally valid (1 Keystone, 3 Primary, 2 Secondary)
+                        // Precision (8000) -> Conqueror(8010), Triumph(9111), Alacrity(9105), Last Stand(8299) | Resolve(8400) -> Bone Plating(8473), Overgrowth(8453)
+                        const precisionFallback = ["8010", "9111", "9105", "8299", "8473", "8453"];
+                        
+                        // Domination (8100) -> Electrocute(8112), Sudden Impact(8143), Eyeball(8138), Relentless(8106) | Sorcery(8200) -> Absolute Focus(8233), Gathering Storm(8236)
+                        const dominationFallback = ["8112", "8143", "8138", "8106", "8233", "8236"];
+                        
+                        const pDefaults = (trees[0] === "8100" || trees.length === 0) ? dominationFallback : precisionFallback;
+                        
+                        while(finalPerks.length < 6) {
+                            const def = pDefaults[finalPerks.length];
+                            if (!finalPerks.includes(def)) finalPerks.push(def); else finalPerks.push(pDefaults[finalPerks.length]); 
+                        }
 
-                if (data && data.runes.active.length === 9) {
-                    console.log("[Scraper] Successfully extracted OP.GG build data for " + name);
-                    return data;
-                }
+                        const finalShards = shardIds.slice(0, 3);
+                        while(finalShards.length < 3) finalShards.push(["5008", "5008", "5001"][finalShards.length]);
 
-                console.log("[Scraper] OP.GG extraction yielded incomplete data for " + name + ", falling back to static default.");
-                return {
-                    stats: { winRate: "51.8%", pickRate: "Meta", tier: "A" },
-                    skillOrder: ["Q", "W", "E"],
-                    items: { starting: ["1055", "2003"], core: ["3078", "3053", "3006"], boots: ["3006"], situational: ["3153", "3026"] },
-                    spells: ["4", "12"],
-                    runes: {
-                        primary: "8100",
-                        secondary: "8200",
-                        active: ["8112", "8139", "8138", "8106", "8226", "8237", "5008", "5008", "5002"]
+                        result.runes.active = [...finalPerks, ...finalShards];
+                        result.runes.primary = trees[0] || (pDefaults === dominationFallback ? "8100" : "8000");
+                        result.runes.secondary = trees[1] || (result.runes.primary === "8100" ? "8200" : "8400");
+
+                        // SPELLS (Only summoner spells icons)
+                        const spellImgs = Array.from(document.querySelectorAll('img')).filter(img => img.src.includes('Summoner') || img.src.includes('spells/'));
+                        const validSpells = spellImgs.map(img => {
+                            const nm = img.src.toLowerCase();
+                            if(nm.includes('flash')) return "4";
+                            if(nm.includes('smite')) return "11";
+                            if(nm.includes('ignite') || nm.includes('dot')) return "14";
+                            if(nm.includes('exhaust')) return "3";
+                            if(nm.includes('heal')) return "7";
+                            if(nm.includes('teleport')) return "12";
+                            if(nm.includes('barrier')) return "21";
+                            if(nm.includes('ghost')) return "6";
+                            if(nm.includes('cleanse')) return "1";
+                            return null;
+                        }).filter(id => id);
+                        result.spells = [...new Set(validSpells)].slice(0, 2);
+
+                        // SKILLS
+                        const skillBox = Array.from(document.querySelectorAll('.box-title')).find(el => {
+                            const tx = el.innerText.toLowerCase();
+                            return tx.includes('compétences') || tx.includes('skills') || tx.includes('sorts');
+                        });
+                        if (skillBox && skillBox.closest('.box')) {
+                            const ordered = Array.from(skillBox.closest('.box').querySelectorAll('td:not(.empty)')).map(td => td.innerText.trim()).filter(t => ["Q","W","E","R"].includes(t));
+                            if(ordered.length >= 5) result.skillOrder = ordered.slice(0, 18);
+                        }
+                        
+                        return JSON.stringify(result);
+                    } catch(err) {
+                        return JSON.stringify({ error: err.stack || err.toString() });
                     }
-                };
-            } catch (e) {
-                console.error("[Scraper] OP.GG build fetch failed for " + name + ":", e.message);
-                return null;
+                })();
+            `;
+
+            let raw = await win.webContents.executeJavaScript(jsPayload);
+            let data = null;
+            try { data = JSON.parse(raw); } catch(e) {}
+
+            if (data && !data.error && data.runes) {
+                // Ensure 9 perks
+                if (!data.runes.active) data.runes.active = [];
+                while(data.runes.active.length < 9) data.runes.active.push("5001");
+                
+                this.setCachedData(cacheK, data);
+                return data;
             }
+
+            console.error("[Scraper] LOG extraction failed for " + name);
+            return null;
         });
     }
+
 
     async getLeagueOfGraphsItems(champ, role = 'jungle') {
         const champClean = champ.toLowerCase().replace(/['\s.&#]/g, '');
@@ -1656,7 +1726,7 @@ class Scraper {
         }
 
         // C. Combine for Final Tactic
-        const roleLabel = roleKey.charAt(0).toUpperCase() + roleKey.slice(1).toLowerCase();
+        const roleLabel = (roleKey || "any").charAt(0).toUpperCase() + (roleKey || "any").slice(1).toLowerCase();
 
         if (specificTip) {
             final.tactics = `💡 Mécanique Principale :\n${final.tactics}\n\n🛡️ Plan de Jeu (${roleLabel}) :\n${roleAdvice}`;
@@ -2697,56 +2767,140 @@ class Scraper {
     }
 
     async getEsportsRankings() {
-        const cacheKey = 'esports_rankings_v13';
-        const cached = this.getCachedData(cacheKey, 3600000); // 1 hour
+        const cacheKey = 'esports_rankings_v18';
+        const cached = this.getCachedData(cacheKey, 300000); // 5 minutes cache
         if (cached) return cached;
 
-        const url = 'https://lolesports.com/standings';
-        console.log(`[Scraper] Fetching esports rankings from ${url}`);
+        const url = 'https://lolesports.com/en-US/gpr';
+        console.log(`[Scraper] Fetching esports rankings using BrowserTask from ${url}`);
 
         const result = await this.runBrowserTask(url, async (win) => {
             try {
-                // Return static fallback matching exact new lolesports power rankings layout
-                const data = await win.webContents.executeJavaScript(`
-                    (function() {
-                        return [
-                            { rank: 1, name: "GEN", fullName: "Gen.G Esports", league: "LCK", wins: 8, losses: 0, points: "1576 pts" },
-                            { rank: 2, name: "T1", fullName: "T1", league: "LCK", wins: 5, losses: 2, points: "1503 pts" },
-                            { rank: 3, name: "BLG", fullName: "Bilibili Gaming", league: "LPL", wins: 11, losses: 4, points: "1485 pts" },
-                            { rank: 4, name: "HLE", fullName: "Hanwha Life Esports", league: "LCK", wins: 2, losses: 3, points: "1456 pts" },
-                            { rank: 5, name: "AL", fullName: "Anyone's Legend", league: "LPL", wins: 10, losses: 4, points: "1446 pts" },
-                            { rank: 6, name: "KT", fullName: "KT Rolster", league: "LCK", wins: 2, losses: 4, points: "1435 pts" },
-                            { rank: 7, name: "G2", fullName: "G2 Esports", league: "LEC", wins: 11, losses: 5, points: "1427 pts" },
-                            { rank: 8, name: "JDG", fullName: "Beijing JDG Esports", league: "LPL", wins: 8, losses: 7, points: "1391 pts" },
-                            { rank: 9, name: "TES", fullName: "Top Esports", league: "LPL", wins: 6, losses: 8, points: "1384 pts" },
-                            { rank: 10, name: "CFO", fullName: "CTBC Flying Oyster", league: "LCP", wins: 3, losses: 5, points: "1376 pts" },
-                            { rank: 11, name: "WBG", fullName: "WeiboGaming", league: "LPL", wins: 6, losses: 8, points: "1360 pts" },
-                            { rank: 12, name: "FLY", fullName: "FlyQuest", league: "LCS", wins: 5, losses: 2, points: "1350 pts" },
-                            { rank: 13, name: "BFX", fullName: "BNK FEARX", league: "LCK", wins: 5, losses: 4, points: "1340 pts" },
-                            { rank: 14, name: "DK", fullName: "Dplus KIA", league: "LCK", wins: 6, losses: 4, points: "1330 pts" },
-                            { rank: 15, name: "KC", fullName: "Karmine Corp", league: "LEC", wins: 4, losses: 5, points: "1320 pts" },
-                            { rank: 16, name: "IG", fullName: "Invictus Gaming", league: "LPL", wins: 7, losses: 7, points: "1300 pts" },
-                            { rank: 17, name: "TSW", fullName: "Team Secret Whales", league: "LCP", wins: 5, losses: 3, points: "1280 pts" },
-                            { rank: 18, name: "C9", fullName: "Cloud9 Kia", league: "LCS", wins: 4, losses: 4, points: "1270 pts" },
-                            { rank: 19, name: "MKOI", fullName: "Movistar KOI", league: "LEC", wins: 3, losses: 6, points: "1250 pts" },
-                            { rank: 20, name: "DCG", fullName: "Relove Deep Cross Gaming", league: "LCP", wins: 4, losses: 4, points: "1230 pts" },
-                            { rank: 21, name: "GAM", fullName: "GAM Esports", league: "LCP", wins: 6, losses: 2, points: "1200 pts" },
-                            { rank: 22, name: "NIP", fullName: "Shenzhen NINJAS IN PYJAMAS", league: "LPL", wins: 5, losses: 9, points: "1180 pts" },
-                            { rank: 23, name: "TLAW", fullName: "Team Liquid Alienware", league: "LCS", wins: 6, losses: 1, points: "1150 pts" },
-                            { rank: 24, name: "LNG", fullName: "Suzhou LNG Esports", league: "LPL", wins: 7, losses: 7, points: "1120 pts" },
-                            { rank: 25, name: "MVK", fullName: "MVK Esports", league: "LCP", wins: 2, losses: 6, points: "1100 pts" }
-                        ];
-                    })();
+                // Try grabbing from internal API first! Lolesports exposes persited/gw/getRankings
+                const apiData = await win.webContents.executeJavaScript(`
+                    fetch('https://esports-api.lolesports.com/persisted/gw/getRankings?hl=en-GB', {
+                        headers: { 'x-api-key': '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z' }
+                    })
+                    .then(r => r.json())
+                    .catch(e => ({error: e.toString()}))
                 `);
-                return data;
+
+                if (apiData && apiData.data && apiData.data.powerRankings) {
+                    const nodes = apiData.data.powerRankings[0]?.rankings || [];
+                    const rankings = nodes.map(node => {
+                        const r = node.ranking;
+                        const t = node.team;
+                        return {
+                            rank: r,
+                            name: t?.code || t?.name || "TBD",
+                            fullName: t?.name || "Unknown Team",
+                            wins: node.record?.wins || 0,
+                            losses: node.record?.losses || 0,
+                            points: node.rating ? Math.round(node.rating) + " pts" : "0 pts",
+                            league: t?.homeLeague?.name || "INTL",
+                            logo: t?.image ? t.image.replace('http://', 'https://') : null
+                        };
+                    });
+                    if (rankings.length > 0) {
+                        return rankings.slice(0, 50);
+                    }
+                }
+
+                // Fallback to DOM parsing
+                await new Promise(r => setTimeout(r, 2000));
+                
+                const domData = await win.webContents.executeJavaScript(`
+                    (() => {
+                        const clean = t => t ? t.innerText.trim() : "";
+                        // Find all leaf text elements containing major region acronyms
+                        let leagueEls = Array.from(document.querySelectorAll('span, p, div, a')).filter(el => {
+                            if (el.children.length > 0) return false;
+                            const t = clean(el).toUpperCase();
+                            return ['LPL', 'LCK', 'LEC', 'LCS', 'CBLOL', 'LCP', 'VCS', 'PCS', 'LLA'].includes(t);
+                        });
+
+                        let uniqueLeagueEls = [];
+                        let seenParents = new Set();
+                        for (let el of leagueEls) {
+                            if (!seenParents.has(el.parentElement)) {
+                                seenParents.add(el.parentElement);
+                                uniqueLeagueEls.push(el);
+                            }
+                        }
+
+                        let rankings = [];
+                        let i = 1;
+
+                        for (let el of uniqueLeagueEls) {
+                            let parent = el.parentElement;
+                            let limit = 5; // Go up max 5 levels
+                            while (parent && limit > 0) {
+                                if (parent.querySelector('img')) break;
+                                parent = parent.parentElement;
+                                limit--;
+                            }
+                            
+                            if (parent) {
+                                const texts = Array.from(parent.querySelectorAll('*'))
+                                    .filter(n => n.children.length === 0)
+                                    .map(clean)
+                                    .filter(t => t.length > 0);
+
+                                let league = clean(el).toUpperCase();
+                                
+                                // Clean texts
+                                const words = texts.filter(t => !/^\\d+$/.test(t) && t.toUpperCase() !== league && t !== '-' && t !== 'pts' && !t.includes('W ') && !t.includes('L '));
+                                
+                                let fullName = "TBD";
+                                let teamCode = "TBD";
+                                
+                                if (words.length >= 2) {
+                                    fullName = words[0];
+                                    teamCode = words[1];
+                                } else if (words.length === 1) {
+                                    fullName = words[0];
+                                    teamCode = words[0].substring(0, 4).toUpperCase();
+                                } else continue;
+                                
+                                // Ignore bad parses
+                                if (fullName.length < 2) continue;
+
+                                let logoUrl = null;
+                                const img = parent.querySelector('img');
+                                if (img) logoUrl = img.src;
+
+                                rankings.push({
+                                    rank: i++,
+                                    name: teamCode,
+                                    fullName: fullName,
+                                    wins: undefined,
+                                    losses: undefined,
+                                    points: undefined,
+                                    league: league,
+                                    logo: logoUrl
+                                });
+                            }
+                        }
+
+                        if (!rankings.length) return null;
+                        return rankings.slice(0, 50);
+                    })()
+                `);
+                
+                return domData;
             } catch (e) {
-                console.error("[Scraper] Esports rankings failed:", e.message);
-                return [];
+                console.error("[Scraper] GPR extraction failed:", e);
+                return null;
             }
         });
 
-        if (result && result.length > 0) this.setCachedData(cacheKey, result);
-        return result || [];
+        if (!result) {
+            console.log("[Scraper] Failed to fetch GPR. Returning empty array.");
+            return [];
+        }
+        
+        this.setCachedData(cacheKey, result);
+        return result;
     }
 }
 

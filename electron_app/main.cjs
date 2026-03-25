@@ -511,7 +511,13 @@ ipcMain.handle('window:toggle-ingame', (e, enable, data) => {
 
 ipcMain.handle('window:set-ignore-mouse-events', (event, ignore, options) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.setIgnoreMouseEvents(ignore, options || { forward: true });
+    if (win) {
+        if (ignore) {
+            win.setIgnoreMouseEvents(true, options || { forward: true });
+        } else {
+            win.setIgnoreMouseEvents(false);
+        }
+    }
 });
 
 
@@ -588,6 +594,11 @@ ipcMain.handle('lcu:search-summoner', async (_, name, region, skipLcu, puuid) =>
                 };
             }
         }
+    }
+
+    if (name.startsWith('Bot ') || name.toLowerCase().includes('bot ')) {
+        console.log(`[IPC] Skipping Scraper for Bot: ${name}`);
+        return { displayName: name, isBot: true, profileIconId: 29, summonerLevel: 1, region: region };
     }
 
     console.log(`[IPC] Falling back to Scraper for ${name} [${region}]`);
@@ -734,8 +745,10 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
             const settings = getSettings();
             if (settings.loadingScreenEnabled !== false) {
                 if (loadingWindow) {
-                    if (loadingWindow.isVisible()) loadingWindow.hide();
-                    else { 
+                    if (loadingWindow.isVisible()) {
+                        loadingWindow.hide();
+                        loadingWindow.userHidden = true;
+                    } else { 
                         const display = screen.getPrimaryDisplay();
                         const winBounds = loadingWindow.getBounds();
                         loadingWindow.setBounds({
@@ -745,6 +758,7 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
                             height: winBounds.height
                         });
                         loadingWindow.show(); 
+                        loadingWindow.userHidden = false;
                         loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                         loadingWindow.setIgnoreMouseEvents(false); 
                     }
@@ -760,6 +774,7 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
                             height: winBounds.height
                         });
                         loadingWindow.showInactive();
+                        loadingWindow.userHidden = false;
                         loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
                         loadingWindow.setIgnoreMouseEvents(false);
                     });
@@ -990,7 +1005,10 @@ async function updateChampMap() {
         if (!summoner) return;
         const champs = await lcu._request('GET', `/lol-champions/v1/inventories/${summoner.summonerId}/champions-minimal`);
         if (champs && Array.isArray(champs)) {
-            champs.forEach(c => champMap[c.id] = c.name);
+            champs.forEach(c => {
+                // Use alias (English/Internal) for scraper, fallback to name
+                champMap[c.id] = c.alias || c.name; 
+            });
         }
     } catch (e) { console.error("[Monitor] Failed to update champ map", e); }
 }
@@ -1102,9 +1120,9 @@ async function monitorGameLoop() {
                 if (settings.autoImportRunes) {
                     console.log(`[Monitor] Importing runes & spells for ${champName}...`);
                     try {
-                        const targetRoleRaw = me.assignedPosition ? me.assignedPosition.toLowerCase() : 'mid';
+                        const targetRoleRaw = me.assignedPosition ? me.assignedPosition.toLowerCase() : null;
                         const roleMapping = { 'utility': 'support', 'bottom': 'adc', 'middle': 'mid', 'jungle': 'jungle', 'top': 'top' };
-                        const targetRole = roleMapping[targetRoleRaw] || targetRoleRaw || 'mid';
+                        const targetRole = targetRoleRaw ? (roleMapping[targetRoleRaw] || targetRoleRaw) : null;
 
                         const build = await scraper.getChampionBuild(champName, targetRole);
                         
@@ -1138,7 +1156,7 @@ async function monitorGameLoop() {
                                 const pages = await lcu.getRunePages();
                                 const oraclePage = pages.find(p => p.name.startsWith('Oracle'));
 
-                                const capRole = targetRole.charAt(0).toUpperCase() + targetRole.slice(1).toLowerCase();
+                                const capRole = targetRole ? targetRole.charAt(0).toUpperCase() + targetRole.slice(1).toLowerCase() : 'Meta';
                                 const pageData = {
                                     name: `Oracle ${champName} ${capRole}`,
                                     primaryStyleId: primaryStyleId,
@@ -1148,21 +1166,28 @@ async function monitorGameLoop() {
                                 };
 
                                 if (oraclePage) {
-                                    console.log(`[Monitor] Updating existing Oracle page (${oraclePage.id})...`);
-                                    await lcu.putRunePage(oraclePage.id, pageData);
-                                } else {
-                                    console.log("[Monitor] Creating new Oracle page...");
-                                    const postRes = await lcu.postRunePage(pageData);
-                                    if (!postRes || postRes.errorCode) {
-                                         console.log("[Monitor] Rune creation failed (likely max pages). Deleting oldest editable page.");
-                                         const editablePages = pages.filter(p => p.isEditable && p.name !== 'Oracle');
-                                         if (editablePages.length > 0) {
-                                             await lcu.deleteRunePage(editablePages[0].id);
-                                             await lcu.postRunePage(pageData);
-                                         }
-                                    }
+                                    console.log(`[Monitor] Deleting existing Oracle page (${oraclePage.id}) to force clean update...`);
+                                    await lcu.deleteRunePage(oraclePage.id);
                                 }
-                                console.log(`[Monitor] Runes successfully imported for ${champName}`);
+                                
+                                console.log(`[Monitor] Creating fresh Oracle page for ${champName}... payload:`, JSON.stringify(pageData));
+                                let postRes = await lcu.postRunePage(pageData);
+                                
+                                if (!postRes || postRes.errorCode) {
+                                     console.log(`[Monitor] Rune creation failed (${postRes?.errorCode}). Deleting oldest editable page.`);
+                                     const editablePages = pages.filter(p => p.isEditable && p.name !== 'Oracle');
+                                     if (editablePages.length > 0) {
+                                         await lcu.deleteRunePage(editablePages[0].id);
+                                         postRes = await lcu.postRunePage(pageData);
+                                     }
+                                }
+                                
+                                if (postRes && postRes.id) {
+                                    console.log(`[Monitor] Activating freshly created Oracle page (${postRes.id})`);
+                                    await lcu.setCurrentRunePage(postRes.id);
+                                }
+                                
+                                console.log(`[Monitor] Runes successfully imported and selected for ${champName}`);
                             } else {
                                 console.log("[Monitor] Could not find sufficient perk IDs for import.");
                             }
@@ -1319,8 +1344,8 @@ function startActiveWindowTracker() {
                 const name = (parts[0] || '').toLowerCase();
                 const title = (parts[1] || '').toLowerCase();
 
-                const isLeague = name.includes('league') || name.includes('riot');
-                const isOracle = name.includes('oracle') || name.includes('electron') || title.includes('oracle');
+                const isLeague = name.includes('league') || name.includes('riot') || title.includes('league');
+                const isOracle = name.includes('oracle') || name.includes('electron') || (title.includes('oracle') && !title.toLowerCase().includes('code') && !title.toLowerCase().includes('visual studio'));
 
                 if (isLeague || isOracle) {
                     shouldShow = true;
@@ -1328,11 +1353,35 @@ function startActiveWindowTracker() {
                 }
             }
 
+            const st = getSettings() || {};
+            const isTest = st.testMode;
+
+            if (loadingWindow && !loadingWindow.isDestroyed()) {
+                const isVisible = loadingWindow.isVisible();
+                if (['GameStart', 'InProgress'].includes(lastPhase)) {
+                    if (shouldShow && !loadingWindow.userHidden) {
+                        if (!isVisible) {
+                            loadingWindow.showInactive();
+                            loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        } else if (!isTest) {
+                            loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        }
+                    } else if (!shouldShow && isVisible) {
+                        loadingWindow.hide();
+                    }
+                }
+            }
+
             if (ingameWindow && !ingameWindow.isDestroyed()) {
                 const isVisible = ingameWindow.isVisible();
                 if (['InProgress', 'GameStart'].includes(lastPhase)) {
-                    if (shouldShow && !isVisible) {
-                        ingameWindow.showInactive();
+                    if (shouldShow) {
+                        if (!isVisible) {
+                            ingameWindow.showInactive();
+                            ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        } else if (!isTest) {
+                            ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+                        }
                     } else if (!shouldShow && isVisible) {
                         ingameWindow.hide();
                     }
@@ -1454,7 +1503,7 @@ ipcMain.handle('media:run-action', async (e, action) => {
 ipcMain.handle('media:seek', async (e, targetMs) => {
     const path = require('path');
     const { exec } = require('child_process');
-    const scriptPath = path.join(__dirname, 'media_seek.py');
+    const scriptPath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'media_seek.py');
     return new Promise((resolve) => {
         exec(`python "${scriptPath}" ${targetMs}`, (err, stdout) => {
             resolve(!err);

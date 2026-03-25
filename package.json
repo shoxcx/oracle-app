@@ -1,7 +1,7 @@
 {
   "name": "lol-tracker",
   "private": true,
-  "version": "0.0.10",
+  "version": "0.0.11",
   "type": "module",
   "main": "electron_app/main.cjs",
   "scripts": {
@@ -39,7 +39,10 @@
     },
     "nsis": {
       "oneClick": true
-    }
+    },
+    "asarUnpack": [
+      "**/*.py"
+    ]
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

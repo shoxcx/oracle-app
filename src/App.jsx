@@ -248,7 +248,7 @@ const translations = {
     gold_sound_desc: "Plays a sound when you reach 1200 gold",
     test_mode_label: "Overlay Test Mode",
     test_mode_desc: "Show all overlays for testing",
-    edit_layout_desc: "Adjust the position of each module on your screen.",
+    edit_layout_desc: "Adjust the position of each module on your screen. You MUST play in 'BORDERLESS' mode for overlays to appear over the game.",
     layout_editor_title: "Oracle Layout Editor",
     layout_editor_desc: "Drag modules to reposition them",
     game_space: "Game Space",
@@ -570,7 +570,7 @@ const translations = {
     gold_sound_desc: "Joue un son quand vous atteignez 1200 gold",
     test_mode_label: "Mode TEST Overlays",
     test_mode_desc: "Affiche tous les overlays pour test",
-    edit_layout_desc: "Ajustez la position de chaque module sur votre écran.",
+    edit_layout_desc: "Ajustez la position de chaque module. Le mode d'affichage 'SANS BORDS' en jeu est STRICTEMENT OBLIGATOIRE !",
     layout_editor_title: "Éditeur d'Overlay Oracle",
     layout_editor_desc: "Glissez les modules pour les repositionner",
     game_space: "Espace de Jeu",
@@ -2172,7 +2172,7 @@ function SocialToastOverlay({ ddragonVersion }) {
                     src={toast.icon || `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || '14.2.1'}/img/profileicon/29.png`}
                     className="w-14 h-14 rounded-xl border border-white/10 shadow-lg object-cover bg-gray-900"
                     alt="Avatar"
-                    onError={(e) => { e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg" }}
+                    onError={(e) => { e.target.src = "https://ddragon.leagueoflegends.com/cdn//img/profileicon/29.png" }}
                   />
                 )}
                 {!toast.lucideName && !toast.letter && (
@@ -2211,15 +2211,26 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   const [adminMessages, setAdminMessages] = useState(() => {
     try { const saved = localStorage.getItem('oracle_admin_messages'); return saved ? JSON.parse(saved) : []; } catch (e) { return []; }
   });
 
+  const getDeletedMessagesMap = () => {
+    try { const saved = localStorage.getItem('oracle_deleted_messages'); return saved ? JSON.parse(saved) : {}; } catch (e) { return {}; }
+  };
+
   const deleteAdminMessage = (id) => {
     setAdminMessages(prev => {
       const next = prev.filter(m => m.id !== id);
       localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
+      
+      // Add to deleted blacklist
+      const deletedMap = getDeletedMessagesMap();
+      deletedMap[id] = true;
+      localStorage.setItem('oracle_deleted_messages', JSON.stringify(deletedMap));
+      
       return next;
     });
   };
@@ -2249,8 +2260,14 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
             };
 
             setAdminMessages(prev => {
-              // Vérifier si on a déjà ce message
+              // Vérifier si on a déjà ce message ou s'il a été supprimé
               if (prev.some(m => m.id === globalMsg.id)) return prev;
+              
+              const deletedMap = getDeletedMessagesMap();
+              if (deletedMap[globalMsg.id]) return prev;
+              
+              setTimeout(() => setShowAdminModal(true), 0);
+              
               const next = [globalMsg, ...prev].slice(0, 50);
               localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
               return next;
@@ -2267,12 +2284,20 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
 
     // Keep Local IPC for direct instant previews from Local Admin Panel
     if (window.ipcRenderer) {
-      const handler = (_, msg) => setAdminMessages(prev => {
-        if (prev.some(m => m.id === msg.id)) return prev;
-        const next = [msg, ...prev].slice(0, 50);
-        localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
-        return next;
-      });
+      const handler = (_, msg) => {
+        setAdminMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          
+          const deletedMap = getDeletedMessagesMap();
+          if (deletedMap[msg.id]) return prev;
+          
+          setTimeout(() => setShowAdminModal(true), 0);
+          
+          const next = [msg, ...prev].slice(0, 50);
+          localStorage.setItem('oracle_admin_messages', JSON.stringify(next));
+          return next;
+        });
+      };
       window.ipcRenderer.on('admin:broadcast', handler);
 
       const navHandler = (_, name) => {
@@ -2328,12 +2353,57 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     return val === 'true'; // Defaults to false
   });
   const [isPremiumState, setIsPremium] = useState(false);
+  const [serverGoldUsers, setServerGoldUsers] = useState({});
+
+  useEffect(() => {
+    const fetchGold = async () => {
+      try {
+        const res = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/gold_users.json');
+        const data = await res.json();
+        if (data) setServerGoldUsers(data);
+      } catch (e) {}
+    };
+    fetchGold();
+    const interval = setInterval(fetchGold, 10000); // Polling every 10s for instant feedback
+    return () => clearInterval(interval);
+  }, []);
 
   const isPremiumProfile = currentUser && (
     premiumUsers.some(p => currentUser.gameName?.toLowerCase() === p.name && currentUser.tagLine?.toLowerCase() === p.tag) ||
     currentUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e'
   );
-  const isPremium = true; // Override to allow all features
+
+  const checkFirebasePremium = () => {
+     if (!currentUser) return false;
+     const formattedUser = `${currentUser.gameName}#${currentUser.tagLine}`;
+     let latestData = null;
+     
+     for (const key in serverGoldUsers) {
+         try {
+             let base64 = key.replace(/-/g, '+').replace(/_/g, '/');
+             while (base64.length % 4) base64 += '=';
+             const dec = decodeURIComponent(escape(atob(base64)));
+             
+             const cleanDec = dec.replace(/\s/g, '').toLowerCase();
+             const cleanFormatted = formattedUser.replace(/\s/g, '').toLowerCase();
+             
+             if (cleanDec === cleanFormatted) {
+                 const d = serverGoldUsers[key];
+                 if (!latestData || (d.updatedAt || 0) > (latestData.updatedAt || 0)) {
+                     latestData = d;
+                 }
+             }
+         } catch(e) {}
+     }
+     
+     if (latestData && latestData.active) {
+        if (latestData.type === 'TEMPORARY' && latestData.expiresAt && Date.now() > latestData.expiresAt) return false;
+        return true;
+     }
+     return false;
+  };
+
+  const isPremium = Boolean(isPremiumState || isPremiumProfile || checkFirebasePremium());
 
   useEffect(() => {
     if (!currentUser) return; // Wait for LCU profile to load before wiping settings
@@ -2466,7 +2536,56 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
       .slice(0, 3);
   }, [searchQuery, recentSearches]);
 
-  const hasSuggestions = champSuggestions.length > 0 || friendSuggestions.length > 0 || recentSuggestions.length > 0;
+  const teammateSuggestions = useMemo(() => {
+    if (!searchQuery || !currentUserHistory || !currentUserHistory.games) return [];
+    
+    // Extract unique names from all games in history
+    const suggestionsMap = new Map();
+    const lowerQuery = searchQuery.toLowerCase();
+    
+    currentUserHistory.games.forEach(g => {
+        if (g.participants) {
+            g.participants.forEach(p => {
+                const cName = p.riotIdGameName || p.summonerName;
+                if (!cName) return;
+                
+                const cTag = p.riotIdTagline ? `#${p.riotIdTagline}` : "";
+                const fullName = `${cName}${cTag}`;
+                
+                // Do not suggest the user themselves
+                if (currentUser && fullName === `${currentUser.gameName}#${currentUser.tagLine}`) return;
+                
+                if (fullName.toLowerCase().includes(lowerQuery) && !suggestionsMap.has(fullName.toLowerCase())) {
+                    suggestionsMap.set(fullName.toLowerCase(), {
+                        name: fullName,
+                        champName: p.championName || Object.values(championMap || {}).find(c => c.key === p.championId?.toString())?.id,
+                        iconId: p.profileIcon
+                    });
+                }
+            });
+        }
+    });
+
+    return Array.from(suggestionsMap.values())
+      .sort((a, b) => {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        const exactA = nameA === lowerQuery;
+        const exactB = nameB === lowerQuery;
+        if (exactA && !exactB) return -1;
+        if (!exactA && exactB) return 1;
+        
+        const startsA = nameA.startsWith(lowerQuery);
+        const startsB = nameB.startsWith(lowerQuery);
+        if (startsA && !startsB) return -1;
+        if (!startsA && startsB) return 1;
+        
+        return nameA.localeCompare(nameB);
+      })
+      .slice(0, 3);
+  }, [searchQuery, currentUserHistory, currentUser]);
+
+  const hasSuggestions = champSuggestions.length > 0 || friendSuggestions.length > 0 || recentSuggestions.length > 0 || teammateSuggestions.length > 0;
 
   const [champSelectData, setChampSelectData] = useState(null);
 
@@ -3051,6 +3170,24 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                         </div>
                       );
                     })}
+
+                    {/* Teammate Suggestions */}
+                    {teammateSuggestions.map(t => (
+                        <div key={`tm-${t.name}`} onClick={() => {
+                          setTargetSummoner({ name: t.name, region: searchRegion });
+                          setActiveTab('profile');
+                          setSearchQuery('');
+                          setShowSuggestions(false);
+                        }} className="px-4 py-3 flex items-center gap-3 hover:bg-white/10 cursor-pointer transition-colors group">
+                          <img src={t.champName ? `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${t.champName}.png` : `https://ddragon.leagueoflegends.com/cdn/16.1.1/img/profileicon/${t.iconId || 29}.png`} className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 group-hover:border-accent-primary" />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase">{t.name}</span>
+                            <span className="text-[9px] text-gray-500 uppercase tracking-widest flex items-center gap-1 group-hover:text-accent-primary">
+                              Joueur Récent <span className="opacity-50">•</span> Match History
+                            </span>
+                          </div>
+                        </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -3138,6 +3275,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {activeTab === 'profile' && <ProfileView
                   targetSummoner={targetSummoner}
                   currentUser={currentUser}
+                  serverGoldUsers={serverGoldUsers}
                   panelClass={panelClass}
                   t={t}
                   onSearch={(sum) => {
@@ -3243,6 +3381,65 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   onShowNews={(article) => { setSelectedArticle(article); setShowNotifPanel(false); }}
                   onClose={() => setShowNotifPanel(false)}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* Admin Notification Modal */}
+          {showAdminModal && (
+            <div className="fixed inset-0 z-[999999] flex items-center justify-center animate-in fade-in duration-300 backdrop-blur-md bg-black/60">
+              <div className="glass-panel max-w-2xl w-full p-8 mx-4 animate-in zoom-in-95 duration-300 shadow-2xl border border-white/10 dark:border-white/5 relative flex flex-col max-h-[85vh]">
+                <button onClick={() => setShowAdminModal(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-white transition-colors">
+                  <X size={24} />
+                </button>
+                
+                <div className="flex items-center gap-3 mb-6 shrink-0">
+                  <Bell size={28} className="text-accent-primary animate-pulse" />
+                  <h3 className="text-2xl font-black text-white uppercase tracking-wider">Centre de Notifications Oracle</h3>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                  {!adminMessages || adminMessages.length === 0 ? (
+                     <div className="text-center py-10 text-white/50 italic">Aucune notification système récente.</div>
+                  ) : adminMessages.map((msg, idx) => {
+                     const MIcon = msg.lucideName ? ({ 'Target': Target, 'Activity': Activity, 'Sparkles': Sparkles, 'Skull': Skull, 'AlertCircle': AlertTriangle }[msg.lucideName] || Bell) : Bell;
+                     return (
+                       <div key={msg.id || idx} className="relative group overflow-hidden bg-black/40 hover:bg-black/60 border border-white/5 hover:border-white/20 transition-all rounded-2xl p-5 flex gap-4 items-start">
+                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${msg.iconColor || 'bg-accent-primary/20 text-accent-primary'}`}>
+                           <MIcon size={24} />
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <div className="flex items-center justify-between mb-1">
+                             <div className="flex items-center gap-2">
+                               <span className="text-xs font-black uppercase tracking-widest text-accent-primary">{msg.title || 'ANNONCE'}</span>
+                               <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60">{msg.status || 'NOUVEAU'}</span>
+                             </div>
+                             <button 
+                               onClick={(e) => { e.stopPropagation(); deleteAdminMessage(msg.id); }}
+                               className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/20 text-red-500 rounded-lg transition-all"
+                               title="Supprimer"
+                             >
+                               <XCircle size={16} />
+                             </button>
+                           </div>
+                           <h4 className="text-lg font-bold text-white mb-2 leading-tight">{msg.name}</h4>
+                           {msg.desc && <p className="text-sm text-gray-300 leading-relaxed mb-3">{msg.desc}</p>}
+                           {msg.url && (
+                             <a href={msg.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-accent-primary hover:text-white bg-accent-primary/10 hover:bg-accent-primary/30 px-3 py-1.5 rounded-lg transition-colors">
+                               <ExternalLink size={14} /> Voir les détails
+                             </a>
+                           )}
+                         </div>
+                       </div>
+                     );
+                  })}
+                </div>
+                
+                <div className="mt-8 pt-4 shrink-0 flex justify-end">
+                   <button onClick={() => setShowAdminModal(false)} className="w-full font-black uppercase tracking-widest py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10">
+                     Fermer le centre
+                   </button>
+                </div>
               </div>
             </div>
           )}
@@ -4519,7 +4716,7 @@ const PremiumOverlay = ({ title, text, onAction }) => (
   </div>
 );
 
-function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onChampClick, onBack, overlaySettings, ddragonVersion, isPremium, onSubscribe }) {
+function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onChampClick, onBack, overlaySettings, ddragonVersion, isPremium, onSubscribe, serverGoldUsers }) {
   const [displayUser, setDisplayUser] = useState(null);
   const [rankedStats, setRankedStats] = useState(null);
   const [history, setHistory] = useState([]);
@@ -5482,8 +5679,12 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   }
 
   // Determines if the avatar should have the Golden aesthetic (Premium Users)
-  const isDisplayUserPremium = displayUser && (
-    premiumUsers.some(p => {
+  let isDisplayUserPremium = false;
+
+  if (displayUser) {
+    if (displayUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e') {
+      isDisplayUserPremium = true;
+    } else if (premiumUsers.some(p => {
       const uName = (displayUser.gameName || displayUser.displayName || displayUser.summonerName || "").toLowerCase().replace(/\s/g, '');
       const pName = p.name.toLowerCase().replace(/\s/g, '');
       const uTag = (displayUser.tagLine || "").toLowerCase();
@@ -5492,9 +5693,55 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
         if (!uTag || uTag === 'euw' || uTag === p.tag) return true;
       }
       return false;
-    }) ||
-    displayUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e'
-  );
+    })) {
+      isDisplayUserPremium = true;
+    } else if (serverGoldUsers && Object.keys(serverGoldUsers).length > 0) {
+      let gameName = displayUser.gameName || displayUser.displayName || displayUser.summonerName || "";
+      let tagLine = displayUser.tagLine || "";
+
+      if (gameName.includes('#')) {
+          const parts = gameName.split('#');
+          gameName = parts[0];
+          tagLine = tagLine || parts[1];
+      }
+      
+      // LCU natively strips the tagline on some /by-name/ endpoints.
+      // Recover the exact tag from the original search query.
+      if (!tagLine && targetSummoner && targetSummoner.name && targetSummoner.name.includes('#')) {
+          const queryParts = targetSummoner.name.split('#');
+          // Update gameName too if it was totally missing, otherwise keep the LCU provided one
+          if (!gameName) gameName = queryParts[0];
+          tagLine = queryParts[1];
+      }
+      
+      const formattedUser = `${gameName}#${tagLine}`;
+      let latestData = null;
+
+      for (const key in serverGoldUsers) {
+        try {
+          let base64 = key.replace(/-/g, '+').replace(/_/g, '/');
+          while (base64.length % 4) base64 += '=';
+          const dec = decodeURIComponent(escape(atob(base64)));
+
+          const cleanDec = dec.replace(/\s/g, '').toLowerCase();
+          const cleanFormatted = formattedUser.replace(/\s/g, '').toLowerCase();
+
+          if (cleanDec === cleanFormatted) {
+            const d = serverGoldUsers[key];
+            if (!latestData || (d.updatedAt || 0) > (latestData.updatedAt || 0)) {
+              latestData = d;
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (latestData && latestData.active) {
+        if (!((latestData.type === 'TEMPORARY') && latestData.expiresAt && Date.now() > latestData.expiresAt)) {
+            isDisplayUserPremium = true;
+        }
+      }
+    }
+  }
 
   return (
     <div id="profile-scroll-container" className={cn("h-full flex flex-col gap-2 animate-in fade-in", panelClass, "p-0! overflow-y-auto custom-scrollbar bg-white dark:bg-slate-50 dark:bg-[#0a0a0c] transition-colors duration-300")}>
@@ -7557,19 +7804,37 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
 
   const [runesReforged, setRunesReforged] = useState([]);
   const [champSpells, setChampSpells] = useState({});
+  const [ddVersion, setDdVersion] = useState('15.5.1');
 
   useEffect(() => {
-    fetch("https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/runesReforged.json")
+    // 1. Get Latest DDragon Version
+    fetch("https://ddragon.leagueoflegends.com/api/versions.json")
+      .then(r => r.json())
+      .then(versions => {
+         const latest = versions[0];
+         setDdVersion(latest);
+         
+         // 2. Fetch Runes with latest version
+         return fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/en_US/runesReforged.json`);
+      })
       .then(r => r.json())
       .then(d => setRunesReforged(d))
-      .catch(e => console.error(e));
+      .catch(e => {
+         console.error("DDragon Fetch Error:", e);
+         // Fallback fetch if versions fails
+         fetch("https://ddragon.leagueoflegends.com/cdn/15.5.1/data/en_US/runesReforged.json")
+           .then(r => r.json())
+           .then(d => setRunesReforged(d))
+           .catch(() => {});
+      });
   }, []);
 
   useEffect(() => {
     if (myChampName) {
-      fetch(`https://ddragon.leagueoflegends.com/cdn/14.5.1/data/en_US/champion/${myChampName}.json`)
+      fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/champion/${myChampName}.json`)
         .then(r => r.json())
         .then(d => {
+          if (!d.data[myChampName]) return;
           const spells = d.data[myChampName].spells;
           setChampSpells({
             'Q': spells[0].id,
@@ -7579,7 +7844,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
           });
         }).catch(e => console.error(e));
     }
-  }, [myChampName]);
+  }, [myChampName, ddVersion]);
 
   // Fetch Recommended Build dynamically instead of mock
   useEffect(() => {
@@ -7796,8 +8061,8 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                     };
                     return (
                       <>
-                        {myPlayer?.spell1Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell1Id] || 'SummonerFlash'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
-                        {myPlayer?.spell2Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell2Id] || 'SummonerDot'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                        {myPlayer?.spell1Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell1Id] || 'SummonerFlash'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                        {myPlayer?.spell2Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell2Id] || 'SummonerDot'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
                       </>
                     )
                   })()}
@@ -7816,7 +8081,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                   <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase">Départ</span>
                   <div className="flex gap-2.5">
                     {(recommendedBuild?.items?.starting || [1055, 2003]).slice(0, 2).map((item, i) => (
-                      <img key={i} src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-blue-500/30 shadow-md" onError={(e) => e.target.style.display = 'none'} />
+                      <img key={i} src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-blue-500/30 shadow-md" title="Starter" onError={(e) => e.target.style.display = 'none'} />
                     ))}
                   </div>
                 </div>
@@ -7826,8 +8091,8 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                   <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Core Items</span>
                   <div className="flex gap-3 items-center">
                     {recommendedBuild?.items?.core ? recommendedBuild.items.core.slice(0, 3).map((item, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${item}.png`} className="w-12 h-12 rounded-lg border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:scale-[1.12] transition-transform cursor-pointer" onError={(e) => e.target.style.display = 'none'} />
+                      <div key={i} className="flex items-center gap-3" title="Core Item">
+                        <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${item}.png`} className="w-12 h-12 rounded-lg border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:scale-[1.12] transition-transform cursor-pointer" onError={(e) => e.target.style.display = 'none'} />
                         {i < Math.min(recommendedBuild.items.core.length - 1, 2) && <ChevronRight size={14} className="text-white/20" />}
                       </div>
                     )) : <div className="w-28 h-12 animate-pulse bg-white/5 rounded-lg"></div>}
@@ -7836,13 +8101,25 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
               </div>
 
               <div className="flex gap-8 items-start mt-8">
+                {/* Boots */}
+                <div className="flex flex-col gap-3">
+                  <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Boots</span>
+                  <div className="flex gap-3">
+                    {(recommendedBuild?.items?.boots?.slice(0, 1) || []).map((id, i) => (
+                      <div key={i} className="flex flex-col items-center gap-1" title="Boots">
+                        <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-cyan-500/40 opacity-90 transition-opacity shadow-[0_0_15px_rgba(6,182,212,0.15)]" onError={(e) => e.target.style.display = 'none'} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Situational Items */}
                 <div className="flex flex-col gap-3">
                   <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Situational Items</span>
                   <div className="flex gap-3">
                     {(recommendedBuild?.items?.situational?.slice(0, 5) || [3157, 3089, 3165, 3139]).map((id, i) => (
-                      <div key={i} className="flex flex-col items-center gap-1">
-                        <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-white/5 opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-md" onError={(e) => e.target.style.display = 'none'} />
+                      <div key={i} className="flex flex-col items-center gap-1" title="Situational Item">
+                        <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-white/5 opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-md" onError={(e) => e.target.style.display = 'none'} />
                       </div>
                     ))}
                   </div>
@@ -7862,9 +8139,9 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                 <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
                   {recommendedBuild?.skillOrder && recommendedBuild.skillOrder.length >= 3 ? recommendedBuild.skillOrder.slice(0, 3).map((s, i) => (
                     <React.Fragment key={i}>
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-md group/spl bg-white/5 flex items-center justify-center">
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-md group/spl bg-white/5 flex items-center justify-center" title={`Skill ${typeof s === 'object' ? s.key : s}`}>
                         {champSpells[typeof s === 'object' ? s.key : s] ? (
-                          <img src={`https://ddragon.leagueoflegends.com/cdn/14.5.1/img/spell/${champSpells[typeof s === 'object' ? s.key : s]}.png`}
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${champSpells[typeof s === 'object' ? s.key : s]}.png`}
                             className="w-full h-full object-cover rounded border border-white/10 opacity-90 transition-opacity pointer-events-none" />
                         ) : (
                           <span className="text-accent-primary font-black flex items-center justify-center text-[12px]">{typeof s === 'object' ? s.key : s}</span>
@@ -7907,8 +8184,8 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                   // Shard grid standard layout
                   const shardsLayout = [
                     [5008, 5005, 5007],
-                    [5008, 5002, 5003],
-                    [5001, 5002, 5003]
+                    [5008, 5010, 5001],
+                    [5011, 5013, 5001]
                   ];
 
                   const renderRow = (perks, isKeystone, isPrimary) => (
@@ -7918,7 +8195,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                         return perks.map((p, idx) => {
                           const isActive = activeIds.includes(p.id) || (isPrimary && !rowHasActive && ((isKeystone && idx === 0) || (!isKeystone && idx === 1)));
                           return (
-                            <div key={p.id} className={cn("relative rounded-full flex items-center justify-center transition-all", isKeystone ? "w-10 h-10" : "w-7 h-7", isActive ? (isKeystone ? "border border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border border-blue-400/80 shadow-[0_0_10px_rgba(96,165,250,0.3)]") : "border border-transparent opacity-30 grayscale filter")}>
+                            <div key={p.id} className={cn("relative rounded-full flex items-center justify-center transition-all", isKeystone ? "w-10 h-10" : "w-7 h-7", isActive ? (isKeystone ? "border border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border border-blue-400/80 shadow-[0_0_10px_rgba(96,165,250,0.3)]") : "border border-transparent opacity-30 grayscale filter")} title={p.name}>
                               <img src={`https://ddragon.leagueoflegends.com/cdn/img/${p.icon}`} className={cn("rounded-full object-cover", isKeystone ? "w-8 h-8" : "w-6 h-6")} />
                             </div>
                           );
@@ -7933,7 +8210,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                       {primaryTree && (
                         <div className="flex flex-col items-center">
                           {/* Header / Style Icon */}
-                          <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryTree.icon}`} className="w-6 h-6 mb-2 filter drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" />
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryTree.icon}`} className="w-6 h-6 mb-2 filter drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" title={primaryTree.name || "Primary Tree"} />
                           {primaryTree.slots.map((slot, idx) => renderRow(slot.runes, idx === 0, true))}
                         </div>
                       )}
@@ -7942,7 +8219,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                       <div className="flex flex-col items-center">
                         {secondaryTree && (
                           <>
-                            <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryTree.icon}`} className="w-5 h-5 mb-3 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" />
+                            <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryTree.icon}`} className="w-5 h-5 mb-3 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" title={secondaryTree.name || "Secondary Tree"} />
                             {secondaryTree.slots.slice(1).map((slot, idx) => renderRow(slot.runes, false, false))}
                           </>
                         )}
@@ -7954,8 +8231,8 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                               {row.map((id, idx) => {
                                 const isActive = activeIds.includes(id) || (idx === 0 && !row.some(rId => activeIds.includes(rId))); // Fallback visual
                                 return (
-                                  <div key={`shard-${rIdx}-${idx}`} className={cn("w-5 h-5 rounded-full flex items-center justify-center border border-white/5 bg-black/40", isActive ? "opacity-100 ring-1 ring-yellow-500/50" : "opacity-30 grayscale")}>
-                                    <img src={`https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatMods${id === 5008 ? 'AdaptiveForce' : id === 5005 ? 'AttackSpeed' : id === 5007 ? 'AbilityHasteIcon' : id === 5002 ? 'Armor' : id === 5003 ? 'MagicResIcon' : 'HealthScalingIcon'}.png`} className="w-3.5 h-3.5 object-cover" onError={(e) => e.target.style.display = 'none'} />
+                                  <div key={`shard-${rIdx}-${idx}`} className={cn("w-5 h-5 rounded-full flex items-center justify-center border border-white/5 bg-black/40", isActive ? "opacity-100 ring-1 ring-yellow-500/50" : "opacity-30 grayscale")} title="Stat Shard">
+                                    <img src={`https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatMods${id === 5008 ? 'AdaptiveForceIcon' : id === 5005 ? 'AttackSpeedIcon' : id === 5007 ? 'CDRScalingIcon' : id === 5010 ? 'MovementSpeedIcon' : id === 5013 ? 'TenacityIcon' : id === 5001 ? 'HealthScalingIcon' : 'HealthPlusIcon'}.png`} className="w-3.5 h-3.5 object-cover" onError={(e) => e.target.style.display = 'none'} />
                                   </div>
                                 )
                               })}
@@ -11329,46 +11606,56 @@ function EsportsView({ t, prefetchedData }) {
                   <span className="text-sm font-bold uppercase tracking-widest text-gray-500">Loading Rankings...</span>
                 </div>
               ) : rankings && rankings.length > 0 ? (
-                <table className="w-full text-left border-collapse min-w-[600px]">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest">
-                      <th className="py-3 px-4 w-16 text-center">Rank</th>
-                      <th className="py-3 px-4">Team</th>
-                      <th className="py-3 px-4 text-center">League</th>
-                      <th className="py-3 px-4 text-center">W - L</th>
-                      <th className="py-3 px-4 text-right">Points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rankings.map((team, idx) => (
-                      <tr key={idx} className="border-b border-gray-200 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
-                        <td className="py-3 px-4 text-center font-black text-gray-900 dark:text-gray-100 text-lg">{team.rank}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <img src={team.logo || getTeamLogo(team.name.toLowerCase().replace(/\\s+/g, '-'), team.name)} alt={team.name} className="w-8 h-8 object-contain drop-shadow-md rounded-lg" onError={(e) => { e.target.onerror = null; e.target.src = getTeamLogo('none', team.name); }} />
-                            <div className="flex flex-col">
-                              <span className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-accent-primary transition-colors">{team.name}</span>
-                              {team.fullName && team.fullName !== team.name && <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{team.fullName}</span>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          {team.league ? <span className="text-[10px] font-bold px-2 py-1 bg-black/5 dark:bg-white/5 rounded text-gray-600 dark:text-gray-300">{team.league}</span> : '-'}
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-sm">
-                          {team.wins !== undefined && team.losses !== undefined ? (
-                            <>
-                              <span className="text-green-600 dark:text-green-400 font-bold">{team.wins}</span>
-                              <span className="mx-1 text-gray-400">-</span>
-                              <span className="text-red-500 dark:text-red-400 font-bold">{team.losses}</span>
-                            </>
-                          ) : '-'}
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono text-gray-600 dark:text-gray-400 font-medium">{team.points}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                (() => {
+                  const hasWL = rankings.some(t => t.wins > 0 || t.losses > 0);
+                  const hasPoints = rankings.some(t => t.points && t.points !== '-');
+                  return (
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 text-xs uppercase tracking-widest">
+                          <th className="py-3 px-4 w-16 text-center">Rank</th>
+                          <th className="py-3 px-4">Team</th>
+                          <th className="py-3 px-4 text-center">League</th>
+                          {hasWL && <th className="py-3 px-4 text-center">W - L</th>}
+                          {hasPoints && <th className="py-3 px-4 text-right">Points</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rankings.map((team, idx) => (
+                          <tr key={idx} className="border-b border-gray-200 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+                            <td className="py-3 px-4 text-center font-black text-gray-900 dark:text-gray-100 text-lg">{team.rank}</td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <img src={team.logo || getTeamLogo(team.name.toLowerCase().replace(/\s+/g, '-'), team.name)} alt={team.name} className="w-8 h-8 object-contain drop-shadow-md rounded-lg" onError={(e) => { e.target.onerror = null; e.target.src = getTeamLogo('none', team.name); }} />
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-accent-primary transition-colors">{team.name}</span>
+                                  {team.fullName && team.fullName !== team.name && <span className="text-[10px] text-gray-500 truncate max-w-[120px]">{team.fullName}</span>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {team.league ? <span className="text-[10px] font-bold px-2 py-1 bg-black/5 dark:bg-white/5 rounded text-gray-600 dark:text-gray-300">{team.league}</span> : '-'}
+                            </td>
+                            {hasWL && (
+                              <td className="py-3 px-4 text-center font-mono text-sm">
+                                {team.wins !== undefined && team.losses !== undefined ? (
+                                  <>
+                                    <span className="text-green-600 dark:text-green-400 font-bold">{team.wins}</span>
+                                    <span className="mx-1 text-gray-400">-</span>
+                                    <span className="text-red-500 dark:text-red-400 font-bold">{team.losses}</span>
+                                  </>
+                                ) : '-'}
+                              </td>
+                            )}
+                            {hasPoints && (
+                              <td className="py-3 px-4 text-right font-mono text-gray-600 dark:text-gray-400 font-medium">{team.points}</td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()
               ) : (
                 <div className="flex flex-col items-center justify-center p-10 opacity-30">
                   <Trophy size={48} className="mb-4 text-gray-500" />
@@ -12111,7 +12398,7 @@ function RankingsView({ panelClass, setTargetSummoner, setActiveTab, ddragonVers
                   key={idx}
                   onClick={() => {
                     setTargetSummoner({ name: player.summonerName, region: region.toLowerCase() });
-                    setActiveTab('dashboard');
+                    setActiveTab('profile');
                   }}
                   className={cn(
                     "flex items-center px-6 py-4 rounded-2xl transition-all cursor-pointer group relative overflow-hidden mb-2 border",

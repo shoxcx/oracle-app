@@ -4,74 +4,438 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ORACLE ADMIN PANEL</title>
+    <!-- Use Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; background: #0f0f13; color: white; font-family: 'Inter', system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .card { background: #1a1a20; border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 32px; width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-        h1 { margin: 0 0 24px 0; font-size: 20px; font-weight: 900; color: #818cf8; letter-spacing: 0.1em; display: flex; align-items: center; gap: 8px; }
-        .group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-size: 11px; font-weight: bold; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.1em; }
-        input, textarea, select { width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 12px 16px; border-radius: 12px; outline: none; transition: border-color 0.2s; font-family: inherit; font-size: 14px; }
-        input:focus, textarea:focus, select:focus { border-color: #818cf8; }
-        button { width: 100%; background: #6366f1; color: white; border: none; padding: 16px; border-radius: 12px; font-weight: 900; font-size: 14px; cursor: pointer; transition: background 0.2s; text-transform: uppercase; letter-spacing: 0.1em; }
-        button:hover { background: #4f46e5; }
-        .status { margin-top: 16px; font-size: 12px; text-align: center; color: #10b981; font-weight: bold; opacity: 0; transition: opacity 0.3s; }
+        :root {
+            --bg-base: #0a0a0f;
+            --bg-card: rgba(22, 22, 30, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --gold: #fbbf24;
+            --gold-hover: #f59e0b;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glow: 0 0 20px rgba(99, 102, 241, 0.4);
+            --gold-glow: 0 0 20px rgba(251, 191, 36, 0.4);
+        }
+
+        body { 
+            margin: 0; 
+            background: linear-gradient(135deg, #0f111a 0%, #08080c 100%);
+            color: var(--text-main); 
+            font-family: 'Outfit', system-ui, sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Abstract Background Orbs */
+        .orb-1 { position: absolute; top: -100px; left: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
+        .orb-2 { position: absolute; bottom: -150px; right: -100px; width: 500px; height: 500px; background: radial-gradient(circle, rgba(251,191,36,0.1) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
+
+        /* Login Screen */
+        #loginScreen {
+            position: fixed;
+            inset: 0;
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        
+        #loginScreen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .login-card {
+            background: rgba(20, 20, 30, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            width: 350px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .login-card h2 {
+            margin: 0 0 24px 0;
+            color: var(--primary);
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(99,102,241,0.3);
+        }
+
+        .login-input {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            padding: 14px 16px;
+            border-radius: 12px;
+            outline: none;
+            font-size: 16px;
+            text-align: center;
+            letter-spacing: 0.2em;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .login-input:focus {
+            border-color: var(--primary);
+            box-shadow: var(--glow);
+        }
+
+        .login-btn {
+            width: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, #818cf8 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 15px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--glow);
+        }
+
+        #loginError {
+            color: var(--danger);
+            font-size: 13px;
+            margin-top: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* Dashboard Wrapper */
+        .dashboard-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 32px;
+            max-width: 1200px;
+            width: 100%;
+            padding: 40px;
+            z-index: 10;
+        }
+
+        .card { 
+            background: var(--bg-card); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border); 
+            border-radius: 28px; 
+            padding: 36px; 
+            flex: 1;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05); 
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover { /* Slight lift */ transform: translateY(-4px); }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0.5;
+        }
+
+        .card.card-gold::before { background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+
+        h1 { margin: 0 0 32px 0; font-size: 24px; font-weight: 900; color: #fff; letter-spacing: 0.05em; display: flex; align-items: center; gap: 12px; }
+        h1 span { color: var(--primary); }
+        .card-gold h1 span { color: var(--gold); }
+
+        .group { margin-bottom: 24px; }
+        
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-size: 12px; 
+            font-weight: 800; 
+            color: var(--text-muted); 
+            text-transform: uppercase; 
+            letter-spacing: 0.1em; 
+        }
+        
+        input, textarea, select { 
+            width: 100%; 
+            box-sizing: border-box; 
+            background: rgba(0,0,0,0.4); 
+            border: 1px solid var(--glass-border); 
+            color: white; 
+            padding: 14px 18px; 
+            border-radius: 14px; 
+            outline: none; 
+            transition: all 0.3s; 
+            font-family: inherit; 
+            font-size: 15px; 
+            font-weight: 500;
+        }
+        
+        input:focus, textarea:focus, select:focus { 
+            border-color: var(--primary); 
+            background: rgba(0,0,0,0.6);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+        }
+
+        .card-gold input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(251,191,36,0.1);
+        }
+
+        .btn-primary { 
+            width: 100%; 
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%); 
+            color: white; 
+            border: none; 
+            padding: 16px; 
+            border-radius: 14px; 
+            font-weight: 800; 
+            font-size: 15px; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            text-transform: uppercase; 
+            letter-spacing: 0.1em; 
+            box-shadow: 0 8px 20px rgba(99,102,241,0.3);
+        }
+        
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: var(--glow); 
+        }
+
+        /* Gold Action Buttons */
+        .btn-row { display: flex; gap: 12px; margin-top: 16px; }
+        
+        .btn-gold { 
+            flex: 1; background: linear-gradient(135deg, var(--gold) 0%, #d97706 100%); color: #000; border: none; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 8px 20px rgba(251,191,36,0.3);
+        }
+        .btn-gold:hover { transform: translateY(-2px); box-shadow: var(--gold-glow); }
+        
+        .btn-gold-temp { 
+            flex: 1; background: transparent; border: 2px solid var(--gold); color: var(--gold); padding: 12px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.05em; 
+        }
+        .btn-gold-temp:hover { background: rgba(251,191,36,0.1); transform: translateY(-2px); }
+        
+        .btn-danger { 
+            width: 100%; background: transparent; border: 2px solid var(--danger); color: var(--danger); padding: 14px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; transition: all 0.3s; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px;
+        }
+        .btn-danger:hover { background: var(--danger); color: white; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239,68,68,0.3); }
+
+        .status { margin-top: 16px; font-size: 13px; text-align: center; font-weight: 800; height: 20px; opacity: 0; transition: opacity 0.3s, transform 0.3s; transform: translateY(10px); }
+        .status.show { opacity: 1; transform: translateY(0); }
+        .status.success { color: var(--success); }
+        .status.error { color: var(--danger); }
+
+        .subscriber-list { max-height: 250px; overflow-y: auto; margin-top: 20px; border: 1px solid var(--glass-border); border-radius: 12px; background: rgba(0,0,0,0.2); }
+        .subscriber-list::-webkit-scrollbar { width: 6px; }
+        .subscriber-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .sub-item { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); transition: background 0.2s; }
+        .sub-item:last-child { border-bottom: none; }
+        .sub-item:hover { background: rgba(255,255,255,0.05); }
+        .sub-name { font-weight: 700; font-size: 14px; color: #fff; cursor: pointer; }
+        .sub-type { font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .type-lifetime { background: rgba(251,191,36,0.15); color: var(--gold); border: 1px solid rgba(251,191,36,0.3); }
+        .type-temp { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+        .type-none { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+
+        @media (max-width: 900px) {
+            .dashboard-wrapper { flex-direction: column; padding: 20px; }
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>ORACLE ADMIN</h1>
-        <form id="broadcastForm">
-            <div class="group">
-                <label>Titre de la notification</label>
-                <input type="text" id="title" placeholder="Ex: ANNONCE SYSTEME" value="MESSAGE OFFICIEL">
-            </div>
-            <div class="group">
-                <label>Contenu du message</label>
-                <textarea id="message" rows="4" placeholder="Tapez votre message ici..." required></textarea>
-            </div>
-            <div class="group">
-                <label>Tag (Ex: MAJ, ANNONCE, ALERTE)</label>
-                <input type="text" id="tag" placeholder="Ex: MAJ" value="ANNONCE">
-            </div>
-            <div class="group">
-                <label>Couleur d'accent (Optionnel)</label>
-                <select id="color">
-                    <option value="bg-indigo-500 shadow-indigo-500/50">Indigo (Défaut)</option>
-                    <option value="bg-purple-500 shadow-purple-500/50">Violet</option>
-                    <option value="bg-red-500 shadow-red-500/50">Rouge</option>
-                    <option value="bg-green-500 shadow-green-500/50">Vert</option>
-                    <option value="bg-yellow-500 shadow-yellow-500/50">Or</option>
-                    <option value="bg-cyan-500 shadow-cyan-500/50">Cyan</option>
-                </select>
-            </div>
-            <div class="group">
-                <label>Image URL (Pour Header de l'Article)</label>
-                <input type="text" id="image" placeholder="https://...">
-            </div>
-            <div class="group">
-                <label>Lien de redirection complet (URL)</label>
-                <input type="text" id="url" placeholder="https://...">
-            </div>
-            <div class="group">
-                <label>Icône (Miniature de liste)</label>
-                <select id="icon">
-                    <option value="Bell">Cloche</option>
-                    <option value="Sparkles">Étoiles</option>
-                    <option value="AlertCircle">Alerte</option>
-                    <option value="Target">Cible</option>
-                    <option value="Activity">Activité</option>
-                </select>
-            </div>
-            <button type="submit">Envoyer au Tracker</button>
-            <div id="status" class="status">Message envoyé avec succès !</div>
-        </form>
+    <div class="orb-1"></div>
+    <div class="orb-2"></div>
+
+    <!-- Écran de Connexion Sécurisé -->
+    <div id="loginScreen">
+        <div class="login-card">
+            <h2>ORACLE ADMIN</h2>
+            <form id="authForm">
+                <input type="password" id="passwordInput" class="login-input" placeholder="MOT DE PASSE" required>
+                <button type="submit" class="login-btn">Accéder au Serveur</button>
+            </form>
+            <div id="loginError">Accès Refusé. Mot de passe incorrect.</div>
+        </div>
     </div>
 
+    <!-- Tableau de Bord -->
+    <div class="dashboard-wrapper">
+        
+        <!-- Module 1: Notifications -->
+        <div class="card">
+            <h1><span>⚡</span> NOTIFICATIONS OFFICIELLES</h1>
+            <form id="broadcastForm">
+                <div class="group">
+                    <label>Titre de la notification</label>
+                    <input type="text" id="title" placeholder="Ex: ANNONCE SYSTEME" value="MESSAGE OFFICIEL">
+                </div>
+                <div class="group">
+                    <label>Contenu du message</label>
+                    <textarea id="message" rows="4" placeholder="Tapez votre message pour les utilisateurs..." required></textarea>
+                </div>
+                <div style="display: flex; gap: 16px;">
+                    <div class="group" style="flex: 1;">
+                        <label>Tag (Ex: MAJ, INFO)</label>
+                        <input type="text" id="tag" placeholder="Ex: ANNONCE" value="ANNONCE">
+                    </div>
+                    <div class="group" style="flex: 1;">
+                        <label>Couleur du Tag</label>
+                        <select id="color">
+                            <option value="bg-indigo-500 shadow-indigo-500/50">Indigo (Défaut)</option>
+                            <option value="bg-purple-500 shadow-purple-500/50">Violet</option>
+                            <option value="bg-red-500 shadow-red-500/50">Rouge</option>
+                            <option value="bg-green-500 shadow-green-500/50">Vert</option>
+                            <option value="bg-yellow-500 shadow-yellow-500/50">Or</option>
+                            <option value="bg-cyan-500 shadow-cyan-500/50">Cyan</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="group">
+                    <label>Image URL (Optionnel - Pour Header)</label>
+                    <input type="text" id="image" placeholder="https://...">
+                </div>
+                <div style="display: flex; gap: 16px;">
+                    <div class="group" style="flex: 2;">
+                        <label>Lien URL Redirection (Au clic)</label>
+                        <input type="text" id="url" placeholder="https://...">
+                    </div>
+                    <div class="group" style="flex: 1;">
+                        <label>Icône Mignature</label>
+                        <select id="icon">
+                            <option value="Bell">Cloche</option>
+                            <option value="Sparkles">Étoiles</option>
+                            <option value="AlertCircle">Alerte</option>
+                            <option value="Target">Cible</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Diffuser le Message</button>
+                <div id="statusNotify" class="status success">Message diffusé au réseau mondial !</div>
+            </form>
+        </div>
+
+        <!-- Module 2: Gold Subscriptions -->
+        <div class="card card-gold">
+            <h1><span>👑</span> ADMIN ABONNEMENTS GOLD</h1>
+            <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;">Gérez les accès premium Oracle pour vos utilisateurs. L'attribution à vie ou temporaire mettra instantanément à jour les droits dans leur client Tracker.</p>
+            
+            <div class="group" style="margin-bottom: 32px">
+                <label>Identifiant Riot (GamerTag#Tag)</label>
+                <input type="text" id="goldUsername" placeholder="Ex: Faker#KR1 ou ID unique" required>
+            </div>
+
+            <label style="margin-bottom: 12px; color: #fff;">Assignation des Droits</label>
+            <div class="btn-row">
+                <button id="btnGoldLife" type="button" class="btn-gold">Activer à vie (Élite)</button>
+                <div style="flex: 1; display: flex; gap: 8px;">
+                    <input type="number" id="goldDuration" placeholder="Jours" value="30" min="1" max="365" style="width: 80px; text-align: center; padding: 12px; border-radius: 12px; background: rgba(99,102,241,0.1); border: 1px solid var(--primary); color: #fff; font-weight: 800;">
+                    <button id="btnGoldTemp" type="button" class="btn-gold-temp" style="flex: 1;">Activer Temps</button>
+                </div>
+            </div>
+            
+            <button id="btnGoldRevoke" type="button" class="btn-danger">Révocquer l'Accès Premium</button>
+            <div id="statusGold" class="status">Statut de l'utilisateur mis à jour.</div>
+        </div>
+
+        <!-- Module 3: Gestion & Liste -->
+        <div class="card" style="min-width: 350px;">
+            <h1><span>🔍</span> RECHERCHE D'ABONNÉS</h1>
+            <p style="font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;">Trouvez et vérifiez le statut de n'importe quel abonné Oracle. Cliquez sur un nom pour l'éditer.</p>
+            
+            <div class="group">
+                <input type="text" id="searchSubscriber" placeholder="Rechercher par pseudo..." autocomplete="off">
+            </div>
+
+            <div class="subscriber-list" id="subscriberList">
+                <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; font-style: italic;">Chargement des données...</div>
+            </div>
+            <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <span id="subCount" style="font-size: 12px; color: var(--text-muted); font-weight: 800;">TOTAL : 0</span>
+                <button id="btnRefreshSubs" style="background: transparent; border: 1px solid var(--glass-border); color: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 800;">RAFRAÎCHIR</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
     <script>
+        // Sécurité obfusquée pour masquer le mot de passe du code source (GitHub)
+        // La véritable sécurité vient de votre restriction d'accès Firebase. 
+        // Ce check visuel empêche simplement les curieux.
+        const EXPECTED_B64 = 'ITYyMDJuaW1kQWVsY2FyTw=='; 
+
+        const loginScreen = document.getElementById('loginScreen');
+        const authForm = document.getElementById('authForm');
+        const passInput = document.getElementById('passwordInput');
+        const loginError = document.getElementById('loginError');
+
+        // Check if unlocked in session
+        if(sessionStorage.getItem('oracle_admin_unlocked') === 'true') {
+            loginScreen.classList.add('hidden');
+        } else {
+            passInput.focus();
+        }
+
+        authForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // Obfuscated match: reverse string + base64 encode
+            const userInput = passInput.value;
+            const obfuscatedInput = btoa(userInput.split('').reverse().join(''));
+
+            if(obfuscatedInput === EXPECTED_B64) {
+                sessionStorage.setItem('oracle_admin_unlocked', 'true');
+                loginScreen.classList.add('hidden');
+                loginError.style.opacity = '0';
+            } else {
+                loginError.style.opacity = '1';
+                passInput.value = '';
+                passInput.focus();
+            }
+        });
+
+        // Notifications Broadcast
         document.getElementById('broadcastForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerText = "Envoi...";
+            btn.style.opacity = 0.7;
+
             const payload = {
-                id: Date.now(), // Force explicit ID generation from frontend
+                id: Date.now(),
                 title: document.getElementById('title').value,
                 message: document.getElementById('message').value,
                 tag: document.getElementById('tag').value,
@@ -79,39 +443,197 @@
                 imageUrl: document.getElementById('image').value || null,
                 url: document.getElementById('url').value || null,
                 lucideName: document.getElementById('icon').value,
-                status: 'Message reçu'
+                status: 'Nouveau message de l\'administrateur'
             };
 
             try {
-                // Essai d'envoi direct vers FIREBASE (Serveur Mondial)
                 const fireRes = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/broadcast.json', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 
-                if (!fireRes.ok) throw new Error("Erreur serveur mondial");
+                if (!fireRes.ok) throw new Error("Firebase Refusé");
 
-                // Essai d'envoi vers l'app locale (pour voir ta notification instantanément sur ton propre PC)
+                // Envoi local (facultatif si le client écoute sur HTTP)
                 fetch('http://127.0.0.1:31337/broadcast', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
-                }).catch(() => console.log("Tracker local fermé, mais envoyé au monde entier !"));
+                }).catch(() => {});
                 
-                showSuccess();
-            } catch (err) {
-                console.error(err);
-                alert("Erreur de connexion internet ! Ou la base de données Firebase est en restriction d'accès.");
-            }
-
-            function showSuccess() {
-                const status = document.getElementById('status');
-                status.style.opacity = '1';
-                setTimeout(() => status.style.opacity = '0', 3000);
+                showStatus('statusNotify', 'Message diffusé au réseau avec succès !', 'success');
                 document.getElementById('message').value = '';
+            } catch (err) {
+                showStatus('statusNotify', 'Erreur de connexion. Vérifiez Firebase.', 'error');
+            } finally {
+                btn.innerText = originalText;
+                btn.style.opacity = 1;
             }
         });
+
+        // Gestion Gold
+        const bLife = document.getElementById('btnGoldLife');
+        const bTemp = document.getElementById('btnGoldTemp');
+        const bRevoke = document.getElementById('btnGoldRevoke');
+        const uInput = document.getElementById('goldUsername');
+
+        async function updateGoldStatus(user, active, durationDays = null) {
+            if(!user || user.length < 3) {
+                showStatus('statusGold', 'Veuillez entrer un Riot ID ou pseudo valide.', 'error');
+                return;
+            }
+            
+            // Make Base64 strictly URL and Firebase safe
+            const b64User = btoa(unescape(encodeURIComponent(user)))
+                            .replace(/\+/g, '-')
+                            .replace(/\//g, '_')
+                            .replace(/=/g, '');
+
+            const payload = {
+                active: active,
+                updatedAt: Date.now()
+            };
+            
+            if(active && durationDays) {
+                payload.expiresAt = Date.now() + (durationDays * 24 * 60 * 60 * 1000); // Expiration timestamp
+                payload.type = 'TEMPORARY';
+            } else if (active) {
+                payload.expiresAt = null; // A vie
+                payload.type = 'LIFETIME';
+            } else {
+                payload.type = 'NONE';
+            }
+
+            try {
+                // Mettre à jour Firebase sous un nœud 'gold_users' (à brancher du côté client tracker plus tard)
+                const fireRes = await fetch(`https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/gold_users/${b64User}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!fireRes.ok) throw new Error("Database Firebase rejetée");
+
+                if(!active) {
+                    showStatus('statusGold', `Premium révoqué pour ${user}.`, 'success');
+                } else if (durationDays) {
+                    showStatus('statusGold', `Abonnement ${durationDays} jours activé pour ${user}.`, 'success');
+                } else {
+                    showStatus('statusGold', `Accès Élite à vie activé pour ${user} !`, 'success');
+                }
+                setTimeout(fetchSubscribers, 500);
+            } catch(e) {
+                showStatus('statusGold', `Erreur réseau : Impossible d'appliquer l'abonnement.`, 'error');
+            }
+        }
+
+        bLife.addEventListener('click', () => updateGoldStatus(uInput.value.trim(), true, null));
+        bTemp.addEventListener('click', () => {
+            const days = parseInt(document.getElementById('goldDuration').value, 10);
+            if (isNaN(days) || days < 1) {
+                showStatus('statusGold', 'Veuillez entrer une durée valide.', 'error');
+                return;
+            }
+            updateGoldStatus(uInput.value.trim(), true, days);
+        });
+        bRevoke.addEventListener('click', () => updateGoldStatus(uInput.value.trim(), false, null));
+
+        // Subscriber List Logic
+        let rawSubscribers = [];
+        
+        async function fetchSubscribers() {
+            const listEl = document.getElementById('subscriberList');
+            const countEl = document.getElementById('subCount');
+            listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; font-style: italic;">Récupération...</div>';
+            
+            try {
+                const res = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/gold_users.json');
+                const data = await res.json();
+                
+                rawSubscribers = [];
+                if(data) {
+                    const userMap = {};
+                    for(const key in data) {
+                        try {
+                            let base64 = key.replace(/-/g, '+').replace(/_/g, '/');
+                            while (base64.length % 4) base64 += '=';
+                            const username = decodeURIComponent(escape(atob(base64)));
+                            
+                            // Normalize to ignore all whitespace completely (Riot ID standard)
+                            const norm = username.replace(/\s/g, '').toLowerCase();
+                            const currentData = data[key];
+                            
+                            if (!userMap[norm] || (currentData.updatedAt || 0) > (userMap[norm].data.updatedAt || 0)) {
+                                userMap[norm] = { username: username.trim(), data: currentData };
+                            }
+                        } catch(e) {}
+                    }
+                    rawSubscribers = Object.values(userMap);
+                }
+                
+                // Sort by recent status
+                rawSubscribers.sort((a,b) => (b.data.updatedAt || 0) - (a.data.updatedAt || 0));
+                renderSubscribers();
+                countEl.innerText = `TOTAL : ${rawSubscribers.length}`;
+            } catch(e) {
+                listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--danger); font-size: 13px;">Erreur de chargement.</div>';
+            }
+        }
+
+        function renderSubscribers(filter = '') {
+            const listEl = document.getElementById('subscriberList');
+            listEl.innerHTML = '';
+            
+            const filtered = rawSubscribers.filter(sub => sub.username.toLowerCase().includes(filter.toLowerCase()));
+            
+            if(filtered.length === 0) {
+                listEl.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 13px; font-style: italic;">Aucun résultat trouvé.</div>';
+                return;
+            }
+
+            filtered.forEach(sub => {
+                const isActive = sub.data.active;
+                const type = sub.data.type || (isActive ? 'LIFETIME' : 'NONE');
+                
+                let badgeClass = 'type-none';
+                let typeLabel = 'DÉSACTIVÉ';
+                
+                if(isActive && type === 'LIFETIME') { badgeClass = 'type-lifetime'; typeLabel = 'À VIE'; }
+                if(isActive && type === 'TEMPORARY') { 
+                    badgeClass = 'type-temp'; 
+                    const expires = new Date(sub.data.expiresAt);
+                    const daysRemaining = Math.max(0, Math.ceil((expires - Date.now()) / (1000 * 60 * 60 * 24)));
+                    typeLabel = `${daysRemaining} JOURS (FIN: ${expires.toLocaleDateString()})`;
+                }
+
+                const item = document.createElement('div');
+                item.className = 'sub-item';
+                item.innerHTML = `
+                    <div class="sub-name" onclick="document.getElementById('goldUsername').value = '${sub.username}';">${sub.username}</div>
+                    <div class="sub-type ${badgeClass}">${typeLabel}</div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        document.getElementById('searchSubscriber').addEventListener('input', (e) => {
+            renderSubscribers(e.target.value.trim());
+        });
+        document.getElementById('btnRefreshSubs').addEventListener('click', fetchSubscribers);
+        
+        // Initial fetch
+        setTimeout(fetchSubscribers, 500);
+
+        // Utilitaire HUD status
+        function showStatus(elemId, text, type) {
+            const el = document.getElementById(elemId);
+            el.innerText = text;
+            el.className = `status show ${type}`;
+            setTimeout(() => {
+                el.classList.remove('show');
+            }, 3500);
+        }
     </script>
 </body>
 </html>

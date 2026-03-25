@@ -39,7 +39,7 @@ Add-Type -TypeDefinition $code;
 function getSpotifyTrack() {
     return new Promise((resolve) => {
         const path = require('path');
-        const scriptPath = path.join(__dirname, 'media_info.py');
+        const scriptPath = path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'media_info.py');
 
         exec(`python "${scriptPath}"`, { encoding: 'utf8' }, async (err, stdout) => {
             if (err) {

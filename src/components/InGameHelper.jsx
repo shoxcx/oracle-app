@@ -797,15 +797,29 @@ export function InGameHelper({ ddragonVersion }) {
                             {buildData.items.starting && buildData.items.core && (
                                 <div className="flex flex-col gap-2.5 bg-black/20 p-3 rounded-[20px] shadow-inner ring-1 ring-white/5">
                                     <div className="flex flex-wrap gap-2 items-center">
+                                        {/* Starting Items */}
                                         {buildData.items.starting.map((id, idx) => (
-                                            <div key={'start-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shadow-[0_4px_8px_rgba(0,0,0,0.4)]">
+                                            <div key={'start-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-white/20 overflow-hidden shadow-[0_4px_8px_rgba(0,0,0,0.4)]" title="Starter">
                                                 <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
                                             </div>
                                         ))}
+
                                         {buildData.items.core.length > 0 && <span className="text-white/30 text-[10px] font-black mx-1 drop-shadow-md">►</span>}
+                                        
+                                        {/* Core Items */}
                                         {buildData.items.core.map((id, idx) => (
-                                            <div key={'core-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-amber-500/60 overflow-hidden shadow-[0_0_12px_rgba(245,158,11,0.4)] relative">
-                                                <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-xl" />
+                                            <div key={'core-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-amber-500/60 overflow-hidden shadow-[0_0_12px_rgba(245,158,11,0.4)] relative" title="Core Item">
+                                                <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-xl pointer-events-none" />
+                                                <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            </div>
+                                        ))}
+
+                                        {buildData.items.boots?.length > 0 && <span className="text-white/30 text-[10px] font-black mx-1 drop-shadow-md">►</span>}
+                                        
+                                        {/* Boots */}
+                                        {buildData.items.boots?.map((id, idx) => (
+                                            <div key={'boot-' + id + '-' + idx} className="w-9 h-9 rounded-xl border border-cyan-500/60 overflow-hidden shadow-[0_0_12px_rgba(6,182,212,0.4)] relative" title="Boots">
+                                                <div className="absolute inset-0 ring-1 ring-inset ring-white/20 rounded-xl pointer-events-none" />
                                                 <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
                                             </div>
                                         ))}
@@ -818,7 +832,7 @@ export function InGameHelper({ ddragonVersion }) {
                                     <div className="text-[9px] font-bold text-white/40 uppercase tracking-widest drop-shadow-sm">Situations / Late Game</div>
                                     <div className="flex flex-wrap gap-2 opacity-90">
                                         {buildData.items.situational.slice(0, 5).map((id, idx) => (
-                                            <div key={'sit-' + id + '-' + idx} className="w-7 h-7 rounded-[10px] border border-white/10 overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+                                            <div key={'sit-' + id + '-' + idx} className="w-7 h-7 rounded-[10px] border border-white/10 overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.3)]" title="Situational Item">
                                                 <img src={`https://ddragon.leagueoflegends.com/cdn/${stateRefs.current.ddVersion}/img/item/${id}.png`} className="w-[115%] h-[115%] object-cover -translate-x-[7.5%] -translate-y-[7.5%]" onError={(e) => { e.target.style.display = 'none'; }} />
                                             </div>
                                         ))}
