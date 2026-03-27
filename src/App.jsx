@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TutorialView from './TutorialView';
+import TrainingView from './TrainingView';
 
 const CHAMP_ID_TO_NAME = {
   1: "Annie", 2: "Olaf", 3: "Galio", 4: "TwistedFate", 5: "XinZhao", 6: "Urgot", 7: "LeBlanc", 8: "Vladimir", 9: "Fiddlesticks", 10: "Kayle",
@@ -3283,13 +3284,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   !isPremium ? (
                     <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} />
                   ) : (
-                    <div className="relative h-full flex flex-col items-center justify-center text-gray-500 rounded-2xl overflow-hidden bg-black/5 dark:bg-white/5 shadow-inner">
-                      <Wrench size={56} className="mb-6 opacity-30 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
-                      <h2 className="text-3xl font-black text-white italic tracking-tighter mb-4 drop-shadow-md">En Maintenance</h2>
-                      <p className="text-gray-400 max-w-sm text-center font-medium leading-relaxed">
-                        Cette section <b>Oracle Gold</b> est actuellement en cours de mise à jour pour vous offrir les meilleurs outils interactifs.
-                      </p>
-                    </div>
+                    <TrainingView t={t} panelClass={panelClass} />
                   )
                 )}
 

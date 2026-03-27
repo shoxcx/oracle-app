@@ -376,6 +376,13 @@ ipcMain.handle('window:close', () => {
     }
 });
 
+ipcMain.handle('window:set-fullscreen', (event, full) => {
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    if (win && !win.isDestroyed()) {
+        win.setFullScreen(full);
+    }
+});
+
 ipcMain.handle('window:show', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) win.show();

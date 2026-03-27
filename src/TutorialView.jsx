@@ -343,9 +343,11 @@ const TUTORIAL_CONTENT = {
       desc: "Flash, Ignite, TP... Éléments vitaux pour tout duel.",
       tags: ["Magie", "Essentiel"],
       details: [
-        { type: "p", text: "Le Flash (Saut éclair) est le sort roi de League of Legends. Ne le gâchez jamais pour fuir si vous êtes de toute façon mort avec certitude." },
-        { type: "p", text: "Une Téléportation (TP) vous permet d'avoir un impact immédiat sur la macro-carte. L'Embrasement (Ignite) donne l'avantage décisif en 1 contre 1 pour le premier sang et réduit surtout les soins du champion adverse de 40% (Hémorragie)." },
-        { type: "tip", text: "Si un ennemi lâche son Flash devant vous, signalez-le (Ping Time) ! Un champion immobile est une cible prioritaire pour votre Jungler pendant les 5 prochaines minutes complètes ! Gardez-le en tête 300 secondes." }
+        { type: "p", text: "Le Flash (Saut Éclair) est le sort le plus vital, utilisé par 99% des joueurs. Outil offensif comme défensif, un joueur sans Flash est une proie facile. Ne le gâchez jamais pour fuir si votre mort est déjà 100% inévitable." },
+        { type: "p", text: "Le Châtiment (Smite) inflige des dégâts purs incroyables aux monstres et soigne son lanceur : il est le seul sort strict et obligatoire pour un Jungler afin de voler/garantir le Nashor. Ne jouez pas sans ! Le Fantôme (Ghost) offre une fuite ou un rush inarrêtable à travers les unités pour les champions massifs comme Darius ou Hecarim." },
+        { type: "p", text: "L'Embrasement (Ignite) ajoute de terrifiants dégâts purs avec le temps sur un ennemi, tout en divisant ses soins reçus par deux (Hémorragie). La Téléportation (TP) permet de rejoindre instantanément une structure ou une balise alliée pour renverser un combat à 5 contre 4 ou de contrer un Freeze." },
+        { type: "p", text: "La Fatigue (Exhaust) paralyse littéralement un dangereux assassin ennemi explosif (Katarina, Zed), en réduisant drastiquement sa vitesse de déplacement et ses dégâts pendant 3 grosses secondes. Le Soin (Heal), la Barrière (Barrier) et la Purge (Cleanse) sont d'excellents outils de survie pour les cibles de l'arrière-garde (Tireurs)." },
+        { type: "tip", text: "Si l'adversaire principal en face de vous 'claque' (utilise) son Flash défensivement, écrivez 'mid f' dans le chat ou signalez-le (Ping) en cliquant dessus ! Votre Jungler dispose maintenant d'exactement 5 minutes libres (300 secondes de récupération) pour venir camper l'ennemi en toute facilité." }
       ]
     },
     {
