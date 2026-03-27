@@ -1012,7 +1012,7 @@ class Scraper {
             // Extract properly
             const activeRunes = (popRunes?.active_perks || build.rec_runes?.active_perks || []).map(String);
             if (activeRunes.length === 6) {
-                const shards = (popRunes?.shards || build.rec_runes?.shards || ["5008", "5008", "5001"]).map(String);
+                const shards = (popRunes?.stat_shards || popRunes?.shards || build.rec_runes?.stat_shards || build.rec_runes?.shards || ["5008", "5008", "5001"]).map(String);
                 activeRunes.push(...shards);
             }
 
@@ -1061,14 +1061,18 @@ class Scraper {
                  console.log("[Scraper] Rune sort layout failed, falling back to original array", sortError);
             }
 
-            const bootIdsMap = ['1001', '3006', '3047', '3111', '3158', '3020', '3117', '3009', '3119', '4401'];
-            let parsedBoots = ["3020"]; // Fallback to Sorcerer's Shoes
+            const bootIdsMap = ['1001', '3006', '3047', '3111', '3158', '3020', '3117', '3009', '3119', '2422', '4401'];
+            let parsedBoots = ["1001"]; // Fallback to basic boots
             if (build.rec_boots_options && build.rec_boots_options.length > 0) {
-                parsedBoots = build.rec_boots_options.map(b => String(b.id));
+                parsedBoots = build.rec_boots_options.map(b => String(b.id || b));
             } else {
-                // Boots are now often baked into core items on U.GG
-                const coreIds = (build.rec_core_items?.ids || []).map(String);
-                const foundBoot = coreIds.find(id => bootIdsMap.includes(id));
+                const allRecItemIds = [
+                    ...(build.rec_core_items?.ids || []),
+                    ...(build.item_options?.['4']?.map(i => i.id) || []),
+                    ...(build.item_options?.['5']?.map(i => i.id) || []),
+                    ...(build.item_options?.['6']?.map(i => i.id) || [])
+                ].map(String);
+                const foundBoot = allRecItemIds.find(id => bootIdsMap.includes(id));
                 if (foundBoot) {
                     parsedBoots = [foundBoot];
                 }
@@ -1079,7 +1083,7 @@ class Scraper {
                 const sortedR = [...build.rune_sets].sort((a,b) => (b.matches || 0) - (a.matches || 0));
                 allRunePages = sortedR.slice(0, 5).map(rSet => {
                     const acts = (rSet.active_perks || []).map(String);
-                    if (acts.length === 6) acts.push(...(rSet.shards || ["5008", "5008", "5001"]).map(String));
+                    if (acts.length === 6) acts.push(...(rSet.stat_shards || rSet.shards || ["5008", "5008", "5001"]).map(String));
                     // Copy layout sort from the main runes to ensure LCU accepts it if forced
                     if (runeMap) {
                          const pStyle = String(rSet.primary_style || "8100");
@@ -1118,7 +1122,7 @@ class Scraper {
                     pickRate: "Meta", 
                     tier: build.win_rate > 51.5 ? "S" : (build.win_rate > 49.5 ? "A" : "B")
                 },
-                skillOrder: build.rec_skill_path?.slots || build.rec_skills?.slots || ["Q", "W", "E"],
+                skillOrder: build.rec_skills?.slots || build.rec_skill_path?.slots || ["Q", "W", "E"],
                 items: {
                     starting: (build.rec_starting_items?.ids || ["1056", "2003"]).map(String),
                     core: (build.rec_core_items?.ids || ["3118", "4645"]).map(String).filter(id => !bootIdsMap.includes(id)),
@@ -1977,7 +1981,20 @@ class Scraper {
                                 else durationSec = duration.split(':').reduce((acc, time) => (60 * acc) + +time, 0) || 1200;
                             }
 
-                            const gameId = 2000000 + idx;
+                            const matchBtn = row.querySelector('a.seeMatchButton') || row.querySelector('a[href*="/match/"]');
+                            let matchUrl = "";
+                            let realGameId = 2000000 + idx;
+                            if (matchBtn && matchBtn.href) {
+                                matchUrl = matchBtn.href;
+                                try {
+                                    const splitMatch = matchUrl.split('match/')[1].split('/');
+                                    if (splitMatch[1]) {
+                                        const parsedId = parseInt(splitMatch[1].split('#')[0]);
+                                        if (!isNaN(parsedId)) realGameId = parsedId;
+                                    }
+                                } catch(e) {}
+                            }
+                            const gameId = realGameId;
 
                             const lpSpan = Array.from(row.querySelectorAll('span, div')).find(el => el.innerText && el.innerText.includes('LP'));
                             let lpChange = null;
@@ -2029,7 +2046,7 @@ class Scraper {
                                             const iconDiv = el.querySelector('.championIcon');
                                             if (iconDiv && iconDiv.getAttribute('tooltip')) {
                                                 pName = iconDiv.getAttribute('tooltip').replace(/<\\/?[^>]+(>|$)/g, "").trim();
-                                            } else {
+                                            } else { // Restored missing else block
                                                 const link = el.nodeName === 'A' ? el : el.querySelector('a');
                                                 if(link && link.href) {
                                                     const spl = link.href.split('/summoner/');
@@ -2041,20 +2058,23 @@ class Scraper {
                                             }
                                         }
 
-                                        // If this is the searched user, use exact scraped stats, otherwise use defaults
-                                        const isSelected = el.classList.contains('selected') || !!el.querySelector('.selected');
+                                        // Accurate checks to find the searched user
+                                        const cleanSearchName = name.replace(/\s+/g, '').replace('#', '').toLowerCase();
+                                        const cleanPlayerName = pName.replace(/\s+/g, '').replace('#', '').toLowerCase();
+                                        const isSelected = el.classList.contains('selected') || !!el.querySelector('.selected') || cleanSearchName === cleanPlayerName;
 
                                         const stats = {
                                             win: pWin,
-                                            kills: (isSelected ? kills : (pWin ? 5 : 2)),
-                                            deaths: (isSelected ? deaths : (pWin ? 2 : 5)),
-                                            assists: (isSelected ? assists : (pWin ? 8 : 4)),
-                                            totalMinionsKilled: (isSelected ? cs : 100),
+                                            isDummy: !isSelected,
+                                            kills: (isSelected ? kills : undefined),
+                                            deaths: (isSelected ? deaths : undefined),
+                                            assists: (isSelected ? assists : undefined),
+                                            totalMinionsKilled: (isSelected ? cs : undefined),
                                             neutralMinionsKilled: 0,
-                                            totalDamageDealtToChampions: (isSelected ? 15000 : 10000),
-                                            visionScore: (isSelected ? Math.floor(durationSec / 60 * 0.7) : 10),
-                                            goldEarned: (isSelected ? estGold : 8000),
-                                            champLevel: (isSelected ? level : 12)
+                                            totalDamageDealtToChampions: (isSelected ? estGold * 1.5 : undefined),
+                                            visionScore: (isSelected ? Math.floor(durationSec / 60 * 0.7) : undefined),
+                                            goldEarned: (isSelected ? estGold : undefined),
+                                            champLevel: (isSelected ? level : undefined)
                                         };
 
                                         const roleMap = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
@@ -2155,6 +2175,109 @@ class Scraper {
             }
         });
     }
+
+    async getExternalMatchDetails(matchUrl) {
+        if (!matchUrl || !matchUrl.includes('leagueofgraphs.com/match')) return null;
+        console.log(`[Scraper] Fetching Match Details from: ${matchUrl}`);
+        
+        return this.runBrowserTask(matchUrl, async (win) => {
+            const hasTable = await this.waitForSelector(win, '.matchTable', 10000);
+            if (hasTable !== 'READY') return null;
+
+            return await win.webContents.executeJavaScript(`
+                (async () => {
+                    try {
+                        const clean = t => t ? t.innerText.trim() : "";
+                        const getNumber = t => parseFloat(clean(t).replace(/,/g, '')) || 0;
+                        const extractId = str => { const m = (str||"").match(/\\d+/); return m ? parseInt(m[0]) : 0; };
+                        
+                        const parsedPlayers = [];
+                        let pIndex = 1;
+                        
+                        document.querySelectorAll('.matchTable tbody tr').forEach(row => {
+                            const nameLink = row.querySelector('.name a') || row.querySelector('.name');
+                            if (!nameLink) return;
+                            
+                            const teamBlock = row.closest('.matchTable');
+                            const teamId = (teamBlock && teamBlock.classList.contains('team200') || row.querySelector('.victoryDefeatText.defeat')) ? 200 : 100;
+
+                            const pName = clean(nameLink);
+                            let puuid = "ext~" + encodeURIComponent(pName);
+                            
+                            const classNames = row.className || "";
+                            let position = "UTILITY";
+                            if(classNames.includes('role-1')) position = "TOP";
+                            if(classNames.includes('role-2')) position = "JUNGLE";
+                            if(classNames.includes('role-3')) position = "MIDDLE";
+                            if(classNames.includes('role-4')) position = "BOTTOM";
+
+                            const champImg = row.querySelector('.championCell img');
+                            const championName = champImg ? (champImg.getAttribute('title') || champImg.alt) : "Unknown";
+                            let championId = 0;
+                            if (champImg && champImg.className) {
+                                const m = champImg.className.match(/champion-(\\d+)/);
+                                if (m) championId = parseInt(m[1]);
+                            }
+
+                            const kdaEl = row.querySelector('.kda');
+                            const kills = kdaEl ? getNumber(kdaEl.querySelector('.kills')) : 0;
+                            const deaths = kdaEl ? getNumber(kdaEl.querySelector('.deaths')) : 0;
+                            const assists = kdaEl ? getNumber(kdaEl.querySelector('.assists')) : 0;
+                            
+                            let spell1Id = 0, spell2Id = 0, perk0 = 0, perkSubStyle = 0;
+                            const spells = Array.from(row.querySelectorAll('.championCell .spells img, .perks img, .perk img'));
+                            spells.forEach(img => {
+                                const cls = img.className || "";
+                                if (cls.includes('spell-')) {
+                                    if(!spell1Id) spell1Id = extractId(cls.split('spell-')[1]);
+                                    else if(!spell2Id) spell2Id = extractId(cls.split('spell-')[1]);
+                                }
+                                if (cls.includes('perk-')) {
+                                    if(!perk0) perk0 = extractId(cls.split('perk-')[1]);
+                                    else if(!perkSubStyle) perkSubStyle = extractId(cls.split('perk-')[1]);
+                                }
+                            });
+                            
+                            const items = Array.from(row.querySelectorAll('.itemsColumn img')).map(img => {
+                                const m = (img.className || "").match(/item-(\\d+)/);
+                                return m ? parseInt(m[1]) : 0;
+                            }).filter(x => x > 0);
+                            for(let i=0; i<7; i++) { if(!items[i]) items[i] = 0; }
+                            
+                            const csDiv = Array.from(row.querySelectorAll('.kdaCell .cs')).find(el => clean(el).includes('CS')) || row.querySelector('div[tooltip*="Minions:"]');
+                            let totalMinionsKilled = 0, neutralMinionsKilled = 0;
+                            if (csDiv) {
+                                const csText = clean(csDiv);
+                                const csMatch = csText.match(/(\\d+)/);
+                                if (csMatch) totalMinionsKilled = parseInt(csMatch[1]);
+                            }
+
+                            parsedPlayers.push({
+                                participantId: pIndex++,
+                                teamId: teamId,
+                                championId: championId,
+                                championName: championName,
+                                puuid: puuid,
+                                summonerName: pName,
+                                teamPosition: position,
+                                timeline: { lane: position, role: "" },
+                                spell1Id,
+                                spell2Id,
+                                stats: {
+                                    win: teamId === 100 ? !hasTable.includes('defeat') : hasTable.includes('defeat'),
+                                    kills, deaths, assists, totalMinionsKilled, neutralMinionsKilled,
+                                    perk0, perkSubStyle,
+                                    item0: items[0], item1: items[1], item2: items[2], item3: items[3], item4: items[4], item5: items[5], item6: items[6]
+                                }
+                            });
+                        });
+                        return { participants: parsedPlayers, participantIdentities: parsedPlayers.map(p => ({ participantId: p.participantId, player: { summonerName: p.summonerName, puuid: p.puuid } })) };
+                    } catch(e) { return null; }
+                })();
+            `);
+        });
+    }
+
     async getRankHistory(puuid_or_name, region = 'EUW') {
         const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br', 'TR': 'tr', 'LAS': 'las', 'LAN': 'lan', 'OCE': 'oce', 'RU': 'ru', 'JP': 'jp' };
         let name = puuid_or_name;

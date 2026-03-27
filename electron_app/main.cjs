@@ -32,6 +32,7 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 // Add local relative imports
 const lcu = require('./lcu.cjs');
 const liveApi = require('./live_api.cjs');
@@ -104,7 +105,15 @@ function createMainWindow() {
 
     mainWindow.loadURL(url);
     mainWindow.once('ready-to-show', () => {
+        mainWindow.setAlwaysOnTop(true);
         mainWindow.show();
+        mainWindow.focus();
+        setTimeout(() => { 
+            mainWindow.setAlwaysOnTop(false); 
+            // Workaround for Windows UIPI/Focus bug ignoring shortcuts for background processes
+            currentRegisteredShortcut = null;
+            registerGlobalShortcuts('Alt+O');
+        }, 300);
     });
 
     mainWindow.on('close', (event) => {
@@ -745,6 +754,7 @@ ipcMain.handle('riot:get-match-history', async (_, { puuid, region, count }) => 
 ipcMain.handle('riot:get-match-details', async (_, { matchId, region }) => riotApi.getMatchDetails(matchId, region));
 ipcMain.handle('riot:get-league-entries', async (_, { summonerId, region }) => riotApi.getLeagueEntries(summonerId, region));
 ipcMain.handle('scraper:get-match-history', async (_, puuid, region) => scraper.getMatchHistory(puuid, region));
+ipcMain.handle('scraper:get-match-details', async (_, matchUrl) => scraper.getExternalMatchDetails(matchUrl));
 
 // lazy handler moved to the bottom of the file
 
@@ -792,12 +802,16 @@ ipcMain.on('app:navigate-to-profile', (_, name) => {
     }
 });
 
-ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+X') => {
-    console.log(`[IPC] app:register-shortcut called with: ${winrateShortcut}`);
+let currentRegisteredShortcut = null;
+
+function registerGlobalShortcuts(winrateShortcut = 'Alt+O') {
+    if (winrateShortcut === currentRegisteredShortcut) return true;
+    
+    currentRegisteredShortcut = winrateShortcut;
+    console.log(`[Main] registering global shortcuts with new key: ${currentRegisteredShortcut}`);
     try {
         globalShortcut.unregisterAll();
 
-        
         globalShortcut.register('Alt+B', () => {
             if (lastPhase !== 'GameStart' && lastPhase !== 'InProgress') {
                 return; // Only allow toggling during the game phase
@@ -868,9 +882,9 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
             }
         };
 
-        globalShortcut.register(winrateShortcut, action);
+        globalShortcut.register(currentRegisteredShortcut, action);
         // Force a secondary fallback since Control+X is often eaten by Windows or League
-        if (winrateShortcut === 'CommandOrControl+X' || winrateShortcut === 'Alt+O') {
+        if (currentRegisteredShortcut === 'CommandOrControl+X' || currentRegisteredShortcut === 'Alt+O') {
             globalShortcut.register('Alt+X', action);
         }
         return true;
@@ -878,89 +892,10 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
         console.error("Shortcut registration failed", e);
         return false;
     }
-});
+}
 
-ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
-    try {
-        globalShortcut.unregisterAll();
-
-        
-        globalShortcut.register('Alt+B', () => {
-            if (lastPhase !== 'GameStart' && lastPhase !== 'InProgress') {
-                return; // Only allow toggling during the game phase
-            }
-            const settings = getSettings();
-            if (settings.loadingScreenEnabled !== false) {
-                if (loadingWindow && !loadingWindow.isDestroyed()) {
-                    if (loadingWindow.isVisible()) loadingWindow.hide();
-                    else { 
-                        const display = screen.getPrimaryDisplay();
-                        const winBounds = loadingWindow.getBounds();
-                        loadingWindow.setBounds({
-                            x: Math.round(display.bounds.x + (display.bounds.width - winBounds.width) / 2),
-                            y: Math.round(display.bounds.y + (display.bounds.height - winBounds.height) / 2),
-                            width: winBounds.width,
-                            height: winBounds.height
-                        });
-                        loadingWindow.show(); 
-                        loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
-                        loadingWindow.setIgnoreMouseEvents(false); 
-                    }
-                } else {
-                    createLoadingWindow();
-                    loadingWindow.webContents.once('did-finish-load', () => {
-                        const display = screen.getPrimaryDisplay();
-                        const winBounds = loadingWindow.getBounds();
-                        loadingWindow.setBounds({
-                            x: Math.round(display.bounds.x + (display.bounds.width - winBounds.width) / 2),
-                            y: Math.round(display.bounds.y + (display.bounds.height - winBounds.height) / 2),
-                            width: winBounds.width,
-                            height: winBounds.height
-                        });
-                        loadingWindow.show();
-                        loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
-                        loadingWindow.setIgnoreMouseEvents(false);
-                    });
-                }
-            }
-        });
-        const action = () => {
-            console.log(`Shortcut pressed!`);
-            if (lastPhase !== 'InProgress') {
-                console.log(`[Shortcut] Ignored: Not in game (phase: ${lastPhase})`);
-                return;
-            }
-            if (!ingameWindow || ingameWindow.isDestroyed()) {
-                createInGameWindow();
-                ingameWindow.webContents.once('did-finish-load', () => {
-                    const display = screen.getPrimaryDisplay();
-                    ingameWindow.setBounds(display.bounds);
-                    if (!ingameWindow.isVisible()) ingameWindow.showInactive();
-                    ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
-                    ingameWindow.webContents.send('shortcut:force-winrate');
-                });
-            } else {
-                const display = screen.getPrimaryDisplay();
-                ingameWindow.setBounds(display.bounds);
-                if (!ingameWindow.isVisible()) {
-                    ingameWindow.showInactive();
-                }
-                ingameWindow.setAlwaysOnTop(true, 'screen-saver', 1);
-                ingameWindow.webContents.send('shortcut:force-winrate');
-            }
-        };
-
-        globalShortcut.register(keys, action);
-        if (keys === 'CommandOrControl+X' || keys === 'Alt+O') {
-            globalShortcut.register('Alt+X', action);
-        }
-
-        return true;
-    } catch (e) {
-        console.error("Shortcut update failed", e);
-        return false;
-    }
-});
+ipcMain.handle('app:register-shortcut', (_, winrateShortcut) => registerGlobalShortcuts(winrateShortcut));
+ipcMain.handle('app:update-winrate-shortcut', (_, winrateShortcut) => registerGlobalShortcuts(winrateShortcut));
 
 const SETTINGS_PATH = path.join(path.join(app.getPath('userData'), 'settings.json'));
 
@@ -1482,6 +1417,9 @@ app.whenReady().then(() => {
     const settings = getSettings();
     if (settings.riotApiKey) riotApi.setKey(settings.riotApiKey);
 
+    // Initialize global shortcuts instantly without waiting for renderer IPC
+    registerGlobalShortcuts('Alt+O');
+
     createMainWindow();
     createToastWindow();
     createInGameWindow();
@@ -1505,7 +1443,7 @@ app.whenReady().then(() => {
 
     // createVoiceWindow(); // Auto-start the voice listener window
 
-    // Start shortcut registered from App.jsx via app:register-shortcut
+    // start Active Window Tracker is disabled or kept below
 
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); });
 

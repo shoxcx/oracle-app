@@ -246,8 +246,7 @@ const translations = {
     themeToggleDesc: "Change the application color appearance",
     theme_classic: "Classic", theme_purple: "Purple", theme_storm: "Storm", theme_radiant: "Radiant",
     langSelectDesc: "Select your preferred language",
-    gold_sound_label: "Gold Alert (1200g)",
-    gold_sound_desc: "Plays a sound when you reach 1200 gold",
+
     test_mode_label: "Overlay Test Mode",
     test_mode_desc: "Show all overlays for testing",
     edit_layout_desc: "Adjust the position of each module on your screen. You MUST play in 'BORDERLESS' mode for overlays to appear over the game.",
@@ -568,8 +567,7 @@ const translations = {
     themeToggleDesc: "Changer l'apparence des couleurs de l'application",
     theme_classic: "Classique", theme_purple: "Pourpre", theme_storm: "Tempête", theme_radiant: "Radiant",
     langSelectDesc: "Sélectionnez votre langue préférée",
-    gold_sound_label: "Alerte Or (1200g)",
-    gold_sound_desc: "Joue un son quand vous atteignez 1200 gold",
+
     test_mode_label: "Mode TEST Overlays",
     test_mode_desc: "Affiche tous les overlays pour test",
     edit_layout_desc: "Ajustez la position de chaque module. Le mode d'affichage 'SANS BORDS' en jeu est STRICTEMENT OBLIGATOIRE !",
@@ -930,8 +928,7 @@ const translations = {
     region: "Region",
     online: "Online", offline: "Offline",
     edit_layout: "Éditer Layout", save_layout: "Sauvegarder",
-    gold_sound_label: "Alerte Or (1200g)",
-    gold_sound_desc: "Joue un son quand vous atteignez 1200 gold",
+
     test_mode_label: "Mode TEST Overlays",
     test_mode_desc: "Affiche tous les overlays pour test",
     edit_layout_desc: "Ajustez la position de chaque module sur votre écran.",
@@ -1287,74 +1284,6 @@ const getQueryParams = () => {
 };
 
 
-function DynamicCursorStyle() {
-  const [accentColor, setAccentColor] = useState('59, 130, 246');
-  const cursorRef = useRef(null);
-
-  useEffect(() => {
-    let lastColor = '';
-    const interval = setInterval(() => {
-      const cVal = getComputedStyle(document.documentElement).getPropertyValue('--color-accent-primary').trim();
-      if (cVal && cVal !== lastColor) {
-        lastColor = cVal;
-        setAccentColor(cVal);
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    let rafId;
-    const updateCursor = (e) => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        if (cursorRef.current) {
-          cursorRef.current.style.transform = `translate3d(${e.clientX - 8}px, ${e.clientY - 8}px, 0)`;
-        }
-      });
-    };
-    
-    window.addEventListener('mousemove', updateCursor, { passive: true });
-    return () => window.removeEventListener('mousemove', updateCursor);
-  }, []);
-
-  return (
-    <>
-      {/* 
-        This is entirely static and managed by React. It will never be dropped during Vite HMR,
-        meaning the OS native Windows cursor will NEVER randomly reappear underneath.
-      */}
-      <style>{`
-        * {
-          cursor: none !important;
-        }
-      `}</style>
-      
-      {/* Absolute RAW Hardware Composited Tracker Surface */}
-      <div 
-        ref={cursorRef}
-        className="fixed top-0 left-0 pointer-events-none z-[999999]"
-        style={{
-          willChange: 'transform',
-          transform: 'translate3d(-100px, -100px, 0)'
-        }}
-      >
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="gradOracleCur" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-              <stop offset="100%" stopColor="rgba(230,240,255,0.9)" />
-            </linearGradient>
-          </defs>
-          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="4.5" strokeLinejoin="round" transform="translate(0, 2)" />
-          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="none" stroke={`rgb(${accentColor})`} strokeWidth="6.5" strokeLinejoin="round" opacity="0.4" />
-          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="none" stroke={`rgb(${accentColor})`} strokeWidth="3" strokeLinejoin="round" opacity="0.8" />
-          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="url(#gradOracleCur)" stroke="url(#gradOracleCur)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-        </svg>
-      </div>
-    </>
-  );
-}
 
 function FloatingParticles() {
   const particles = useMemo(() => {
@@ -1512,7 +1441,6 @@ function App() {
         gold: { x: 75, y: 10 },
         notifications: { x: 80, y: 70 }
       },
-      goldSound: true,
       riotApiKey: ''
     };
 
@@ -1560,10 +1488,12 @@ function App() {
     }
 
     if (window.ipcRenderer) {
-      window.ipcRenderer.invoke('app:register-shortcut', currentShortcut);
+      if (appMode === 'window') {
+        window.ipcRenderer.invoke('app:register-shortcut', currentShortcut);
+      }
       window.ipcRenderer.send('settings:updated', overlaySettings);
     }
-  }, [overlaySettings]);
+  }, [overlaySettings, appMode]);
 
 
 
@@ -2883,8 +2813,6 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     <div
       className={cn("flex h-screen w-full overflow-hidden relative font-sans selection:bg-accent-primary/30 text-gray-900 dark:text-gray-900 dark:text-gray-100 rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 transition-all duration-300", isMinimizing ? "scale-95 opacity-0" : "scale-100 opacity-100")}
     >
-      {/* Interactive Global Glass Cursor overriding Native Pointer */}
-      <DynamicCursorStyle />
 
       {/* Background Layer - CLEAN PREMIUM STUDIO LIGHTING */}
       <div className="absolute inset-0 z-0 transition-colors duration-700 overflow-hidden bg-[#f5f5f7] dark:bg-[#0b0c10]">
@@ -3696,7 +3624,7 @@ function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMod
       'gold': 'gold'
     };
     const key = tierMap[t] || 'unranked';
-    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${key}.png`;
+    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${key === 'emerald' ? 'platinum' : key}.png`;
   };
 
   return (
@@ -3739,7 +3667,7 @@ function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMod
         <div className="flex flex-col gap-0.5">
           {/* Solo Queue */}
           <div className="flex items-center gap-2">
-            <img src={getRankIcon(solo.tier)} className="w-4 h-4 object-contain" alt={solo.tier} />
+            <img src={getRankIcon(solo.tier)} className={cn('w-4 h-4 object-contain', (solo.tier || '').toUpperCase() === 'EMERALD' && 'hue-rotate-[-40deg] saturate-150 brightness-110')} alt={solo.tier} />
             <span className="text-gray-300 font-bold text-xs uppercase tracking-wide truncate">
               {solo.tier === 'UNRANKED' ? 'Unranked' : `${solo.tier} ${solo.division}`}
             </span>
@@ -6379,8 +6307,8 @@ function LensCard({ data, t, rankedStats }) {
             <span className="text-[8px] text-gray-500 font-bold uppercase tracking-[0.2em]">{t('oracle_estimate')}</span>
             <div className="flex items-center justify-center gap-2 bg-black/5 dark:bg-black/30 backdrop-blur-md px-4 py-1.5 rounded-lg border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] transition-colors">
               <img
-                src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${highestTier.toLowerCase()}.png`}
-                className="w-5 h-5 drop-shadow-md object-contain"
+                src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${highestTier.toLowerCase() === 'emerald' ? 'platinum' : highestTier.toLowerCase()}.png`}
+                className={cn('w-5 h-5 drop-shadow-md object-contain', (highestTier || '').toUpperCase() === 'EMERALD' && 'hue-rotate-[-40deg] saturate-150 brightness-110')}
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 font-black text-sm uppercase tracking-widest leading-none mt-0.5">
@@ -6552,7 +6480,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
       'iron': 'iron', 'bronze': 'bronze', 'silver': 'silver', 'gold': 'gold'
     };
     const key = tierMap[t] || 'unranked';
-    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${key}.png`;
+    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${key === 'emerald' ? 'platinum' : key}.png`;
   };
 
   const TIER_NAMES = {
@@ -6965,7 +6893,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
                     return (
                       <div key={tickLp} className="absolute left-0 flex items-center transform translate-y-[-50%] w-[1000px] pointer-events-none" style={{ top: `${y}%` }}>
                         <div className="w-[140px] text-right shrink-0 pr-4 flex justify-end items-center gap-2 opacity-100">
-                          <img src={getRankIcon(rank.tier)} className="w-5 h-5 object-contain" alt="" />
+                          <img src={getRankIcon(rank.tier)} className={cn('w-5 h-5 object-contain', (rank.tier || '').toUpperCase() === 'EMERALD' && 'hue-rotate-[-40deg] saturate-150 brightness-110')} alt='' />
                           <span style={{ color }} className="font-black text-[10px] uppercase tracking-tighter opacity-80 whitespace-nowrap">
                             {TIER_NAMES[rank.tier] || rank.tier} {rank.div}
                           </span>
@@ -7812,13 +7740,27 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
     const mapLivePlayer = p => {
       let parsedCid = 0;
       if (p.championName) {
-        const cleanName = (n) => n ? n.toLowerCase().replace(/['\s.]/g, '') : '';
-        const pName = cleanName(p.championName);
+        const cleanName = (n) => n ? n.toLowerCase().replace(/['\s.&-]/g, '') : '';
+        let pName = cleanName(p.championName);
+        
+        let found = false;
         for (let mapId in CHAMP_ID_TO_NAME) {
           if (cleanName(CHAMP_ID_TO_NAME[mapId]) === pName) {
             parsedCid = parseInt(mapId);
+            found = true;
             break;
           }
+        }
+        
+        // Fallback to internal raw name for translated clients (e.g. game_character_displayname_MasterYi)
+        if (!found && p.rawChampionName && p.rawChampionName.includes('_')) {
+           const internal = cleanName(p.rawChampionName.split('_').pop());
+           for (let mapId in CHAMP_ID_TO_NAME) {
+              if (cleanName(CHAMP_ID_TO_NAME[mapId]) === internal) {
+                parsedCid = parseInt(mapId);
+                break;
+              }
+           }
         }
       }
       const rawS1 = p.summonerSpells?.summonerSpellOne?.rawDescription || p.summonerSpells?.summonerSpellOne?.displayName;
@@ -7841,8 +7783,39 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
     rawTeamTwo = session?.gameData?.teamTwo || [];
   }
 
-  const teamOne = rawTeamOne.filter(isValidPlayer);
-  const teamTwo = rawTeamTwo.filter(isValidPlayer);
+  let teamOneUnsorted = rawTeamOne.filter(isValidPlayer);
+  let teamTwoUnsorted = rawTeamTwo.filter(isValidPlayer);
+
+  const matchCurrentPlayer = (p) => {
+    if (phase === 'ChampSelect') {
+      if (p.cellId !== undefined && session?.localPlayerCellId !== undefined && p.cellId === session.localPlayerCellId) return true;
+    }
+    if (session?.liveData?.activePlayer?.summonerName) {
+      if (p.summonerName === session.liveData.activePlayer.summonerName || p.summonerInternalName === session.liveData.activePlayer.summonerName) return true;
+    }
+    if (p.summonerId > 0 && p.summonerId === localSummonerId) return true;
+    return false;
+  };
+
+  let myTeamRaw = teamOneUnsorted;
+  let enemyTeamRaw = teamTwoUnsorted;
+
+  if (teamTwoUnsorted.some(matchCurrentPlayer)) {
+    myTeamRaw = teamTwoUnsorted;
+    enemyTeamRaw = teamOneUnsorted;
+  }
+
+  let teamOne = [...myTeamRaw];
+  let myPlayerIndex = teamOne.findIndex(matchCurrentPlayer);
+  if (myPlayerIndex > 0) {
+    const me = teamOne.splice(myPlayerIndex, 1)[0];
+    teamOne.unshift(me);
+  }
+  let teamTwo = enemyTeamRaw;
+
+  const myPlayer = teamOne.find(matchCurrentPlayer) || teamOne[0];
+  const isLocked = myPlayer ? (phase === 'ChampSelect' ? session?.actions?.some(tier => tier.some(action => action.actorCellId === myPlayer.cellId && action.completed)) : phase !== 'ChampSelect') : false;
+  const myChampName = myPlayer && myPlayer.championId > 0 ? getChampName(myPlayer.championId) : null;
 
   const getTeamStats = (players) => {
     let powerEarly = 50, powerMid = 50, powerLate = 50;
@@ -7889,20 +7862,6 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   const earlySpike = getNormalizedSpikes(t1StatsRaw.early, t2StatsRaw.early);
   const midSpike = getNormalizedSpikes(t1StatsRaw.mid, t2StatsRaw.mid);
   const lateSpike = getNormalizedSpikes(t1StatsRaw.late, t2StatsRaw.late);
-
-  const matchCurrentPlayer = (p) => {
-    if (phase === 'ChampSelect') {
-      if (p.cellId !== undefined && session?.localPlayerCellId !== undefined && p.cellId === session.localPlayerCellId) return true;
-    }
-    if (session?.liveData?.activePlayer?.summonerName) {
-      if (p.summonerName === session.liveData.activePlayer.summonerName || p.summonerInternalName === session.liveData.activePlayer.summonerName) return true;
-    }
-    if (p.summonerId > 0 && p.summonerId === localSummonerId) return true;
-    return false;
-  };
-  const myPlayer = teamOne.find(matchCurrentPlayer) || teamOne[0];
-  const isLocked = myPlayer ? (phase === 'ChampSelect' ? session?.actions?.some(tier => tier.some(action => action.actorCellId === myPlayer.cellId && action.completed)) : phase !== 'ChampSelect') : false;
-  const myChampName = myPlayer && myPlayer.championId > 0 ? getChampName(myPlayer.championId) : null;
 
   const assignedRole = myPlayer?.assignedPosition ? myPlayer.assignedPosition.toLowerCase() : null;
   const roleMapping = { 'utility': 'support', 'bottom': 'adc', 'middle': 'mid', 'jungle': 'jungle', 'top': 'top' };
@@ -8674,11 +8633,7 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             title={"Objective Timers"} desc={"Reminders for Drake, Herald and Baron"}
             action={<SettingsToggle active={overlaySettings.objectiveTimer ?? true} onToggle={() => setOverlaySettings(p => ({ ...p, objectiveTimer: !(p.objectiveTimer ?? true) }))} />}
           />
-          <SettingCard
-            icon={Sparkles} color="amber"
-            title={t('gold_sound_label') || "Alerte Or (1200g)"} desc={t('gold_sound_desc') || "Joue un son quand vous atteignez 1200 gold"}
-            action={<SettingsToggle active={overlaySettings.goldSound !== false} onToggle={() => setOverlaySettings(p => ({ ...p, goldSound: p.goldSound === false ? true : false }))} />}
-          />
+
           <SettingCard
             icon={Map} color="purple"
             title={"In-Game Stats"} desc={"Affiche une comparaison de vos statistiques en direct (GPM, CSM, etc.) en bas à droite de l'écran."}
@@ -12792,19 +12747,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
             setSkillOrder(null);
           }
 
-          if (currentSettings.goldSound && data.activePlayer?.currentGold !== undefined) {
-            const currentGold = data.activePlayer.currentGold;
-            if (currentGold >= 1200 && lastGoldRef.current < 1200) {
-              try {
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3');
-                audio.volume = 0.2;
-                audio.play().catch(e => console.error("Audio play failed:", e));
-              } catch (e) {
-                console.error("Audio init failed", e);
-              }
-            }
-            lastGoldRef.current = currentGold;
-          }
+
 
           if (isTest) console.log("Live Data:", data);
           setGameData(data);
@@ -13039,9 +12982,8 @@ function LoadingOverlay({ t, visualMode, theme }) {
           const enrichTeam = async (teamList, teamKey) => {
             const results = [...teamList];
             
-            // Fast LCU pass for everyone
-            for (let i = 0; i < results.length; i++) {
-                const p = results[i];
+            // Fast LCU pass for everyone IN PARALLEL
+            await Promise.all(results.map(async (p, i) => {
                 let rankName = "NA";
                 let globalWr = 0; let globalGames = 0; let globalWins = 0, globalLosses = 0; let champMasteryRank = 0;
                 const champName = _champMap[p.championId] || p.championName || "?";
@@ -13053,10 +12995,10 @@ function LoadingOverlay({ t, visualMode, theme }) {
                 let currentPuuid = p.puuid;
                 let statsPopulated = false;
 
-                // Check if already fetched to prevent infinite polling loops
                 const playerIdent = currentPuuid || name;
                 if (enrichedSet.current.has(playerIdent) && name !== "INCONNU") {
-                   continue; // Already processed in a previous interval
+                   results[i] = { ...p, name, puuid: currentPuuid, champId: p.championId, champName, rank: p.rank || "NA", statsPopulated: true, needsScraper: false };
+                   return;
                 }
 
                 try {
@@ -13092,29 +13034,27 @@ function LoadingOverlay({ t, visualMode, theme }) {
                     
                     if (name === "INCONNU") {
                         rankName = "NA";
+                        statsPopulated = true; // Instantly finalize to stop "Recherche en cours" loader
                     } else if (statsPopulated && !p.needsScraper) {
-                        enrichedSet.current.add(playerIdent); // Fully completed
-                    } else if (rankName === "NA") {
-                        enrichedSet.current.add(playerIdent); // Avoid scraping unranked
+                        enrichedSet.current.add(playerIdent);
                     }
 
                     results[i] = { ...p, name, puuid: currentPuuid, champId: p.championId, champName, rank: rankName, globalWr, globalGames, globalWins, globalLosses, mastery: champMasteryRank, statsPopulated, needsScraper: p.needsScraper };
                 } catch(e){}
-            }
+            }));
 
             // Immediately update UI with fast LCU data so user sees the interface instantly
             setPlayers(prev => {
                 const updated = { ...prev };
-                // Merge carefully so we don't overwrite already enriched people from previous intervals
                 const mergedTeam = results.map((newP, idx) => {
                     const existingP = prev[teamKey][idx];
                     if (!existingP) return newP;
                     
                     if (existingP.statsPopulated && existingP.name !== "INCONNU" && (!newP.statsPopulated || newP.needsScraper)) {
-                        return existingP; // Prevent depop
+                        return existingP;
                     }
                     if (existingP.rank !== "NA" && (newP.rank === "NA" || !newP.rank)) {
-                        return existingP; // Keep rich rank
+                        return existingP;
                     }
                     return newP;
                 });
@@ -13122,12 +13062,12 @@ function LoadingOverlay({ t, visualMode, theme }) {
                 return updated;
             });
 
-            // Slow Scraper pass ONLY for unresolved names (Sequential to avoid IP Block and "50 ans de chargement")
+            // Scraper pass
             for (let i = 0; i < results.length; i++) {
                 const rp = results[i];
                 const ident = rp.puuid || rp.name;
 
-                if ((!rp.statsPopulated || rp.needsScraper) && rp.name !== "INCONNU" && rp.rank !== "NA" && !enrichedSet.current.has(ident)) {
+                if ((!rp.statsPopulated || rp.needsScraper) && rp.name !== "INCONNU" && !enrichedSet.current.has(ident)) {
                     try {
                         const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', rp.name, 'EUW', true, null, false);
                         if (sumData) {
@@ -13138,7 +13078,6 @@ function LoadingOverlay({ t, visualMode, theme }) {
                                 rp.globalGames = rp.globalWins + rp.globalLosses;
                                 rp.globalWr = rp.globalGames > 0 ? Math.round((rp.globalWins / rp.globalGames) * 100) : 0;
                             } else if (sumData.winRate) {
-                                // Fallback if it's old OP.GG format cached
                                 rp.rank = sumData.rank || rp.rank;
                                 rp.globalWr = parseInt(sumData.winRate);
                                 rp.globalGames = sumData.games || rp.globalGames;
@@ -13151,7 +13090,7 @@ function LoadingOverlay({ t, visualMode, theme }) {
                         
                         rp.statsPopulated = true;
                         rp.needsScraper = false;
-                        enrichedSet.current.add(ident); // Mark as scraped
+                        enrichedSet.current.add(ident);
 
                         setPlayers(prev => {
                             const newTeam = [...prev[teamKey]];
@@ -13163,11 +13102,33 @@ function LoadingOverlay({ t, visualMode, theme }) {
             }
           };
 
-          const orderBase = mergeTeam(session.gameData.teamOne || [], 'ORDER');
-          const chaosBase = mergeTeam(session.gameData.teamTwo || [], 'CHAOS');
+          let orderBase = mergeTeam(session.gameData.teamOne || [], 'ORDER');
+          let chaosBase = mergeTeam(session.gameData.teamTwo || [], 'CHAOS');
           
-          await enrichTeam(orderBase, 'order');
-          await enrichTeam(chaosBase, 'chaos');
+          const lSum = await window.ipcRenderer.invoke('lcu:get-current-summoner');
+          if (lSum) {
+              const nameToCheck = (lSum.gameName || lSum.displayName || '').toLowerCase().replace(/\\s/g, '');
+              // Cleanly match local player in either team to identify true orientation
+              let localIdx = orderBase.findIndex(p => (p.summonerName||'').toLowerCase().replace(/\\s/g, '').includes(nameToCheck));
+              if (localIdx === -1) {
+                  localIdx = chaosBase.findIndex(p => (p.summonerName||'').toLowerCase().replace(/\\s/g, '').includes(nameToCheck));
+                  if (localIdx !== -1) {
+                     // Swap!
+                     const temp = orderBase;
+                     orderBase = chaosBase;
+                     chaosBase = temp;
+                  }
+              }
+              if (localIdx > 0) {
+                  const lp = orderBase.splice(localIdx, 1)[0];
+                  orderBase.unshift(lp);
+              }
+          }
+          
+          await Promise.all([
+              enrichTeam(orderBase, 'order'),
+              enrichTeam(chaosBase, 'chaos')
+          ]);
         }
       } catch(e) { console.error("Loading overlay error", e); }
     }
@@ -13235,7 +13196,7 @@ function LoadingOverlay({ t, visualMode, theme }) {
             {players.order.map((p, i) => (
               <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-3 px-4 rounded-2xl border border-blue-500/10 hover:border-blue-500/40 hover:bg-blue-500/10 shadow-lg hover:shadow-blue-500/20 transition-all cursor-pointer group" onClick={() => openProfile(p.name)}>
                 <div className="w-14 h-14 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner text-[8px] flex items-center justify-center font-bold text-gray-700">
-                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?")}
+                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName && p.championName !== '?' && p.championName !== 'INCONNU' ? <img src={`https://ddragon.leagueoflegends.com/cdn/15.2.1/img/champion/${p.championName}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?"))}
                   {p.mastery > 0 && <div className="absolute bottom-0 right-0 z-20 bg-black/70 text-blue-300 font-extrabold text-[8px] px-1 rounded-sm border-t border-l border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
                 </div>
                 <div className="flex-1 min-w-0 pr-1">
@@ -13250,9 +13211,17 @@ function LoadingOverlay({ t, visualMode, theme }) {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-start gap-2 text-[10px] font-bold text-gray-300">
-                    <span className="opacity-75 uppercase tracking-wide">WR:</span>
-                    <span>{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
+                  <div className="flex items-center justify-start gap-2 text-xs font-black text-gray-300">
+                    <span className="opacity-75 uppercase tracking-wider text-[10px]">WR:</span>
+                    {!p.statsPopulated ? (
+                        <span className="text-gray-500 text-[10px] italic">N/A (Recherche en cours...)</span>
+                    ) : (p.globalGames > 0 || p.globalWr > 0) ? (
+                        <span className={cn("px-1.5 py-0.5 rounded flex items-center gap-1.5", p.globalWr >= 55 ? "text-green-400 bg-green-500/10 border border-green-500/20" : p.globalWr < 48 ? "text-red-400 bg-red-500/10 border border-red-500/20" : "text-blue-300 bg-blue-500/10 border border-blue-500/20")}>
+                           {p.globalWr}% <span className="text-[10px] opacity-70 font-semibold tracking-wide">({p.globalWins}V {p.globalLosses}D)</span>
+                        </span>
+                    ) : (
+                        <span className="text-gray-500 bg-gray-500/10 border border-gray-500/20 px-1.5 py-0.5 rounded text-[10px] italic">N/A</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -13264,7 +13233,7 @@ function LoadingOverlay({ t, visualMode, theme }) {
             {players.chaos.map((p, i) => (
               <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-3 px-4 rounded-2xl border border-red-500/10 hover:border-red-500/40 hover:bg-red-500/10 shadow-lg hover:shadow-red-500/20 transition-all cursor-pointer group flex-row-reverse text-right" onClick={() => openProfile(p.name)}>
                 <div className="w-14 h-14 rounded-xl border border-white/10 overflow-hidden shrink-0 relative bg-gray-900 group-hover:scale-105 transition-transform shadow-inner text-[8px] flex items-center justify-center font-bold text-gray-700">
-                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?")}
+                  {p.champId ? <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.champId}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName && p.championName !== '?' && p.championName !== 'INCONNU' ? <img src={`https://ddragon.leagueoflegends.com/cdn/15.2.1/img/champion/${p.championName}.png`} className="w-full h-full object-cover scale-110" onError={(e) => { e.target.style.display = 'none'; }} /> : (p.championName || "?"))}
                   {p.mastery > 0 && <div className="absolute bottom-0 left-0 z-20 bg-black/70 text-red-300 font-extrabold text-[8px] px-1 rounded-sm border-t border-r border-white/10 filter backdrop-blur-sm">M{p.mastery}</div>}
                 </div>
                 <div className="flex-1 min-w-0 pl-1">
@@ -13279,9 +13248,17 @@ function LoadingOverlay({ t, visualMode, theme }) {
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-end gap-2 text-[10px] font-bold text-gray-300">
-                    <span className="text-white">{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
-                    <span className="opacity-75 uppercase tracking-wide">:WR</span>
+                  <div className="flex items-center justify-end gap-2 text-xs font-black text-gray-300">
+                    {!p.statsPopulated ? (
+                        <span className="text-gray-500 text-[10px] italic">(Recherche en cours...) N/A</span>
+                    ) : (p.globalGames > 0 || p.globalWr > 0) ? (
+                        <span className={cn("px-1.5 py-0.5 rounded flex items-center flex-row-reverse gap-1.5", p.globalWr >= 55 ? "text-green-400 bg-green-500/10 border border-green-500/20" : p.globalWr < 48 ? "text-red-400 bg-red-500/10 border border-red-500/20" : "text-blue-300 bg-blue-500/10 border border-blue-500/20")}>
+                           {p.globalWr}% <span className="text-[10px] opacity-70 font-semibold tracking-wide">({p.globalWins}V {p.globalLosses}D)</span>
+                        </span>
+                    ) : (
+                        <span className="text-gray-500 bg-gray-500/10 border border-gray-500/20 px-1.5 py-0.5 rounded text-[10px] italic">N/A</span>
+                    )}
+                    <span className="opacity-75 uppercase tracking-wider text-[10px]">:WR</span>
                   </div>
                 </div>
               </div>

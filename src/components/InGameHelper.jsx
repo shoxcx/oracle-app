@@ -11,10 +11,27 @@ const DraggableWidget = ({ id, defaultPosition, children, className }) => {
     const [pos, setPos] = useState(() => {
         try {
             const saved = localStorage.getItem(`oracle_widget_pos_${id}`);
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Clamp aggressively to ensure it hasn't been dragged off screen and lost
+                const clampX = Math.max(0, Math.min(window.innerWidth - 100, parsed.x));
+                const clampY = Math.max(0, Math.min(window.innerHeight - 100, parsed.y));
+                return { x: clampX, y: clampY };
+            }
         } catch (e) { }
         return defaultPosition;
     });
+
+    useEffect(() => {
+        const handleResize = () => {
+             setPos(prev => ({
+                 x: Math.max(0, Math.min(window.innerWidth - 100, prev.x)),
+                 y: Math.max(0, Math.min(window.innerHeight - 100, prev.y))
+             }));
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const isDragging = useRef(false);
     const startPos = useRef({ x: 0, y: 0 });

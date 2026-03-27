@@ -4,6 +4,11 @@ import { X, Sword, LayoutGrid, List, FileText, Activity, Shield, Zap, TrendingUp
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+import objDragon from './assets/obj_dragon.png';
+import objNash from './assets/obj_nash.png';
+import objGrubs from './assets/obj_grubs.png';
+import objTower from './assets/obj_tower.png';
+
 function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
@@ -103,9 +108,28 @@ export function MatchDetailsModal({ game: initialGame, isOpen, onClose, userRank
         console.log(`[Modal] Attempting to load game ${initialGame.gameId}, isExternal: ${isExternal}`);
 
         if (isExternal) {
-            setFullGame(initialGame);
-            setTimeline(null);
-            setLoadingFull(false);
+            if (initialGame.matchUrl) {
+                setLoadingFull(true);
+                window.ipcRenderer.invoke('scraper:get-match-details', initialGame.matchUrl)
+                    .then(data => {
+                        if (data && data.participants) {
+                            setFullGame({ ...initialGame, participants: data.participants, participantIdentities: data.participantIdentities });
+                            setTimeline(null); 
+                        } else {
+                            setFullGame(initialGame);
+                            setTimeline(null);
+                        }
+                    })
+                    .catch(() => {
+                        setFullGame(initialGame);
+                        setTimeline(null);
+                    })
+                    .finally(() => setLoadingFull(false));
+            } else {
+                setFullGame(initialGame);
+                setTimeline(null);
+                setLoadingFull(false);
+            }
             return;
         }
 
@@ -838,15 +862,10 @@ function ScoreboardTeamSection({ title, side, players, isWin, objectives, mvpId,
                 <div className="flex items-center gap-4 relative z-10">
                     {/* Team Objectives In Rows */}
                     <div className="flex items-center gap-2 px-6 py-3 bg-black/40 backdrop-blur-xl rounded-2xl border border-white/5 shadow-inner">
-                        <Objective icon={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/dragon-${teamId}.png`} val={objectives?.dragonKills} isBlue={isBlue} />
-                        <Objective icon={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/baron-${teamId}.png`} val={objectives?.baronKills} isBlue={isBlue} />
-                        <Objective
-                            icon="https://raw.communitydragon.org/latest/game/assets/ux/minimap/icons/grub.png"
-                            val={objectives?.hordeKills}
-                            isBlue={isBlue}
-                            isGrub={true}
-                        />
-                        <Objective icon={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/tower-${teamId}.png`} val={objectives?.towerKills} isBlue={isBlue} />
+                        <Objective icon={objDragon} val={objectives?.dragonKills} isBlue={isBlue} />
+                        <Objective icon={objNash} val={objectives?.baronKills} isBlue={isBlue} />
+                        <Objective icon={objGrubs} val={objectives?.hordeKills} isBlue={isBlue} />
+                        <Objective icon={objTower} val={objectives?.towerKills} isBlue={isBlue} />
                     </div>
 
                     <div className="flex flex-col items-end gap-1 px-6 border-l border-white/5">
@@ -930,8 +949,8 @@ function ScoreboardRow({ p, isMVP, isACE, rank, runeMap, ver, maxDmg, dur, score
                 <div className="font-medium text-[16px] text-gray-900 dark:text-white truncate group-hover/name:text-blue-400 transition-colors tracking-tight leading-none mb-2">{name}</div>
                 <div className="flex items-center gap-1.5">
                     <img
-                        src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${tier.toLowerCase()}.png`}
-                        className="w-4 h-4 object-contain"
+                        src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${tier.toUpperCase() === 'EMERALD' ? 'platinum' : tier.toLowerCase()}.png`}
+                        className={cn("w-4 h-4 object-contain", tier.toUpperCase() === 'EMERALD' && 'hue-rotate-[-40deg] saturate-150 brightness-110')}
                         alt="rank emblem"
                         onError={(e) => {
                             if (!e.target.triedAlt) {
@@ -992,14 +1011,14 @@ function ScoreboardRow({ p, isMVP, isACE, rank, runeMap, ver, maxDmg, dur, score
             {/* KDA */}
             <div className="flex flex-col items-center">
                 <div className="text-lg font-black tracking-tighter flex items-center gap-1.5 leading-none mb-1">
-                    <span className="text-gray-900 dark:text-white">{stats.kills}</span>
+                    <span className="text-gray-900 dark:text-white">{stats.kills !== undefined ? stats.kills : '-'}</span>
                     <span className="text-gray-500 font-medium opacity-30">/</span>
-                    <span className="text-red-500">{stats.deaths}</span>
+                    <span className="text-red-500">{stats.deaths !== undefined ? stats.deaths : '-'}</span>
                     <span className="text-gray-500 font-medium opacity-30">/</span>
-                    <span className="text-gray-900 dark:text-white">{stats.assists}</span>
+                    <span className="text-gray-900 dark:text-white">{stats.assists !== undefined ? stats.assists : '-'}</span>
                 </div>
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-none">
-                    {((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(2)} KDA
+                <div className="text-[10.5px] font-black text-gray-500 tracking-wider leading-none mt-1">
+                    <span className="opacity-80 drop-shadow-sm">{((stats.kills + stats.assists) / Math.max(1, stats.deaths)).toFixed(1)}</span>
                 </div>
             </div>
 
@@ -1051,54 +1070,18 @@ function SpellIcon({ id, ver, size = "w-4 h-4" }) {
     return <img src={`https://ddragon.leagueoflegends.com/cdn/${ver}/img/spell/${name}.png`} className={cn(size, "rounded-md border border-gray-200 dark:border-white/10 shadow-sm")} />;
 }
 
-function Objective({ icon, val, isBlue, isGrub }) {
+function Objective({ icon, val, isBlue }) {
     if (val === undefined || val === null) return null;
-    const teamId = isBlue ? '100' : '200';
     const textColor = isBlue ? "text-blue-400" : "text-red-400";
 
     return (
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/5 shadow-sm">
             <span className={cn("text-xs font-black tabular-nums contrast-125", textColor)}>{val}</span>
-            {isGrub ? (
-                <div
-                    className={cn("w-4 h-4", isBlue ? "bg-blue-500" : "bg-red-500")}
-                    style={{
-                        WebkitMaskImage: `url(${icon})`,
-                        WebkitMaskSize: 'contain',
-                        WebkitMaskRepeat: 'no-repeat',
-                        WebkitMaskPosition: 'center',
-                        maskImage: `url(${icon})`,
-                        maskSize: 'contain',
-                        maskRepeat: 'no-repeat',
-                        maskPosition: 'center'
-                    }}
-                />
-            ) : (
-                <img
-                    src={icon}
-                    className="w-4 h-4 object-contain brightness-110 saturate-110"
-                    onError={(e) => {
-                        const parts = icon.split('/');
-                        const filename = parts[parts.length - 1];
-                        let name = filename.split('-')[0];
-
-                        if (!e.target.triedFix) {
-                            e.target.triedFix = true;
-                            if (name.includes('horde') || name.includes('grub')) {
-                                e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/right_icons_grub.png`;
-                            } else {
-                                const altName = name === 'baron' ? 'baron' : name;
-                                e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-match-history/global/default/${altName}-${teamId}.png`;
-                            }
-                        } else if (!e.target.triedAlt) {
-                            e.target.triedAlt = true;
-                            e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/icon-${name.includes('horde') ? 'baron' : name}.png`;
-                        } else {
-                            e.target.style.display = 'none';
-                        }
-                    }}
-                />
-            )}
+            <img 
+                src={icon} 
+                className="w-4 h-4 object-contain opacity-90 brightness-[0.8] contrast-125 hover:brightness-100 transition-all" 
+                alt="objective"
+            />
         </div>
     );
 }
