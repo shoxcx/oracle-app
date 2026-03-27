@@ -563,8 +563,8 @@ ipcMain.handle('scraper:fast-icon-fetch', async (_, name, region) => {
     return 29;
 });
 
-ipcMain.handle('lcu:search-summoner', async (_, name, region, skipLcu, puuid) => {
-    console.log(`[IPC] search-summoner: name=${name}, region=${region}, skip=${skipLcu}, puuid=${puuid}`);
+ipcMain.handle('lcu:search-summoner', async (_, name, region, skipLcu, puuid, skipScraper) => {
+    console.log(`[IPC] search-summoner: name=${name}, region=${region}, skip=${skipLcu}, puuid=${puuid}, skipScraper=${skipScraper}`);
     if (!skipLcu) {
         if (puuid) {
             let user = await lcu.getSummonerByPuuid(puuid);
@@ -599,6 +599,11 @@ ipcMain.handle('lcu:search-summoner', async (_, name, region, skipLcu, puuid) =>
     if (name.startsWith('Bot ') || name.toLowerCase().includes('bot ')) {
         console.log(`[IPC] Skipping Scraper for Bot: ${name}`);
         return { displayName: name, isBot: true, profileIconId: 29, summonerLevel: 1, region: region };
+    }
+
+    if (skipScraper) {
+        console.log(`[IPC] Skipping Scraper fallback for ${name} intentionally.`);
+        return null;
     }
 
     console.log(`[IPC] Falling back to Scraper for ${name} [${region}]`);
@@ -653,6 +658,49 @@ ipcMain.handle('lcu:get-ranked-stats', async (_, puuid) => {
 
 ipcMain.handle('lcu:get-challenger-league', async (_, queue) => lcu.getChallengerLeague(queue));
 ipcMain.handle('lcu:accept-match', async () => lcu.acceptMatch());
+ipcMain.handle('lcu:update-summoner-spells', async (_, s1, s2) => lcu.setSummonerSpells(s1, s2));
+
+ipcMain.handle('lcu:import-runes-manual', async (_, buildRunes, champName, targetRole) => {
+    try {
+        if (!buildRunes || !buildRunes.primary || !buildRunes.active) return false;
+        const primaryStyleId = parseInt(buildRunes.primary);
+        const selectedPerkIds = buildRunes.active.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+        if (primaryStyleId && selectedPerkIds.length >= 4) {
+             const pages = await lcu.getRunePages();
+             if (!pages || !pages.find) return false;
+             const oraclePage = pages.find(p => p.name.startsWith('Oracle'));
+             const capRole = targetRole ? targetRole.charAt(0).toUpperCase() + targetRole.slice(1).toLowerCase() : 'Meta';
+             
+             const pageData = {
+                 name: `Oracle ${champName || 'Manual'} ${capRole}`,
+                 primaryStyleId: primaryStyleId,
+                 subStyleId: parseInt(buildRunes.secondary) || 8200,
+                 selectedPerkIds: selectedPerkIds.slice(0, 9),
+                 current: true
+             };
+
+             if (oraclePage) await lcu.deleteRunePage(oraclePage.id);
+             let postRes = await lcu.postRunePage(pageData);
+             
+             if (!postRes || postRes.errorCode) {
+                  const editablePages = pages.filter(p => p.isEditable && !p.name.startsWith('Oracle'));
+                  if (editablePages.length > 0) {
+                      await lcu.deleteRunePage(editablePages[0].id);
+                      postRes = await lcu.postRunePage(pageData);
+                  }
+             }
+
+             if (postRes && postRes.id) {
+                 await lcu.setCurrentRunePage(postRes.id);
+             }
+             return true;
+        }
+    } catch(err) {
+        console.error("[Manual Import] Failed:", err.message);
+    }
+    return false;
+});
 
 ipcMain.handle('lcu:get-match-history', async (_, puuid, beg, end) => {
     if (puuid && puuid.startsWith('ext~')) return scraper.getMatchHistory(puuid);
@@ -720,6 +768,18 @@ ipcMain.handle('app:open-url', (_, url) => {
     }
 });
 
+ipcMain.on('app:open-internal-url', (_, url) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app:open-internal-url', url);
+        if (!mainWindow.isVisible()) {
+            mainWindow.show();
+        } else if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+        }
+        mainWindow.focus();
+    }
+});
+
 ipcMain.on('app:navigate-to-profile', (_, name) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('app:navigate-to-profile', name);
@@ -744,7 +804,7 @@ ipcMain.handle('app:register-shortcut', (_, winrateShortcut = 'CommandOrControl+
             }
             const settings = getSettings();
             if (settings.loadingScreenEnabled !== false) {
-                if (loadingWindow) {
+                if (loadingWindow && !loadingWindow.isDestroyed()) {
                     if (loadingWindow.isVisible()) {
                         loadingWindow.hide();
                         loadingWindow.userHidden = true;
@@ -831,7 +891,7 @@ ipcMain.handle('app:update-winrate-shortcut', (_, keys) => {
             }
             const settings = getSettings();
             if (settings.loadingScreenEnabled !== false) {
-                if (loadingWindow) {
+                if (loadingWindow && !loadingWindow.isDestroyed()) {
                     if (loadingWindow.isVisible()) loadingWindow.hide();
                     else { 
                         const display = screen.getPrimaryDisplay();

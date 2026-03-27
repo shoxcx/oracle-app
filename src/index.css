@@ -32,6 +32,12 @@
     background-color: rgb(var(--bg-main));
     @apply text-gray-900 dark:text-gray-100 font-sans antialiased transition-all duration-500;
   }
+
+  /* Globally and unequivocally banish the default hardware cursor 
+     so the tracker's custom overlay element can uniquely take visual dominance. */
+  * {
+    cursor: none !important;
+  }
 }
 
 @layer components {

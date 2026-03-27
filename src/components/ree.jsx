@@ -457,7 +457,7 @@ export function InGameHelper({ ddragonVersion }) {
                     // --- DRAGONS ET BARONS DYNAMIQUES (Respawns inclus) ---
                     let drakeSpawnTime = 300; // 5:00 par défaut (Ligne pour modifier le timer)
                     let baronSpawnTime = 1200; // 20:00 par défaut (Ligne pour modifier le timer)
-                    let heraldSpawnTime = 840; // 14:00 par défaut (Ligne pour modifier le timer)
+                    let heraldSpawnTime = 840; // 14:00c par défaut (Ligne pour modifier le timer)
                     let grubsSpawnTime = 360; // 5:00 par défaut pour les larves (Ligne pour modifier le timer)
 
                     if (data.events && data.events.Events) {
@@ -787,7 +787,7 @@ export function InGameHelper({ ddragonVersion }) {
             inset: 0,
             pointerEvents: 'none'
         }}>
-            <DraggableWidget id="build_hud" defaultPosition={{ x: 24, y: 24 }} className="flex flex-col gap-4 items-start cursor-move opacity-150 hover:opacity-100 transition-opacity pointer-events-auto">
+            <DraggableWidget id="build_hud" defaultPosition={{ x: 24, y: 24 }} className="flex flex-col gap-4 items-start cursor-move opacity-90 hover:opacity-100 transition-opacity">
                 {showBuild && (
                     <div className="w-[360px] bg-white/[0.02] backdrop-blur-[40px] border border-white/[0.08] rounded-[32px] p-6 flex flex-col gap-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] relative overflow-hidden animate-in slide-in-from-left-8 fade-in duration-500">
                         {/* Light Reflections */}
@@ -995,7 +995,7 @@ export function InGameHelper({ ddragonVersion }) {
 
             {/* OBJECTIF TOASTS (Nouveau Design Overlay Semi-transparent) */}
             {toasts && toasts.some(t => t.type === 'objective') && (
-                <DraggableWidget id="objective_hud_v2" defaultPosition={{ x: 24, y: 300 }} className="flex flex-col gap-3 items-start cursor-move opacity-90 hover:opacity-100 transition-opacity pointer-events-auto">
+                <DraggableWidget id="objective_hud_v2" defaultPosition={{ x: 24, y: 300 }} className="flex flex-col gap-3 items-start cursor-move opacity-90 hover:opacity-100 transition-opacity">
                     {toasts.filter(toast => toast.type === 'objective').map(toast => (
                         <div
                             key={toast.id}
@@ -1036,7 +1036,7 @@ export function InGameHelper({ ddragonVersion }) {
 
             {/* Liquid Glass Dynamic Stats and Recommended Item Container */}
             {toasts && toasts.some(t => t.type === 'skill' || t.type === 'ward') && (
-                <DraggableWidget id="notifs_hud_v7" defaultPosition={{ x: window.innerWidth - 670 > 0 ? window.innerWidth - 670 : 800, y: window.innerHeight - 480 > 0 ? window.innerHeight - 480 : 300 }} className="flex flex-col gap-3 items-end mb-2 cursor-move opacity-90 hover:opacity-100 transition-opacity pointer-events-auto">
+                <DraggableWidget id="notifs_hud_v7" defaultPosition={{ x: window.innerWidth - 670 > 0 ? window.innerWidth - 670 : 800, y: window.innerHeight - 480 > 0 ? window.innerHeight - 480 : 300 }} className="flex flex-col gap-3 items-end mb-2 cursor-move opacity-90 hover:opacity-100 transition-opacity">
                     {toasts.filter(toast => toast.type === 'skill' || toast.type === 'ward').map(toast => {
                         const Icon = toast.icon || AlertCircle;
                         return (
@@ -1050,7 +1050,7 @@ export function InGameHelper({ ddragonVersion }) {
                                 {/* Avatar / Icon Container */}
                                 <div className={`relative shrink-0 w-12 h-12 rounded-[18px] flex items-center justify-center shadow-inner ring-1 ring-white/10 overflow-hidden pointer-events-none ${toast.imageUrl ? 'bg-transparent' : toast.iconColor}`}>
                                     {toast.imageUrl ? (
-                                        <img src={toast.imageUrl} alt="Skill/Ward" className="w-full h-full object-cover pointer-events-none" onError={(e) => { e.target.style.opacity = 0; }} />
+                                        <img src={toast.imageUrl} alt="" className="w-[115%] h-[115%] object-cover absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" onError={(e) => { e.target.style.display = 'none'; }} />
                                     ) : toast.letter ? (
                                         <span className="text-white font-black text-xl drop-shadow-md pointer-events-none">{toast.letter}</span>
                                     ) : (
@@ -1085,7 +1085,7 @@ export function InGameHelper({ ddragonVersion }) {
             )}
 
             {stats && (
-                <DraggableWidget id="stats_hud_v8" defaultPosition={{ x: window.innerWidth - 570 > 0 ? window.innerWidth - 570 : 800, y: window.innerHeight - 350 > 0 ? window.innerHeight - 350 : 500 }} className="flex flex-col items-end gap-5 cursor-move opacity-100 hover:opacity-100 transition-opacity pointer-events-auto">
+                <DraggableWidget id="stats_hud_v8" defaultPosition={{ x: window.innerWidth - 570 > 0 ? window.innerWidth - 570 : 800, y: window.innerHeight - 350 > 0 ? window.innerHeight - 350 : 500 }} className="flex flex-col items-end gap-5 cursor-move opacity-90 hover:opacity-100 transition-opacity">
                     <div className="bg-white/[0.02] backdrop-blur-[64px] border border-white/[0.08] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[32px] p-6 flex flex-col gap-4 select-none relative overflow-hidden w-[220px]">
                         {/* Light Reflections */}
                         <div className="absolute top-0 left-[20%] right-[20%] h-[1px] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />

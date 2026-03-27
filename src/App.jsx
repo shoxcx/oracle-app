@@ -101,7 +101,9 @@ import {
   Map,
   Route,
   Palette,
-  CreditCard
+  CreditCard,
+  ArrowLeftRight,
+  Download
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1286,7 +1288,8 @@ const getQueryParams = () => {
 
 
 function DynamicCursorStyle() {
-  const [accentColor, setAccentColor] = useState('59, 130, 246'); // Default blue RGB
+  const [accentColor, setAccentColor] = useState('59, 130, 246');
+  const cursorRef = useRef(null);
 
   useEffect(() => {
     let lastColor = '';
@@ -1300,34 +1303,56 @@ function DynamicCursorStyle() {
     return () => clearInterval(interval);
   }, []);
 
-  const svg = `
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.3)" />
-          <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgb(${accentColor})" flood-opacity="0.7" />
-        </filter>
-        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="rgba(255,255,255,1)" />
-          <stop offset="100%" stop-color="rgba(230,240,255,0.9)" />
-        </linearGradient>
-      </defs>
-      <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="url(#grad)" stroke="url(#grad)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" filter="url(#glow)" />
-    </svg>
-  `.replace(/\s+/g, ' ').trim();
-
-  const cursorUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  useEffect(() => {
+    let rafId;
+    const updateCursor = (e) => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        if (cursorRef.current) {
+          cursorRef.current.style.transform = `translate3d(${e.clientX - 8}px, ${e.clientY - 8}px, 0)`;
+        }
+      });
+    };
+    
+    window.addEventListener('mousemove', updateCursor, { passive: true });
+    return () => window.removeEventListener('mousemove', updateCursor);
+  }, []);
 
   return (
-    <style dangerouslySetInnerHTML={{
-      __html: `
-      * {
-        cursor: url("${cursorUrl}") 8 8, auto !important;
-      }
-      a, button, [role="button"], input, select, textarea, .cursor-pointer {
-        cursor: url("${cursorUrl}") 8 8, pointer !important;
-      }
-    `}} />
+    <>
+      {/* 
+        This is entirely static and managed by React. It will never be dropped during Vite HMR,
+        meaning the OS native Windows cursor will NEVER randomly reappear underneath.
+      */}
+      <style>{`
+        * {
+          cursor: none !important;
+        }
+      `}</style>
+      
+      {/* Absolute RAW Hardware Composited Tracker Surface */}
+      <div 
+        ref={cursorRef}
+        className="fixed top-0 left-0 pointer-events-none z-[999999]"
+        style={{
+          willChange: 'transform',
+          transform: 'translate3d(-100px, -100px, 0)'
+        }}
+      >
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="gradOracleCur" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+              <stop offset="100%" stopColor="rgba(230,240,255,0.9)" />
+            </linearGradient>
+          </defs>
+          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="4.5" strokeLinejoin="round" transform="translate(0, 2)" />
+          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="none" stroke={`rgb(${accentColor})`} strokeWidth="6.5" strokeLinejoin="round" opacity="0.4" />
+          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="none" stroke={`rgb(${accentColor})`} strokeWidth="3" strokeLinejoin="round" opacity="0.8" />
+          <path d="M7 7 L21 12.5 L14.5 14.5 L12.5 21 L7 7Z" fill="url(#gradOracleCur)" stroke="url(#gradOracleCur)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+        </svg>
+      </div>
+    </>
   );
 }
 
@@ -1743,8 +1768,8 @@ function App() {
       {(appMode === 'music' || appMode === 'toast' || appMode === 'live' || appMode === 'skills' || appMode === 'ingame') && (
         <style>{`
   html, body, #root {
-    background - color: transparent!important;
-    background: transparent!important;
+    background-color: transparent !important;
+    background: transparent !important;
   }
   `}</style>
       )}
@@ -2147,7 +2172,12 @@ function SocialToastOverlay({ ddragonVersion }) {
           return (
             <div
               key={toast.id}
-              className="w-[320px] bg-black/50 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-auto shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)]"
+              onClick={() => {
+                if (toast.url && window.ipcRenderer) {
+                   window.ipcRenderer.send('app:open-internal-url', toast.url);
+                }
+              }}
+              className={`w-[320px] bg-black/50 backdrop-blur-[24px] border border-white/10 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-right-8 fade-in duration-500 relative overflow-hidden pointer-events-auto shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] ${toast.url ? 'cursor-pointer hover:bg-black/70' : ''}`}
             >
               <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${borderColor} `} />
 
@@ -2306,10 +2336,16 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
       };
       window.ipcRenderer.on('app:navigate-to-profile', navHandler);
 
+      const internalUrlHandler = (_, url) => {
+        setBrowserUrl(url);
+      };
+      window.ipcRenderer.on('app:open-internal-url', internalUrlHandler);
+
       return () => {
         clearInterval(interval);
         window.ipcRenderer.removeListener('admin:broadcast', handler);
         window.ipcRenderer.removeListener('app:navigate-to-profile', navHandler);
+        window.ipcRenderer.removeListener('app:open-internal-url', internalUrlHandler);
       };
     }
     
@@ -2409,7 +2445,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     if (!currentUser) return; // Wait for LCU profile to load before wiping settings
     if (!isPremium) {
       if (musicOverlayEnabled) setMusicOverlayEnabled(false);
-      if (autoAccept) setAutoAccept(false);
+      // autoAccept is now free
       if (theme !== 'classic') setTheme('classic');
     }
   }, [isPremium, currentUser]);
@@ -2846,10 +2882,6 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   return (
     <div
       className={cn("flex h-screen w-full overflow-hidden relative font-sans selection:bg-accent-primary/30 text-gray-900 dark:text-gray-900 dark:text-gray-100 rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 transition-all duration-300", isMinimizing ? "scale-95 opacity-0" : "scale-100 opacity-100")}
-      onMouseMove={(e) => {
-        document.documentElement.style.setProperty('--mouse-x', `${e.clientX}px`);
-        document.documentElement.style.setProperty('--mouse-y', `${e.clientY}px`);
-      }}
     >
       {/* Interactive Global Glass Cursor overriding Native Pointer */}
       <DynamicCursorStyle />
@@ -3425,9 +3457,9 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                            <h4 className="text-lg font-bold text-white mb-2 leading-tight">{msg.name}</h4>
                            {msg.desc && <p className="text-sm text-gray-300 leading-relaxed mb-3">{msg.desc}</p>}
                            {msg.url && (
-                             <a href={msg.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-bold text-accent-primary hover:text-white bg-accent-primary/10 hover:bg-accent-primary/30 px-3 py-1.5 rounded-lg transition-colors">
+                             <button onClick={() => window.ipcRenderer.send('app:open-internal-url', msg.url)} className="inline-flex items-center gap-2 text-xs font-bold text-accent-primary hover:text-white bg-accent-primary/10 hover:bg-accent-primary/30 px-3 py-1.5 rounded-lg transition-colors cursor-pointer text-left">
                                <ExternalLink size={14} /> Voir les détails
-                             </a>
+                             </button>
                            )}
                          </div>
                        </div>
@@ -3467,8 +3499,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 </p>
                 {selectedArticle.url && (
                   <button
-                    onClick={() => window.ipcRenderer.invoke('app:open-url', selectedArticle.url)}
-                    className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 transition-all group"
+                    onClick={() => window.ipcRenderer.send('app:open-internal-url', selectedArticle.url)}
+                    className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-bold flex items-center justify-center gap-2 transition-all group cursor-pointer"
                   >
                     Lire l'article complet
                     <ExternalLink size={14} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -4036,7 +4068,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
     const recentGames = matchHistory.filter(g => {
       const creation = g.gameCreation > 1e11 ? g.gameCreation : g.gameCreation * 1000;
-      return creation >= sevenDaysAgo;
+      return creation >= sevenDaysAgo && [400, 420, 440].includes(g.queueId) && g.gameDuration > 240;
     });
 
     if (!recentGames.length || !displayUser) return base;
@@ -4212,10 +4244,16 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
     };
   }, [matchHistory, displayUser]);
 
-  const p = useMemo(() => {
-    if (!matchHistory[0] || !displayUser) return {};
-    const ident = matchHistory[0].participantIdentities?.find(i => i.player.puuid === displayUser.puuid);
-    return matchHistory[0].participants.find(part => part.participantId === ident?.participantId) || {};
+  const { lastAnalyzableMatch, p } = useMemo(() => {
+    if (!matchHistory || matchHistory.length === 0 || !displayUser) return { lastAnalyzableMatch: null, p: {} };
+    // Find the first valid match (Normal Draft, Ranked Solo, Ranked Flex) with a minimum duration
+    const validMatch = matchHistory.find(g => [400, 420, 440].includes(g.queueId) && g.gameDuration > 240);
+    
+    if (!validMatch) return { lastAnalyzableMatch: null, p: {} };
+    
+    const ident = validMatch.participantIdentities?.find(i => i.player.puuid === displayUser.puuid);
+    const participant = validMatch.participants.find(part => part.participantId === ident?.participantId) || {};
+    return { lastAnalyzableMatch: validMatch, p: participant };
   }, [matchHistory, displayUser]);
   const lastChampId = p.championId || 157;
 
@@ -4388,17 +4426,26 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
 
-            <div className="relative z-10 flex flex-col items-center text-center mt-auto">
+            <div className="relative z-10 flex flex-col items-center text-center mt-auto w-full px-2">
               <div className="text-gray-900 dark:text-gray-100 font-black uppercase text-sm mb-1 tracking-tight">{t('last_game')}</div>
-              <div className="text-gray-900 dark:text-gray-100/30 text-[10px] font-bold uppercase tracking-widest mb-4 italic">
-                {getQueueName(matchHistory[0], t)} • {matchHistory[0]?.gameDuration ? Math.floor(matchHistory[0].gameDuration / 60) + ":" + (matchHistory[0].gameDuration % 60).toString().padStart(2, '0') : "00:00"} • {matchHistory[0] ? (() => { try { return new Date(matchHistory[0].gameCreation).toLocaleDateString(); } catch { return "-"; } })() : "-"}
-              </div>
-              <div className="text-lg font-black text-gray-900 dark:text-gray-100">
-                {p.stats?.kills || 0} <span className="text-gray-900 dark:text-gray-100/20">/</span> <span className="text-red-500">{p.stats?.deaths || 0}</span> <span className="text-gray-900 dark:text-gray-100/20">/</span> {p.stats?.assists || 0}
-              </div>
-              <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-1">
-                {(((p.stats?.kills || 0) + (p.stats?.assists || 0)) / Math.max(1, p.stats?.deaths || 1)).toFixed(2)} KDA
-              </div>
+              {lastAnalyzableMatch ? (
+                <>
+                  <div className="text-gray-900 dark:text-gray-100/30 text-[10px] font-bold uppercase tracking-widest mb-4 italic truncate w-full px-1">
+                    {getQueueName(lastAnalyzableMatch, t)} • {lastAnalyzableMatch.gameDuration ? Math.floor(lastAnalyzableMatch.gameDuration / 60) + ":" + (lastAnalyzableMatch.gameDuration % 60).toString().padStart(2, '0') : "00:00"} • {(() => { try { return new Date(lastAnalyzableMatch.gameCreation).toLocaleDateString(); } catch { return "-"; } })()}
+                  </div>
+                  <div className="text-lg font-black text-gray-900 dark:text-gray-100">
+                    {p.stats?.kills || 0} <span className="text-gray-900 dark:text-gray-100/20">/</span> <span className="text-red-500">{p.stats?.deaths || 0}</span> <span className="text-gray-900 dark:text-gray-100/20">/</span> {p.stats?.assists || 0}
+                  </div>
+                  <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-1">
+                    {(((p.stats?.kills || 0) + (p.stats?.assists || 0)) / Math.max(1, p.stats?.deaths || 1)).toFixed(2)} KDA
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center my-4 opacity-50">
+                  <Activity size={24} className="mb-2 animate-pulse text-gray-500 dark:text-gray-400" />
+                  <span className="text-[9px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-300">Aucune partie analysable</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => setActiveTab('replays')}
@@ -7602,6 +7649,48 @@ function CustomSelect({ value, onChange, options, className = "", buttonClassNam
   );
 }
 
+/* === TOOLTIP COMPONENT === */
+const cleanRiotHtml = (html) => {
+  if (!html) return '';
+  return html
+    .replace(/<mainText>/gi, '<div>')
+    .replace(/<\/mainText>/gi, '</div>')
+    .replace(/<stats>/gi, '<div style="color:#b2b2b2; margin-top:4px;">')
+    .replace(/<\/stats>/gi, '</div>')
+    .replace(/<attention>/gi, '<span style="color:#fbbf24; font-weight:bold;">')
+    .replace(/<\/attention>/gi, '</span>')
+    .replace(/<passive>/gi, '<span style="color:#f87171; font-weight:bold;">')
+    .replace(/<\/passive>/gi, '</span>')
+    .replace(/<rules>/gi, '<span style="color:#9ca3af; font-style:italic;">')
+    .replace(/<\/rules>/gi, '</span>')
+    .replace(/<scaleHealth>/gi, '<span style="color:#4ade80; font-weight:bold;">')
+    .replace(/<\/scaleHealth>/gi, '</span>')
+    .replace(/<scaleArmor>/gi, '<span style="color:#fbbf24; font-weight:bold;">')
+    .replace(/<\/scaleArmor>/gi, '</span>')
+    .replace(/<scaleMR>/gi, '<span style="color:#60a5fa; font-weight:bold;">')
+    .replace(/<\/scaleMR>/gi, '</span>')
+    .replace(/<scaleMana>/gi, '<span style="color:#3b82f6; font-weight:bold;">')
+    .replace(/<\/scaleMana>/gi, '</span>')
+    .replace(/<scaleAP>/gi, '<span style="color:#a78bfa; font-weight:bold;">')
+    .replace(/<\/scaleAP>/gi, '</span>')
+    .replace(/<scaleAD>/gi, '<span style="color:#f97316; font-weight:bold;">')
+    .replace(/<\/scaleAD>/gi, '</span>')
+    .replace(/<br>/gi, '<br />');
+};
+
+const InfoTooltip = ({ children, title, description, cost, isBottom = false }) => (
+  <div className="relative group/tooltip flex items-center justify-center">
+    {children}
+    {(title || description) && (
+      <div className={`absolute ${isBottom ? 'top-full mt-2' : 'bottom-[calc(100%+8px)]'} left-1/2 -translate-x-1/2 hidden group-hover/tooltip:block w-[320px] p-3 bg-[#0d0d12]/95 border border-white/10 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] z-[100] backdrop-blur-xl transition-all pointer-events-none text-left`}>
+         {title && <span className="block text-[13px] font-black tracking-wide text-amber-500 mb-2">{title}</span>}
+         {description && <div className="text-[11px] text-gray-300 leading-relaxed font-medium" dangerouslySetInnerHTML={{__html: cleanRiotHtml(description)}} />}
+         {cost !== undefined && cost !== 0 && <span className="block text-[10px] text-amber-200/60 mt-3 font-bold flex items-center gap-1"><Circle size={8} /> Coût: {cost} po</span>}
+      </div>
+    )}
+  </div>
+);
+
 /* === LIVE MATCH TRACKER IMPLEMENTATION === */
 function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTargetChamp, setActiveTab }) {
   const [session, setSession] = useState(null);
@@ -7609,6 +7698,23 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   const [loading, setLoading] = useState(true);
   const [localSummonerId, setLocalSummonerId] = useState(null);
   const [recommendedBuild, setRecommendedBuild] = useState(null);
+  const [spellIndex, setSpellIndex] = useState(0);
+  const [runePageIndex, setRunePageIndex] = useState(0);
+
+  const forceImportRunes = async (idx) => {
+       const runesToImport = recommendedBuild?.allRunePages?.[idx] || recommendedBuild?.runes;
+       const targetRls = myPlayer?.assignedPosition ? myPlayer.assignedPosition.toLowerCase() : "";
+       if (!runesToImport) return;
+       window.ipcRenderer.invoke('lcu:import-runes-manual', runesToImport, myChampName, targetRls);
+  };
+  
+  const forceImportSummoners = async (idx) => {
+       if (!recommendedBuild?.allSpells || !recommendedBuild.allSpells[idx]) return;
+       const spells = recommendedBuild.allSpells[idx];
+       if (spells.length >= 2) {
+            window.ipcRenderer.invoke('lcu:update-summoner-spells', parseInt(spells[0]), parseInt(spells[1]));
+       }
+  };
 
   useEffect(() => {
     let interval;
@@ -7803,6 +7909,8 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   const targetRole = assignedRole ? (roleMapping[assignedRole] || assignedRole) : "";
 
   const [runesReforged, setRunesReforged] = useState([]);
+  const [itemsData, setItemsData] = useState({});
+  const [summonersData, setSummonersData] = useState({});
   const [champSpells, setChampSpells] = useState({});
   const [ddVersion, setDdVersion] = useState('15.5.1');
 
@@ -7814,24 +7922,37 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
          const latest = versions[0];
          setDdVersion(latest);
          
-         // 2. Fetch Runes with latest version
-         return fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/en_US/runesReforged.json`);
+         // 2. Fetch Runes, Items, Summoners with latest version in French
+         Promise.all([
+            fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/fr_FR/runesReforged.json`).then(r => r.json()),
+            fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/fr_FR/item.json`).then(r => r.json()),
+            fetch(`https://ddragon.leagueoflegends.com/cdn/${latest}/data/fr_FR/summoner.json`).then(r => r.json())
+         ]).then(([runes, items, summs]) => {
+            setRunesReforged(runes);
+            setItemsData(items.data || {});
+            setSummonersData(summs.data || {});
+         }).catch(e => {
+            console.error("DDragon Fetch Error:", e);
+            // Fallback fetch if versions fails
+            Promise.all([
+                fetch("https://ddragon.leagueoflegends.com/cdn/15.5.1/data/fr_FR/runesReforged.json").then(r => r.json()),
+                fetch("https://ddragon.leagueoflegends.com/cdn/15.5.1/data/fr_FR/item.json").then(r => r.json()),
+                fetch("https://ddragon.leagueoflegends.com/cdn/15.5.1/data/fr_FR/summoner.json").then(r => r.json())
+            ]).then(([r, i, s]) => {
+                setRunesReforged(r);
+                setItemsData(i.data || {});
+                setSummonersData(s.data || {});
+            }).catch(() => {});
+         });
       })
-      .then(r => r.json())
-      .then(d => setRunesReforged(d))
-      .catch(e => {
-         console.error("DDragon Fetch Error:", e);
-         // Fallback fetch if versions fails
-         fetch("https://ddragon.leagueoflegends.com/cdn/15.5.1/data/en_US/runesReforged.json")
-           .then(r => r.json())
-           .then(d => setRunesReforged(d))
-           .catch(() => {});
-      });
+      .catch(e => console.error(e));
   }, []);
+
+  const [champSpellsData, setChampSpellsData] = useState({});
 
   useEffect(() => {
     if (myChampName) {
-      fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/champion/${myChampName}.json`)
+      fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/fr_FR/champion/${myChampName}.json`)
         .then(r => r.json())
         .then(d => {
           if (!d.data[myChampName]) return;
@@ -7841,6 +7962,12 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
             'W': spells[1].id,
             'E': spells[2].id,
             'R': spells[3].id
+          });
+          setChampSpellsData({
+            'Q': spells[0],
+            'W': spells[1],
+            'E': spells[2],
+            'R': spells[3]
           });
         }).catch(e => console.error(e));
     }
@@ -7890,7 +8017,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
       {/* Removed TRACKER EN DIRECT header base on user request */}
 
       {/* Top Section: Split Layout (Allies | Temps Forts | Ennemis) */}
-      <div className="flex gap-6 shrink-0 mt-4 rounded-3xl" style={{ height: "360px" }}>
+      <div className="flex gap-6 shrink-0 mt-4 rounded-3xl" style={{ height: "380px" }}>
 
         {/* Team 1 (BLUE) */}
         <div className="flex-1 w-[33%] flex flex-col gap-2 relative">
@@ -7943,50 +8070,63 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
         </div>
 
         {/* Middle Section: Advantages */}
-        <div className="flex flex-col justify-start w-[25%] pt-10">
-          <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden bg-[#0a0a0c]/80 min-h-[160px] shrink-0">
-            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-accent-primary/5 to-transparent blur-xl pointer-events-none"></div>
-            <div className="flex items-center justify-center gap-2 mb-6 shrink-0 relative z-10">
-              <Target size={14} className="text-accent-primary opacity-80" />
-              <h3 className="text-[10px] font-black uppercase text-gray-300 tracking-[0.2em]">Temps Forts de Compo</h3>
-            </div>
-            <div className="flex-1 flex flex-col justify-center gap-5 relative z-10 px-2 mt-2">
-              {[
-                { label: "Early Game", t1: earlySpike.val1, t2: earlySpike.val2 },
-                { label: "Mid Game", t1: midSpike.val1, t2: midSpike.val2 },
-                { label: "Late Game", t1: lateSpike.val1, t2: lateSpike.val2 },
-              ].map((sp, _i) => (
-                <div key={sp.label} className="flex flex-col w-full relative group">
-                  <div className="flex justify-between items-end mb-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">{sp.t1}%</span>
-                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-400 border border-white/5 bg-white/5 px-2 py-0.5 rounded-full z-10 absolute left-1/2 -translate-x-1/2">{sp.label}</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-red-500">{sp.t2}%</span>
-                  </div>
-                  <div className="h-1.5 flex bg-black/60 rounded-full overflow-hidden shadow-inner relative border border-white/5">
-                    <div className="h-full bg-blue-500 absolute right-1/2 rounded-l-full shadow-[0_0_10px_#3b82f6]" style={{ width: `${sp.t1}%` }}></div>
-                    <div className="h-full bg-red-600 absolute left-1/2 rounded-r-full shadow-[0_0_10px_#ef4444]" style={{ width: `${sp.t2}%` }}></div>
+        <div className="flex flex-col justify-start w-[25%] pt-9 gap-3 text-center">
+          
+          {/* LIQUID GLASS POWER SPIKES */}
+          <div className="bg-white/[0.03] backdrop-blur-[40px] border border-white/10 rounded-[28px] p-4 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.05)] flex flex-col relative overflow-hidden min-h-[190px] shrink-0">
+             <div className="absolute top-0 right-10 w-24 h-24 bg-blue-500/20 rounded-full blur-[40px] pointer-events-none" />
+             <div className="absolute bottom-0 left-10 w-24 h-24 bg-red-500/10 rounded-full blur-[40px] pointer-events-none" />
 
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <div className="w-0.5 h-3 bg-white/80 blur-[0.5px] z-20 shadow-[0_0_5px_white]"></div>
+             <div className="flex items-center justify-center gap-2 mb-6 shrink-0 relative z-10">
+               <Target size={14} className="text-blue-400 opacity-90 drop-shadow-md" />
+               <h3 className="text-[11px] font-black uppercase text-gray-100 tracking-[0.25em]">Temps Forts</h3>
+             </div>
+
+             <div className="flex-1 flex flex-col justify-center gap-4 relative z-10 px-1">
+               {[ 
+                  { title: "EARLY GAME", t1: earlySpike.val1, t2: earlySpike.val2 },
+                  { title: "MID GAME", t1: midSpike.val1, t2: midSpike.val2 },
+                  { title: "LATE GAME", t1: lateSpike.val1, t2: lateSpike.val2 }
+               ].map((sp) => {
+                  const blueWin = sp.t1 > sp.t2;
+                  const total = sp.t1 + sp.t2;
+                  const ratio = Math.max(10, Math.min(90, Math.round((sp.t1 / total) * 100)));
+                  return (
+                    <div key={sp.title} className="flex flex-col w-full relative gap-1.5">
+                       <div className="flex justify-between items-end text-[10px] uppercase font-black tracking-widest px-1">
+                          <span className={`${blueWin ? 'text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.6)]' : 'text-blue-400/40 text-[9px]'}`}>{sp.t1}%</span>
+                          <span className="text-gray-400 tracking-[0.2em]">{sp.title}</span>
+                          <span className={`${!blueWin ? 'text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.6)]' : 'text-red-400/40 text-[9px]'}`}>{sp.t2}%</span>
+                       </div>
+                       <div className="h-2.5 w-full bg-black/40 rounded-full overflow-hidden flex relative border border-white/5 shadow-inner">
+                          <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-blue-700 to-blue-400 rounded-r-full transition-all duration-1000 ease-out z-10" style={{ width: `${ratio}%` }}>
+                             <div className="absolute top-0 right-0 w-8 h-full bg-white/30 blur-[2px] skew-x-[-20deg] mix-blend-overlay" />
+                          </div>
+                          <div className="absolute top-0 bottom-0 right-0 bg-gradient-to-l from-red-700 to-red-500 rounded-l-full transition-all duration-1000 ease-out z-0" style={{ width: `${100 - ratio}%` }} />
+                          <div className="absolute top-0 bottom-0 left-1/2 w-[2px] -ml-[1px] bg-white/20 z-20 shadow-[0_0_5px_rgba(255,255,255,0.5)]" />
+                       </div>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-between px-[25%] pointer-events-none opacity-20">
-                      <div className="w-0.5 h-1.5 bg-white"></div>
-                      <div className="w-0.5 h-1.5 bg-white"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+               })}
+             </div>
           </div>
-          {/* Matchup Tip Box (Orange Area) */}
-          <div className="w-full mt-auto mb-2 p-4 rounded-2xl bg-gradient-to-br from-orange-500/10 to-red-500/5 border border-orange-500/20 shadow-inner flex flex-col gap-2 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-orange-400/10 rounded-full blur-2xl"></div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-              <span className="text-[10px] font-black uppercase text-orange-400 tracking-widest z-10">Analyse de Matchup</span>
+
+          {/* DYNAMIC MATCHUP ANALYSIS */}
+          <div className="w-full mt-auto mb-2 px-4 py-3 rounded-[20px] bg-white/[0.02] backdrop-blur-xl border border-orange-500/20 shadow-[0_15px_30px_-10px_rgba(0,0,0,0.5)] flex flex-col gap-1.5 relative overflow-hidden shrink-0">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-[30px] pointer-events-none"></div>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse drop-shadow-[0_0_8px_rgba(249,115,22,1)]"></div>
+              <span className="text-[10px] font-black uppercase text-orange-400 tracking-[0.2em] z-10">Analyse de Matchup</span>
             </div>
-            <p className="text-[11px] font-medium text-orange-100/70 leading-relaxed z-10 italic">
-              {earlySpike.val1 > earlySpike.val2 ? "Votre composition est dominante en début de partie. Jouez agressivement pour prendre l'avantage." : "Soyez prudent en phase de ligne, privilégiez le farm et atteignez votre pic de puissance en fin de partie."}
+            <p className="text-[11px] font-medium text-orange-100/80 leading-relaxed z-10 italic">
+              {(() => {
+                const e1 = earlySpike.val1; const e2 = earlySpike.val2;
+                const l1 = lateSpike.val1; const l2 = lateSpike.val2;
+                if (e1 > e2 && l1 > l2) return "Votre composition est supérieure à tous les stades. Étouffez l'adversaire et accélérez le rythme sans pitié.";
+                if (e1 > e2) return "Vous dominez l'Early Game. Sécurisez vite les objectifs et créez de l'écart avant que les ennemis ne scale.";
+                if (l1 > l2) return "L'équipe ennemie est dangereuse au début. Absorbez la pression et farmez : vous êtes plus forts en Teamfight Late-Game.";
+                return "Le matchup est complexe et l'équipe ennemie scale bien. Jouez la vision et sanctionnez les moindres erreurs adverses.";
+              })()}
             </p>
           </div>
         </div>
@@ -8040,164 +8180,226 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
         </div>
       </div>
 
-      {/* Bottom Section: Wide Details Panel (Screen 2 Replica) */}
+      {/* Bottom Section: Wide Details Panel Optimized Layout */}
       {isLocked && myChampName && (
-        <div className="mt-8 mb-4 w-full glass-panel border border-white/5 rounded-2xl flex relative overflow-hidden bg-[#0d0d12]/90 shadow-[0_0_40px_rgba(0,0,0,0.4)]">
-          <div className="flex flex-col flex-1 p-6 pb-12 border-r border-white/5 gap-8">
-            {/* Summoners Section */}
-            <div className="mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-xs font-black uppercase tracking-widest text-white">Summoners</span>
-              </div>
-              <div className="flex gap-4 items-center">
-                <div className="flex gap-3">
-                  {(() => {
-                    const SUMMONER_ID_TO_NAME = {
-                      1: 'SummonerBoost', 3: 'SummonerExhaust', 4: 'SummonerFlash',
-                      6: 'SummonerHaste', 7: 'SummonerHeal', 11: 'SummonerSmite',
-                      12: 'SummonerTeleport', 13: 'SummonerMana', 14: 'SummonerDot',
-                      21: 'SummonerBarrier', 30: 'SummonerPoroRecall',
-                      31: 'SummonerPoroThrow', 32: 'SummonerSnowball'
-                    };
-                    return (
-                      <>
-                        {myPlayer?.spell1Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell1Id] || 'SummonerFlash'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
-                        {myPlayer?.spell2Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${SUMMONER_ID_TO_NAME[myPlayer.spell2Id] || 'SummonerDot'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.5)]" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
-                      </>
-                    )
-                  })()}
-                </div>
-              </div>
-            </div>
-
-            {/* Items Section */}
-            <div>
-              <div className="flex items-center gap-3 mb-5">
-                <span className="text-xs font-black uppercase tracking-widest text-white">Items</span>
-              </div>
-              <div className="flex gap-8 items-start mb-6">
-                {/* Départ */}
+        <div className="mb-4 w-full glass-panel border border-white/5 rounded-[24px] flex relative bg-[#0d0d12]/90 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)]">
+          
+          {/* LEFT COLUMN: SUMMONERS, SPELLS, ITEMS */}
+          <div className="flex flex-col w-[65%] p-6 pr-8 border-r border-white/5 gap-8">
+             
+             {/* ROW 1: Summoners & Spells */}
+             <div className="flex items-start gap-12">
+                {/* Summoners */}
                 <div className="flex flex-col gap-3">
-                  <span className="text-[10px] text-gray-400 font-medium tracking-widest uppercase">Départ</span>
-                  <div className="flex gap-2.5">
-                    {(recommendedBuild?.items?.starting || [1055, 2003]).slice(0, 2).map((item, i) => (
-                      <img key={i} src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-blue-500/30 shadow-md" title="Starter" onError={(e) => e.target.style.display = 'none'} />
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-white/90">Summoners</span>
+                    {recommendedBuild?.allSpells && recommendedBuild.allSpells.length > 0 && (
+                         <div className="flex items-center bg-black/40 border border-white/10 rounded px-1 ml-1">
+                             <button onClick={() => {
+                                 const next = spellIndex > 0 ? spellIndex - 1 : recommendedBuild.allSpells.length - 1;
+                                 setSpellIndex(next);
+                                 forceImportSummoners(next);
+                             }} className="text-gray-500 hover:text-white p-0.5"><ChevronLeft size={10} /></button>
+                             <span className="text-[10px] font-bold text-gray-300 px-1">{spellIndex + 1}/{recommendedBuild.allSpells.length}</span>
+                             <button onClick={() => {
+                                 const next = (spellIndex + 1) % recommendedBuild.allSpells.length;
+                                 setSpellIndex(next);
+                                 forceImportSummoners(next);
+                             }} className="text-gray-500 hover:text-white p-0.5"><ChevronRight size={10} /></button>
+                         </div>
+                    )}
                   </div>
-                </div>
-
-                {/* Core Items */}
-                <div className="flex flex-col gap-3 relative">
-                  <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Core Items</span>
-                  <div className="flex gap-3 items-center">
-                    {recommendedBuild?.items?.core ? recommendedBuild.items.core.slice(0, 3).map((item, i) => (
-                      <div key={i} className="flex items-center gap-3" title="Core Item">
-                        <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${item}.png`} className="w-12 h-12 rounded-lg border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:scale-[1.12] transition-transform cursor-pointer" onError={(e) => e.target.style.display = 'none'} />
-                        {i < Math.min(recommendedBuild.items.core.length - 1, 2) && <ChevronRight size={14} className="text-white/20" />}
-                      </div>
-                    )) : <div className="w-28 h-12 animate-pulse bg-white/5 rounded-lg"></div>}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-8 items-start mt-8">
-                {/* Boots */}
-                <div className="flex flex-col gap-3">
-                  <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Boots</span>
                   <div className="flex gap-3">
-                    {(recommendedBuild?.items?.boots?.slice(0, 1) || []).map((id, i) => (
-                      <div key={i} className="flex flex-col items-center gap-1" title="Boots">
-                        <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-cyan-500/40 opacity-90 transition-opacity shadow-[0_0_15px_rgba(6,182,212,0.15)]" onError={(e) => e.target.style.display = 'none'} />
-                      </div>
-                    ))}
+                    {(() => {
+                      const SUMMONER_ID_TO_NAME = {
+                        1: 'SummonerBoost', 3: 'SummonerExhaust', 4: 'SummonerFlash',
+                        6: 'SummonerHaste', 7: 'SummonerHeal', 11: 'SummonerSmite',
+                        12: 'SummonerTeleport', 13: 'SummonerMana', 14: 'SummonerDot',
+                        21: 'SummonerBarrier', 30: 'SummonerPoroRecall',
+                        31: 'SummonerPoroThrow', 32: 'SummonerSnowball'
+                      };
+                      let s1Id = myPlayer?.spell1Id;
+                      let s2Id = myPlayer?.spell2Id;
+                      
+                      // Use visually selected spells if available
+                      if (recommendedBuild?.allSpells?.[spellIndex]) {
+                          s1Id = parseInt(recommendedBuild.allSpells[spellIndex][0]);
+                          s2Id = parseInt(recommendedBuild.allSpells[spellIndex][1]);
+                          // Apply flash position formatting locally
+                          if (flashPosition === 'D' && s2Id === 4) { s2Id = s1Id; s1Id = 4; }
+                          else if (flashPosition === 'F' && s1Id === 4) { s1Id = s2Id; s2Id = 4; }
+                      }
+                      
+                      return (
+                        <>
+                          <InfoTooltip
+                             title={summonersData[SUMMONER_ID_TO_NAME[s1Id]]?.name} 
+                             description={summonersData[SUMMONER_ID_TO_NAME[s1Id]]?.description}
+                          >
+                             {s1Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${SUMMONER_ID_TO_NAME[s1Id] || 'SummonerFlash'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-lg object-cover" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                          </InfoTooltip>
+
+                          <InfoTooltip
+                             title={summonersData[SUMMONER_ID_TO_NAME[s2Id]]?.name} 
+                             description={summonersData[SUMMONER_ID_TO_NAME[s2Id]]?.description}
+                          >
+                             {s2Id ? <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${SUMMONER_ID_TO_NAME[s2Id] || 'SummonerDot'}.png`} className="w-12 h-12 rounded-lg border border-white/10 shadow-lg object-cover" /> : <div className="w-12 h-12 rounded-lg bg-white/5" />}
+                          </InfoTooltip>
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
 
-                {/* Situational Items */}
+                {/* Spells Skill Order */}
                 <div className="flex flex-col gap-3">
-                  <span className="text-[10px] text-gray-400 font-medium tracking-wide uppercase">Situational Items</span>
-                  <div className="flex gap-3">
-                    {(recommendedBuild?.items?.situational?.slice(0, 5) || [3157, 3089, 3165, 3139]).map((id, i) => (
-                      <div key={i} className="flex flex-col items-center gap-1" title="Situational Item">
-                        <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-white/5 opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-md" onError={(e) => e.target.style.display = 'none'} />
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-white/90">Spells</span>
+                    <span className="text-[8px] text-gray-500 font-bold border border-white/10 px-1.5 py-0.5 rounded bg-black/40">SKILL ORDER</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 bg-white/[0.02] p-2 rounded-xl border border-white/5 shadow-inner">
+                    {recommendedBuild?.skillOrder && recommendedBuild.skillOrder.length >= 3 ? recommendedBuild.skillOrder.slice(0, 3).map((s, i) => (
+                      <React.Fragment key={i}>
+                        <InfoTooltip title={champSpellsData[typeof s === 'object' ? s.key : s]?.name} description={champSpellsData[typeof s === 'object' ? s.key : s]?.description}>
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-md bg-black/50 flex flex-col items-center justify-center border border-white/5 cursor-pointer">
+                            {champSpells[typeof s === 'object' ? s.key : s] ? (
+                              <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${champSpells[typeof s === 'object' ? s.key : s]}.png`}
+                                className="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none" />
+                            ) : (
+                              <span className="text-blue-400 font-black relative z-10 text-xs">{typeof s === 'object' ? s.key : s}</span>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 bg-black/70 backdrop-blur-sm text-[9px] font-black text-center text-blue-200 uppercase pt-0.5 pointer-events-none">
+                              {typeof s === 'object' ? s.key : s}
+                            </div>
+                          </div>
+                        </InfoTooltip>
+                        {i < 2 && <ChevronRight size={14} className="text-white/20" />}
+                      </React.Fragment>
+                    )) : (
+                      <span className="text-xs text-white/30 italic px-4">Données indisponibles</span>
+                    )}
                   </div>
                 </div>
-              </div>
-            </div>
+             </div>
+
+             {/* ROW 2: Items Workflow (Horizontal Flow) */}
+             <div className="flex flex-col gap-4 mt-2">
+                <span className="text-[11px] font-black uppercase tracking-widest text-white/90">Build & Itémisation</span>
+                
+                <div className="flex items-center flex-wrap gap-y-6 gap-x-6 bg-white/[0.01] p-4 rounded-2xl border border-white/5">
+                  {/* Départ */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <span className="text-[9px] text-gray-400 font-black tracking-widest uppercase">Départ</span>
+                    <div className="flex gap-2">
+                      {(recommendedBuild?.items?.starting || [1055, 2003]).slice(0, 2).map((item, i) => (
+                        <InfoTooltip key={i} title={itemsData[item]?.name} description={itemsData[item]?.description} cost={itemsData[item]?.gold?.total}>
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${item}.png`} className="w-10 h-10 rounded-md border border-green-500/20 shadow-md transition-transform" />
+                        </InfoTooltip>
+                      ))}
+                    </div>
+                  </div>
+
+                  <ChevronRight size={16} className="text-white/10 shrink-0 mt-6" />
+
+                  {/* Boots */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <span className="text-[9px] text-gray-400 font-black tracking-widest uppercase">Boots</span>
+                    <div className="flex gap-2">
+                      {(recommendedBuild?.items?.boots?.slice(0, 1) || [1001]).map((id, i) => (
+                        <InfoTooltip key={i} title={itemsData[id]?.name} description={itemsData[id]?.description} cost={itemsData[id]?.gold?.total}>
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-cyan-500/30 shadow-md transition-transform" />
+                        </InfoTooltip>
+                      ))}
+                    </div>
+                  </div>
+
+                  <ChevronRight size={16} className="text-white/10 shrink-0 mt-6" />
+
+                  {/* Core Items */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <span className="text-[9px] text-gray-400 font-black tracking-widest uppercase">Core Items</span>
+                    <div className="flex gap-2 items-center">
+                      {recommendedBuild?.items?.core ? recommendedBuild.items.core.slice(0, 3).map((item, i) => (
+                        <React.Fragment key={i}>
+                          <InfoTooltip title={itemsData[item]?.name} description={itemsData[item]?.description} cost={itemsData[item]?.gold?.total}>
+                            <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${item}.png`} className="w-12 h-12 rounded-xl border border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)] hover:scale-[1.15] hover:z-10 transition-transform cursor-pointer relative" />
+                          </InfoTooltip>
+                        </React.Fragment>
+                      )) : <div className="w-28 h-12 animate-pulse bg-white/5 rounded-lg"></div>}
+                    </div>
+                  </div>
+
+                  <ChevronRight size={16} className="text-white/10 shrink-0 mt-6" />
+
+                  {/* Situational */}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    <span className="text-[9px] text-gray-400 font-black tracking-widest uppercase">Situational</span>
+                    <div className="flex gap-2">
+                      {(recommendedBuild?.items?.situational?.slice(0, 3) || []).map((id, i) => (
+                        <InfoTooltip key={i} title={itemsData[id]?.name} description={itemsData[id]?.description} cost={itemsData[id]?.gold?.total}>
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/item/${id}.png`} className="w-10 h-10 rounded-md border border-white/10 cursor-pointer shadow-md opacity-80 hover:opacity-100 hover:scale-105 transition-all" />
+                        </InfoTooltip>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+             </div>
           </div>
 
-          <div className="flex-1 p-6 pb-12 flex flex-col">
-            {/* Spells Section */}
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-xs font-black uppercase tracking-widest text-white">Spells</span>
-                <span className="text-[9px] text-gray-500 font-bold border border-white/5 px-2 py-0.5 rounded bg-black/50">Skill Order</span>
+          {/* RIGHT COLUMN: RUNES (Exclusive) */}
+          <div className="flex flex-col w-[35%] py-6 px-4 bg-gradient-to-br from-transparent to-blue-900/5 items-center justify-center">
+            
+            <div className="w-full max-w-[280px] flex flex-col items-center">
+              <div className="flex items-center justify-between w-full mb-4">
+                <span className="text-xs font-black uppercase tracking-widest text-white/90 drop-shadow-md">Runes Reforged</span>
+                {recommendedBuild && (
+                   <div className="flex items-center gap-1.5 ml-2">
+                     {recommendedBuild.allRunePages && recommendedBuild.allRunePages.length > 0 ? (
+                        <div className="flex items-center bg-black/40 border border-white/10 rounded px-1 min-w-[30px] justify-center ml-1">
+                            <button onClick={() => {
+                                const next = runePageIndex > 0 ? runePageIndex - 1 : recommendedBuild.allRunePages.length - 1;
+                                setRunePageIndex(next);
+                                forceImportRunes(next);
+                            }} className="text-gray-500 hover:text-white p-0.5"><ChevronLeft size={10} /></button>
+                            <span className="text-[10px] font-bold text-gray-300 px-1">{runePageIndex + 1} / {recommendedBuild.allRunePages.length}</span>
+                            <button onClick={() => {
+                                const next = (runePageIndex + 1) % recommendedBuild.allRunePages.length;
+                                setRunePageIndex(next);
+                                forceImportRunes(next);
+                            }} className="text-gray-500 hover:text-white p-0.5"><ChevronRight size={10} /></button>
+                        </div>
+                     ) : null}
+                   </div>
+                )}
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
-                  {recommendedBuild?.skillOrder && recommendedBuild.skillOrder.length >= 3 ? recommendedBuild.skillOrder.slice(0, 3).map((s, i) => (
-                    <React.Fragment key={i}>
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden shadow-md group/spl bg-white/5 flex items-center justify-center" title={`Skill ${typeof s === 'object' ? s.key : s}`}>
-                        {champSpells[typeof s === 'object' ? s.key : s] ? (
-                          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${champSpells[typeof s === 'object' ? s.key : s]}.png`}
-                            className="w-full h-full object-cover rounded border border-white/10 opacity-90 transition-opacity pointer-events-none" />
-                        ) : (
-                          <span className="text-accent-primary font-black flex items-center justify-center text-[12px]">{typeof s === 'object' ? s.key : s}</span>
-                        )}
-                        {/* Overlay letter */}
-                        {champSpells[typeof s === 'object' ? s.key : s] && (
-                          <div className="absolute inset-x-0 bottom-0 bg-black/60 backdrop-blur-sm text-[8px] font-black text-center border-t border-white/10 text-blue-200">
-                            {typeof s === 'object' ? s.key : s}
-                          </div>
-                        )}
-                      </div>
-                      {i < 2 && <ChevronRight size={14} className="text-white/30" />}
-                    </React.Fragment>
-                  )) : (
-                    <>
-                      <span className="w-6 h-6 rounded bg-accent-primary/20 text-accent-primary font-black flex items-center justify-center text-[10px] border border-accent-primary/40">Q</span>
-                      <ChevronRight size={12} className="text-white/30" />
-                      <span className="w-6 h-6 rounded bg-green-500/20 text-green-400 font-black flex items-center justify-center text-[10px] border border-green-500/40">E</span>
-                      <ChevronRight size={12} className="text-white/30" />
-                      <span className="w-6 h-6 rounded bg-gray-500/20 text-gray-400 font-black flex items-center justify-center text-[10px] border border-gray-500/40">W</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Runes Section */}
-            <div className="flex-1 mt-6">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-xs font-black uppercase tracking-widest text-white">Runes</span>
-              </div>
-              <div className="flex gap-8 items-start relative mt-4">
+              
+              <div className="flex gap-10 items-start justify-center w-full relative">
                 {recommendedBuild?.runes?.active && runesReforged.length > 0 ? (() => {
-                  const primaryId = parseInt(recommendedBuild.runes.primary);
-                  const secondaryId = parseInt(recommendedBuild.runes.secondary);
-                  const activeIds = recommendedBuild.runes.active.map(id => parseInt(id));
+                  const currentRunes = recommendedBuild.allRunePages ? recommendedBuild.allRunePages[runePageIndex] : recommendedBuild.runes;
+                  if (!currentRunes) return <div className="opacity-50 text-xs italic">Manque de données...</div>;
+
+                  const primaryId = parseInt(currentRunes.primary);
+                  const secondaryId = parseInt(currentRunes.secondary);
+                  const activeIds = currentRunes.active.map(id => parseInt(id));
                   const primaryTree = runesReforged.find(r => r.id === primaryId);
                   const secondaryTree = runesReforged.find(r => r.id === secondaryId);
 
-                  // Shard grid standard layout
-                  const shardsLayout = [
-                    [5008, 5005, 5007],
-                    [5008, 5010, 5001],
-                    [5011, 5013, 5001]
-                  ];
+                  // Shards Layout
+                  const shardsLayout = [[5008, 5005, 5007], [5008, 5010, 5001], [5011, 5013, 5001]];
 
                   const renderRow = (perks, isKeystone, isPrimary) => (
-                    <div className="flex gap-2.5 justify-center w-full mb-2" key={perks[0]?.id || Math.random()}>
+                    <div className="flex gap-3 justify-center w-full mb-1.5" key={perks[0]?.id || Math.random()}>
                       {(() => {
                         const rowHasActive = perks.some(px => activeIds.includes(px.id));
                         return perks.map((p, idx) => {
                           const isActive = activeIds.includes(p.id) || (isPrimary && !rowHasActive && ((isKeystone && idx === 0) || (!isKeystone && idx === 1)));
                           return (
-                            <div key={p.id} className={cn("relative rounded-full flex items-center justify-center transition-all", isKeystone ? "w-10 h-10" : "w-7 h-7", isActive ? (isKeystone ? "border border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.4)]" : "border border-blue-400/80 shadow-[0_0_10px_rgba(96,165,250,0.3)]") : "border border-transparent opacity-30 grayscale filter")} title={p.name}>
-                              <img src={`https://ddragon.leagueoflegends.com/cdn/img/${p.icon}`} className={cn("rounded-full object-cover", isKeystone ? "w-8 h-8" : "w-6 h-6")} />
-                            </div>
+                            <InfoTooltip key={p.id} title={p.name} description={p.longDesc || p.shortDesc}>
+                              <div className={cn("relative rounded-full flex items-center justify-center transition-all cursor-pointer", isKeystone ? "w-10 h-10" : "w-7 h-7", isActive ? (isKeystone ? "border-2 border-yellow-500/80 shadow-[0_0_15px_rgba(234,179,8,0.3)] bg-black/40" : "border border-blue-400/80 shadow-[0_0_8px_rgba(96,165,250,0.2)] bg-black/40") : "border border-transparent opacity-30 grayscale filter scale-90 hover:opacity-100 hover:grayscale-0")}>
+                                <img src={`https://ddragon.leagueoflegends.com/cdn/img/${p.icon}`} className={cn("rounded-full object-cover pointer-events-none", isKeystone ? "w-8 h-8" : "w-5 h-5")} />
+                              </div>
+                            </InfoTooltip>
                           );
                         });
                       })()}
@@ -8209,43 +8411,48 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
                       {/* Primary Tree */}
                       {primaryTree && (
                         <div className="flex flex-col items-center">
-                          {/* Header / Style Icon */}
-                          <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryTree.icon}`} className="w-6 h-6 mb-2 filter drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]" title={primaryTree.name || "Primary Tree"} />
+                          <InfoTooltip title={primaryTree.name}>
+                            <img src={`https://ddragon.leagueoflegends.com/cdn/img/${primaryTree.icon}`} className="w-7 h-7 mb-3 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)] cursor-pointer" />
+                          </InfoTooltip>
                           {primaryTree.slots.map((slot, idx) => renderRow(slot.runes, idx === 0, true))}
                         </div>
                       )}
 
                       {/* Secondary Tree & Shards*/}
-                      <div className="flex flex-col items-center">
+                      <div className="flex flex-col items-center mt-1">
                         {secondaryTree && (
                           <>
-                            <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryTree.icon}`} className="w-5 h-5 mb-3 filter drop-shadow-[0_0_3px_rgba(255,255,255,0.3)]" title={secondaryTree.name || "Secondary Tree"} />
-                            {secondaryTree.slots.slice(1).map((slot, idx) => renderRow(slot.runes, false, false))}
+                            <InfoTooltip title={secondaryTree.name}>
+                              <img src={`https://ddragon.leagueoflegends.com/cdn/img/${secondaryTree.icon}`} className="w-5 h-5 mb-3 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.3)] opacity-90 cursor-pointer" />
+                            </InfoTooltip>
+                            {secondaryTree.slots.slice(1).map((slot) => renderRow(slot.runes, false, false))}
                           </>
                         )}
-
                         {/* Shards */}
-                        <div className="mt-1 flex flex-col gap-1.5">
-                          {shardsLayout.map((row, rIdx) => (
-                            <div className="flex gap-2.5 justify-center w-full" key={`shard-row-${rIdx}`}>
-                              {row.map((id, idx) => {
-                                const isActive = activeIds.includes(id) || (idx === 0 && !row.some(rId => activeIds.includes(rId))); // Fallback visual
-                                return (
-                                  <div key={`shard-${rIdx}-${idx}`} className={cn("w-5 h-5 rounded-full flex items-center justify-center border border-white/5 bg-black/40", isActive ? "opacity-100 ring-1 ring-yellow-500/50" : "opacity-30 grayscale")} title="Stat Shard">
-                                    <img src={`https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatMods${id === 5008 ? 'AdaptiveForceIcon' : id === 5005 ? 'AttackSpeedIcon' : id === 5007 ? 'CDRScalingIcon' : id === 5010 ? 'MovementSpeedIcon' : id === 5013 ? 'TenacityIcon' : id === 5001 ? 'HealthScalingIcon' : 'HealthPlusIcon'}.png`} className="w-3.5 h-3.5 object-cover" onError={(e) => e.target.style.display = 'none'} />
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          ))}
+                        <div className="mt-3 flex flex-col gap-1.5 border-t border-white/5 pt-3 w-full">
+                          {shardsLayout.map((row, rIdx) => {
+                            const expectedShardId = activeIds[6 + rIdx] || -1;
+                            return (
+                              <div className="flex gap-3 justify-center w-full" key={`shard-row-${rIdx}`}>
+                                {row.map((id, idx) => {
+                                  const isActive = id === expectedShardId || (idx === 0 && !row.includes(expectedShardId));
+                                  return (
+                                    <div key={`shard-${rIdx}-${idx}`} className={cn("w-5 h-5 rounded-full flex items-center justify-center border border-white/10 bg-black/50 transition-all", isActive ? "opacity-100 ring-1 ring-yellow-500/60 shadow-[0_0_8px_rgba(234,179,8,0.2)] scale-110" : "opacity-30 grayscale filter scale-90")}>
+                                      <img src={`https://ddragon.leagueoflegends.com/cdn/img/perk-images/StatMods/StatMods${id === 5008 ? 'AdaptiveForceIcon' : id === 5005 ? 'AttackSpeedIcon' : id === 5007 ? 'CDRScalingIcon' : id === 5010 ? 'MovementSpeedIcon' : id === 5013 ? 'TenacityIcon' : id === 5001 ? 'HealthScalingIcon' : id === 5011 ? 'HealthPlusIcon' : id === 5002 ? 'ArmorIcon' : id === 5003 ? 'MagicResIcon' : 'HealthPlusIcon'}.png`} className="w-3.5 h-3.5 object-cover" onError={(e) => e.target.style.display = 'none'} />
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </>
                   );
                 })() : (
-                  <div className="flex gap-4">
-                    <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
-                    <div className="w-32 h-40 bg-white/5 animate-pulse rounded-lg bg-black/40"></div>
+                  <div className="flex gap-4 opacity-50">
+                    <div className="w-24 h-40 animate-pulse rounded-lg bg-white/5 border border-white/10"></div>
+                    <div className="w-24 h-40 animate-pulse rounded-lg bg-white/5 border border-white/10"></div>
                   </div>
                 )}
               </div>
@@ -8422,16 +8629,12 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
             icon={Sword} color="orange"
             title={t('auto_accept')} desc={t('auto_accept_desc')}
             action={
-              !isPremium ? (
-                <button onClick={() => setActiveTab('subscription')} className="px-5 py-2 bg-yellow-500/5 hover:bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-bold text-xs uppercase rounded-xl transition-all hover:scale-[1.02] flex items-center gap-2 shadow-[0_0_15px_rgba(234,179,8,0.1)]">
-                  <Star size={14} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" />
-                  S'abonner
-                </button>
-              ) : (
-                <div>
-                  <SettingsToggle active={autoAccept} onToggle={() => setAutoAccept(!autoAccept)} />
-                </div>
-              )
+              <div>
+                <SettingsToggle active={autoAccept} onToggle={() => {
+                  setAutoAccept(!autoAccept);
+                  localStorage.setItem('oracle_auto_accept', !autoAccept ? 'true' : 'false');
+                }} />
+              </div>
             }
           />
           <SettingCard
@@ -10650,7 +10853,9 @@ function LiveGameLoadingView({ t, panelClass }) {
         try {
           // 1. Get PUUID from Name (LCU)
           // Note: This relies on LCU being connected.
-          const summoner = await window.ipcRenderer.invoke('lcu:search-summoner', p.summonerName);
+          // Fast-fail: skipScraper=true to prevent 10 parallel 30-sec scrapers hanging the app
+          const region = localStorage.getItem('oracle_region') || 'EUW';
+          const summoner = await window.ipcRenderer.invoke('lcu:search-summoner', p.summonerName, region, false, null, true);
           if (summoner && summoner.puuid) {
             // 2. Get Ranked Stats
             const ranked = await window.ipcRenderer.invoke('lcu:get-ranked-stats', summoner.puuid);
@@ -12787,6 +12992,7 @@ function LiveOverlay({ t, visualMode, theme, overlaySettings: initialSettings })
 function LoadingOverlay({ t, visualMode, theme }) {
   const [players, setPlayers] = useState({ order: [], chaos: [] });
   const [champMap, setChampMap] = useState({});
+  const enrichedSet = useRef(new Set());
 
   useEffect(() => {
     let interval;
@@ -12830,71 +13036,138 @@ function LoadingOverlay({ t, visualMode, theme }) {
              return finalTeam.slice(0, 5); // STRICTLY PREVENT OVERFLOW
           };
 
-          const enrichTeam = async (teamList) => {
-            return Promise.all(teamList.map(async (p) => {
-              let rankName = "Vérification...";
-              let globalWr = 0; let globalGames = 0; let globalWins = 0, globalLosses = 0; let champMasteryRank = 0;
-              const champName = _champMap[p.championId] || p.championName || "?";
-              
-              let name = p.summonerName || p.name;
-              if (!name || name.toLowerCase() === "inconnu" || name.trim() === "") name = "INCONNU";
-              
-              // Filter out anonymous champion aliases incorrectly passed as summonerName
-              if (name !== "INCONNU" && name.toLowerCase() === champName.toLowerCase()) {
-                  name = "INCONNU";
-              }
+          const enrichTeam = async (teamList, teamKey) => {
+            const results = [...teamList];
+            
+            // Fast LCU pass for everyone
+            for (let i = 0; i < results.length; i++) {
+                const p = results[i];
+                let rankName = "NA";
+                let globalWr = 0; let globalGames = 0; let globalWins = 0, globalLosses = 0; let champMasteryRank = 0;
+                const champName = _champMap[p.championId] || p.championName || "?";
+                
+                let name = p.summonerName || p.name;
+                if (!name || name.toLowerCase() === "inconnu" || name.trim() === "") name = "INCONNU";
+                if (name !== "INCONNU" && name.toLowerCase() === champName.toLowerCase()) name = "INCONNU";
 
-              let currentPuuid = p.puuid;
-              let statsPopulated = false;
-              try {
-                if (!currentPuuid && name !== "INCONNU") {
-                    const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', false);
-                    if (sumData && sumData.puuid) currentPuuid = sumData.puuid;
+                let currentPuuid = p.puuid;
+                let statsPopulated = false;
+
+                // Check if already fetched to prevent infinite polling loops
+                const playerIdent = currentPuuid || name;
+                if (enrichedSet.current.has(playerIdent) && name !== "INCONNU") {
+                   continue; // Already processed in a previous interval
                 }
 
-                if (currentPuuid && !currentPuuid.startsWith('ext~')) {
-                  const ranked = await window.ipcRenderer.invoke('lcu:get-ranked-stats', currentPuuid);
-                  if (ranked && ranked.queueMap && ranked.queueMap.RANKED_SOLO_5x5) {
-                    const solo = ranked.queueMap.RANKED_SOLO_5x5;
-                    globalWins = solo.wins || 0; globalLosses = solo.losses || 0;
-                    if (globalLosses === 0 && globalWins > 5) {
-                        statsPopulated = false; 
-                    } else {
-                        rankName = `${solo.tier} ${solo.division}`;
-                        globalGames = globalWins + globalLosses;
-                        if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
-                        statsPopulated = true;
+                try {
+                    // Try LCU ONLY first (skipScraper = true)
+                    if (!currentPuuid && name !== "INCONNU") {
+                        const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', false, null, true);
+                        if (sumData && sumData.puuid) currentPuuid = sumData.puuid;
                     }
-                  } else rankName = "UNRANKED";
-                  const masteries = await window.ipcRenderer.invoke('lcu:get-champion-mastery', currentPuuid);
-                  if (masteries && Array.isArray(masteries)) {
-                      const m = masteries.find(x => x.championId === p.championId);
-                      if (m) champMasteryRank = m.championLevel || 0;
-                  }
-                }
 
-                if (!statsPopulated && name !== "INCONNU") {
-                    const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', name, 'EUW', true);
-                    if (sumData) {
-                       rankName = sumData.rank || rankName;
-                       if (sumData.winRate) globalWr = parseInt(sumData.winRate);
-                       if (sumData.games) {
-                          globalGames = sumData.games;
-                          globalWins = Math.round((globalWr / 100) * globalGames);
-                          globalLosses = globalGames - globalWins;
-                       }
+                    if (currentPuuid && !currentPuuid.startsWith('ext~')) {
+                        const ranked = await window.ipcRenderer.invoke('lcu:get-ranked-stats', currentPuuid);
+                        if (ranked && ranked.queueMap && ranked.queueMap.RANKED_SOLO_5x5) {
+                            const solo = ranked.queueMap.RANKED_SOLO_5x5;
+                            globalWins = solo.wins || 0; globalLosses = solo.losses || 0;
+                            if (globalLosses > 0 || globalWins > 5) {
+                                rankName = `${solo.tier} ${solo.division}`;
+                                globalGames = globalWins + globalLosses;
+                                if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
+                                statsPopulated = true;
+                                if (globalLosses === 0 && globalWins > 0) {
+                                    p.needsScraper = true; // Flag for missing losses (Riot API limits)
+                                }
+                            }
+                        }
+                        if (!statsPopulated) rankName = "NA";
+                        
+                        const masteries = await window.ipcRenderer.invoke('lcu:get-champion-mastery', currentPuuid);
+                        if (masteries && Array.isArray(masteries)) {
+                            const m = masteries.find(x => x.championId === p.championId);
+                            if (m) champMasteryRank = m.championLevel || 0;
+                        }
                     }
-                } else if (!statsPopulated && name === "INCONNU") {
-                    rankName = "CACHÉ";
+                    
+                    if (name === "INCONNU") {
+                        rankName = "NA";
+                    } else if (statsPopulated && !p.needsScraper) {
+                        enrichedSet.current.add(playerIdent); // Fully completed
+                    } else if (rankName === "NA") {
+                        enrichedSet.current.add(playerIdent); // Avoid scraping unranked
+                    }
+
+                    results[i] = { ...p, name, puuid: currentPuuid, champId: p.championId, champName, rank: rankName, globalWr, globalGames, globalWins, globalLosses, mastery: champMasteryRank, statsPopulated, needsScraper: p.needsScraper };
+                } catch(e){}
+            }
+
+            // Immediately update UI with fast LCU data so user sees the interface instantly
+            setPlayers(prev => {
+                const updated = { ...prev };
+                // Merge carefully so we don't overwrite already enriched people from previous intervals
+                const mergedTeam = results.map((newP, idx) => {
+                    const existingP = prev[teamKey][idx];
+                    if (!existingP) return newP;
+                    
+                    if (existingP.statsPopulated && existingP.name !== "INCONNU" && (!newP.statsPopulated || newP.needsScraper)) {
+                        return existingP; // Prevent depop
+                    }
+                    if (existingP.rank !== "NA" && (newP.rank === "NA" || !newP.rank)) {
+                        return existingP; // Keep rich rank
+                    }
+                    return newP;
+                });
+                updated[teamKey] = mergedTeam;
+                return updated;
+            });
+
+            // Slow Scraper pass ONLY for unresolved names (Sequential to avoid IP Block and "50 ans de chargement")
+            for (let i = 0; i < results.length; i++) {
+                const rp = results[i];
+                const ident = rp.puuid || rp.name;
+
+                if ((!rp.statsPopulated || rp.needsScraper) && rp.name !== "INCONNU" && rp.rank !== "NA" && !enrichedSet.current.has(ident)) {
+                    try {
+                        const sumData = await window.ipcRenderer.invoke('lcu:search-summoner', rp.name, 'EUW', true, null, false);
+                        if (sumData) {
+                            if (sumData.ranks && sumData.ranks.solo && sumData.ranks.solo.tier !== 'UNRANKED') {
+                                rp.rank = `${sumData.ranks.solo.tier} ${sumData.ranks.solo.division}`.trim();
+                                rp.globalWins = sumData.ranks.solo.wins || 0;
+                                rp.globalLosses = sumData.ranks.solo.losses || 0;
+                                rp.globalGames = rp.globalWins + rp.globalLosses;
+                                rp.globalWr = rp.globalGames > 0 ? Math.round((rp.globalWins / rp.globalGames) * 100) : 0;
+                            } else if (sumData.winRate) {
+                                // Fallback if it's old OP.GG format cached
+                                rp.rank = sumData.rank || rp.rank;
+                                rp.globalWr = parseInt(sumData.winRate);
+                                rp.globalGames = sumData.games || rp.globalGames;
+                                rp.globalWins = Math.round((rp.globalWr / 100) * rp.globalGames);
+                                rp.globalLosses = rp.globalGames - rp.globalWins;
+                            }
+                        } else if (!rp.statsPopulated) {
+                            rp.rank = "NA";
+                        }
+                        
+                        rp.statsPopulated = true;
+                        rp.needsScraper = false;
+                        enrichedSet.current.add(ident); // Mark as scraped
+
+                        setPlayers(prev => {
+                            const newTeam = [...prev[teamKey]];
+                            newTeam[i] = { ...rp };
+                            return { ...prev, [teamKey]: newTeam };
+                        });
+                    } catch(e){}
                 }
-              } catch(e){}
-              return { ...p, name: name, puuid: currentPuuid, champId: p.championId, champName, rank: rankName, globalWr, globalGames, globalWins, globalLosses, mastery: champMasteryRank };
-            }));
+            }
           };
 
-          const orderPlayers = await enrichTeam(mergeTeam(session.gameData.teamOne || [], 'ORDER'));
-          const chaosPlayers = await enrichTeam(mergeTeam(session.gameData.teamTwo || [], 'CHAOS'));
-          setPlayers({ order: orderPlayers, chaos: chaosPlayers });
+          const orderBase = mergeTeam(session.gameData.teamOne || [], 'ORDER');
+          const chaosBase = mergeTeam(session.gameData.teamTwo || [], 'CHAOS');
+          
+          await enrichTeam(orderBase, 'order');
+          await enrichTeam(chaosBase, 'chaos');
         }
       } catch(e) { console.error("Loading overlay error", e); }
     }
@@ -12921,20 +13194,39 @@ function LoadingOverlay({ t, visualMode, theme }) {
   return (
     <>
     <style>{`body { background: transparent !important; }`}</style>
-    <div className="fixed inset-0 m-4 sm:m-8 lg:m-12 z-[9999] p-8 flex flex-col items-center justify-start py-12 gap-6 animate-in fade-in transition-all bg-black/50 backdrop-blur-md rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] font-inter no-drag">
+    <div className="fixed inset-0 m-4 sm:m-8 lg:m-12 z-[9999] flex flex-col items-center justify-start animate-in fade-in transition-all bg-gray-950/80 backdrop-blur-xl rounded-[2rem] border border-white/10 shadow-[0_0_80px_rgba(var(--accent-primary-rgb),0.15)] font-inter overflow-hidden">
       
-      {/* Oracle Prediction Top Left */}
-      {(orderWr > 0 || chaosWr > 0) && (
-        <div className="absolute top-10 left-10 flex flex-col gap-2 font-bold text-[10px] uppercase tracking-widest pointer-events-none drop-shadow-md">
-           <div className="text-blue-300">Équipe Bleu : {orderWr}%</div>
-           <div className="text-red-300">Équipe Rouge : {chaosWr}%</div>
+      {/* Top Drag Bar & Controls */}
+      <div 
+        className="w-full h-12 flex justify-between items-center px-6 bg-white/5 border-b border-white/5 shrink-0"
+        style={{ WebkitAppRegion: 'drag' }}
+      >
+        <div className="flex gap-2 items-center pointer-events-none">
+          <div className="w-2 h-2 rounded-full bg-accent-primary animate-pulse"></div>
+          <span className="text-[10px] uppercase font-bold tracking-widest text-gray-400">Oracle.Vision.Live</span>
         </div>
-      )}
-
-      <div className="flex flex-col items-center pointer-events-none drop-shadow-md shrink-0">
-        <h1 className="text-4xl font-black text-gray-100 tracking-widest italic mb-1 uppercase">ORACLE <span className="text-accent-primary drop-shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.5)]">VISION</span></h1>
-        <div className="text-gray-400 font-bold uppercase tracking-[0.3em] text-[10px]">Analyse de l'Opposant</div>
+        
+        {/* Close Button */}
+        <button 
+          onClick={() => window.close()} 
+          className="w-6 h-6 rounded-full bg-white/10 hover:bg-red-500/80 flex items-center justify-center text-white/70 hover:text-white transition-colors border border-white/10"
+          style={{ WebkitAppRegion: 'no-drag' }}
+        >
+          <X size={12} strokeWidth={3} />
+        </button>
       </div>
+
+      <div className="flex-1 w-full p-8 py-6 flex flex-col items-center gap-6" style={{ WebkitAppRegion: 'no-drag' }}>
+        
+
+
+        <div className="flex flex-col items-center pointer-events-none drop-shadow-xl shrink-0 mt-4 relative">
+          <div className="absolute inset-0 bg-accent-primary/20 blur-[50px] -z-10 rounded-full"></div>
+          <h1 className="text-5xl font-black text-white tracking-[0.15em] italic mb-1 uppercase">
+            ORACLE <span className="text-accent-primary drop-shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.8)]">VISION</span>
+          </h1>
+          <div className="text-accent-primary/80 font-bold uppercase tracking-[0.4em] text-[11px] bg-accent-primary/10 px-4 py-1 rounded-full border border-accent-primary/20">Analyse de l'Opposant</div>
+        </div>
 
       {players.order.length > 0 || players.chaos.length > 0 ? (
         <div className="w-full max-w-7xl grid grid-cols-2 gap-12 sm:gap-24 w-full h-[700px] py-4 px-2 pointer-events-auto shrink-0">
@@ -12949,7 +13241,14 @@ function LoadingOverlay({ t, visualMode, theme }) {
                 <div className="flex-1 min-w-0 pr-1">
                   <div className="flex justify-between items-baseline mb-0 gap-2">
                     <div className="font-black text-base text-white truncate drop-shadow-sm group-hover:text-blue-300 transition-colors uppercase tracking-tight">{p.name}</div>
-                    <span className="text-[9px] text-blue-300 font-extrabold uppercase tracking-widest bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                    {p.rank !== 'NA' ? (
+                      <span className="text-[9px] text-blue-300 font-extrabold uppercase tracking-widest bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                    ) : (
+                      <div className="flex items-center gap-1.5 opacity-60">
+                        <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/unranked.png" className="w-3.5 h-3.5 opacity-80" />
+                        <span className="text-[10px] font-extrabold text-gray-400">NA</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-start gap-2 text-[10px] font-bold text-gray-300">
                     <span className="opacity-75 uppercase tracking-wide">WR:</span>
@@ -12971,7 +13270,14 @@ function LoadingOverlay({ t, visualMode, theme }) {
                 <div className="flex-1 min-w-0 pl-1">
                   <div className="flex justify-between items-baseline mb-0 flex-row-reverse gap-2">
                     <div className="font-black text-base text-white truncate drop-shadow-sm group-hover:text-red-400 transition-colors uppercase tracking-tight">{p.name}</div>
-                    <span className="text-[9px] text-red-300 font-extrabold uppercase tracking-widest bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                    {p.rank !== 'NA' ? (
+                      <span className="text-[9px] text-red-300 font-extrabold uppercase tracking-widest bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">{p.rank}</span>
+                    ) : (
+                      <div className="flex items-center gap-1.5 opacity-60 flex-row-reverse">
+                        <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/unranked.png" className="w-3.5 h-3.5 opacity-80" />
+                        <span className="text-[10px] font-extrabold text-gray-400">NA</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center justify-end gap-2 text-[10px] font-bold text-gray-300">
                     <span className="text-white">{p.globalWr > 0 ? `${p.globalWr}%` : "N/A"} <span className="opacity-50">({p.globalGames > 0 ? `${p.globalWins}V ${p.globalLosses}D` : '0 G'})</span></span>
@@ -12983,11 +13289,12 @@ function LoadingOverlay({ t, visualMode, theme }) {
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-[500px] pointer-events-none">
+        <div className="flex flex-col items-center justify-center w-full h-[500px] pointer-events-none">
            <div className="w-16 h-16 border-[4px] border-accent-primary border-t-transparent rounded-full animate-spin mb-6"></div>
-           <div className="text-white font-bold uppercase tracking-[0.2em] text-xs">Patientez...</div>
+           <div className="text-white font-bold uppercase tracking-[0.2em] text-xs drop-shadow-md">Analyse en cours...</div>
         </div>
       )}
+      </div>
     </div>
     </>
   );

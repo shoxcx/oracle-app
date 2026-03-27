@@ -917,200 +917,237 @@ class Scraper {
             }
         });
     }
-                                async getChampionBuild(name, role = null, region = 'EUW') {
-        const searchName = name.toLowerCase().replace(/['\s.&#]/g, '');
-        const roleStr = role ? role.toLowerCase() : 'any';
-        
-        const cacheK = 'build_' + searchName + '_' + roleStr + '_v23';
+    async getChampionBuild(name, role = 'mid', region = 'EUW') {
+        const nameMap = {
+            'wukong': 'monkeyking', 'bel\'veth': 'belveth', 'cho\'gath': 'chogath',
+            'dr. mundo': 'drmundo', 'kai\'sa': 'kaisa', 'kha\'zix': 'khazix',
+            'kog\'maw': 'kogmaw', 'leblanc': 'leblanc', 'lee sin': 'leesin',
+            'master yi': 'masteryi', 'nunu & willump': 'nunu', 'reksai': 'reksai',
+            'renata glasc': 'renata', 'tahm kench': 'tahmkench', 'twisted fate': 'twistedfate',
+            'vel\'koz': 'velkoz', 'xin zhao': 'xinzhao'
+        };
+        const searchName = nameMap[name.toLowerCase()] || name.toLowerCase().replace(/['\s.&#]/g, '');
+        const validRoles = ['top', 'jungle', 'mid', 'adc', 'support'];
+        const normalizedRole = validRoles.includes(role?.toLowerCase()) ? role.toLowerCase() : 'mid';
+        const cacheK = 'build_' + searchName + '_' + normalizedRole + '_ugg_v5';
         const cached = this.getCachedData(cacheK);
-        if (cached) {
-             console.log(`[Scraper] Retrieved LOG build for ${name} [${roleStr}] from cache.`);
-             return cached;
-        }
-        const cleanRole = (role === 'none' || !role) ? null : role.toLowerCase();
-        const url = cleanRole ? `https://www.leagueofgraphs.com/fr/champions/tier-list/${searchName}/${cleanRole}` 
-                           : `https://www.leagueofgraphs.com/fr/champions/tier-list/${searchName}`;
+        if (cached) return cached;
 
-        
-        console.log(`[Scraper] Fetching LOG build for ${name} [Role: ${roleStr}] from ${url}`);
+        const url = `https://u.gg/lol/champions/${searchName}/build/${normalizedRole}`;
+        console.log(`[Scraper] Fast Fetching U.GG build for ${name} [${normalizedRole}] from ${url}`);
 
-        return await this.runBrowserTask(url, async (win) => {
-            // Wait specifically for the rune tables to ensure the DOM is fully hydrated
-            await this.waitForSelector(win, '.perksTableOverview', 5000).catch(() => {});
+        try {
+            let fetchFn = typeof fetch !== 'undefined' ? fetch : require('node-fetch');
+            const res = await fetchFn(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+                timeout: 8000
+            });
+            const str = await res.text();
 
-            const jsPayload = `
-                (() => {
-                    try {
-                        const result = {
-                            stats: { winRate: "?", pickRate: "?", tier: "?" },
-                            skillOrder: [],
-                            items: { starting: [], core: [], boots: [], situational: [] },
-                            spells: [],
-                            runes: { primary: "8000", secondary: "8400", active: [] }
-                        };
-                        // Helper to get item IDs from src
-                        const getItemId = (img) => {
-                            if (!img) return null;
-                            const m = img.src.match(/(\\d+)\\.png/);
-                            return m ? m[1] : null;
-                        };
+            let start = str.indexOf('__SSR_DATA__ = {');
+            if (start === -1) start = str.indexOf('window.__SSR_DATA__ = {');
+            let ssr = null;
+            if (start !== -1) {
+                start = str.indexOf('{', start);
+                let braceCount = 0;
+                let end = -1;
+                let inString = false;
+                let escape = false;
 
-                        const extractItemsFromBox = (keywords) => {
-                            const titleEl = Array.from(document.querySelectorAll('.box-title, .box h3, b')).find(el => {
-                                const txt = el.innerText.toLowerCase();
-                                return keywords.some(k => txt.includes(k));
-                            });
-                            if (!titleEl) return [];
-                            const box = titleEl.closest('.box');
-                            if (!box) return [];
-                            const imgs = Array.from(box.querySelectorAll('img')).filter(img => img.src.includes('items/'));
-                            return [...new Set(imgs.map(img => getItemId(img)).filter(id => id && id.length >= 3))].slice(0, 6);
-                        };
-                        result.items.starting = extractItemsFromBox(['départ', 'starting', 'starter']);
-                        result.items.boots = extractItemsFromBox(['bottes', 'boots', 'boot']);
-                        result.items.core = extractItemsFromBox(['principaux', 'core', 'principal', 'essentiels']);
-                        result.items.situational = extractItemsFromBox(['fin', 'final', 'situational', 'situations']);
+                for(let i=start; i<str.length; i++) {
+                    let c = str[i];
+                    if (escape) { escape = false; continue; }
+                    // Handle backslash escaping inside string
+                    if (c === '\\') { escape = true; continue; }
+                    if (c === '"') { inString = !inString; continue; }
 
-                        // 1. Find Rune Tables (Strictly LOG detailed tables to preserve perfect order)
-                        const runeTables = Array.from(document.querySelectorAll('.perksTableOverview'));
-                        
-                        const trees = [];
-                        const perkIds = [];
-                        const shardIds = [];
-
-                        if (runeTables.length > 0) {
-                            runeTables.forEach((table) => {
-                                // Tree ID in header (Check both styles)
-                                const treeImg = table.querySelector('th img[src*="/perks/styles/"], th img[src*="8000.png"], th img[src*="8100.png"], th img[src*="8200.png"], th img[src*="8300.png"], th img[src*="8400.png"]');
-                                if (treeImg) {
-                                    const tid = treeImg.src.split('/').pop().split('.')[0].replace(/[^0-9]/g, '');
-                                    if (tid.length >= 4 && !trees.includes(tid)) trees.push(tid);
-                                }
-
-                                // Runes/Shards in table cells
-                                table.querySelectorAll('img').forEach(img => {
-                                    // Check if it's a perk
-                                    const classes = Array.from(img.classList);
-                                    const perkClass = classes.find(c => c.startsWith('perk-'));
-                                    if (!perkClass && !img.src.includes('/perks/')) return;
-
-                                    // Selection check (Parent opacity)
-                                    let isSelected = true;
-                                    let curr = img.parentElement;
-                                    for(let i=0; i<4 && curr && curr.tagName !== 'TABLE'; i++) {
-                                        const st = window.getComputedStyle(curr);
-                                        const op = parseFloat(st.opacity || "1");
-                                        if(op < 0.5 || (st.filter && st.filter.includes('grayscale(1)'))) { 
-                                            isSelected = false; 
-                                            break; 
-                                        }
-                                        curr = curr.parentElement;
-                                    }
-                                    if(!isSelected) return;
-
-                                    // Extract ID strictly with regex to avoid non-numeric classes shifting the array
-                                    let id = null;
-                                    const perkMatch = img.className.match(/perk-(\\d+)/);
-                                    if (perkMatch) {
-                                        id = perkMatch[1];
-                                    } else {
-                                        const m = img.src.match(/(\\d+)\\.png/);
-                                        if(m) id = m[1];
-                                    }
-
-                                    if (id && id.length >= 4) {
-                                        if ([8000, 8100, 8200, 8300, 8400].includes(parseInt(id))) {
-                                            if(!trees.includes(id)) trees.push(id);
-                                            return;
-                                        }
-                                        if (img.src.includes('shard') || img.src.includes('StatMods') || parseInt(id) < 6000) {
-                                            if (!shardIds.includes(id)) shardIds.push(id);
-                                        } else {
-                                            if (!perkIds.includes(id)) perkIds.push(id);
-                                        }
-                                    }
-                                });
-                            });
+                    if (!inString) {
+                        if (c === '{') braceCount++;
+                        else if (c === '}') {
+                            braceCount--;
+                            if (braceCount === 0) {
+                                end = i + 1;
+                                break;
+                            }
                         }
-
-                        // 3. Finalize
-                        // Slot 0-3: Primary, 4-5: Secondary, 6-8: Shards
-                        const finalPerks = perkIds.slice(0, 6);
-                        
-                        // Fallbacks MUST be structurally valid (1 Keystone, 3 Primary, 2 Secondary)
-                        // Precision (8000) -> Conqueror(8010), Triumph(9111), Alacrity(9105), Last Stand(8299) | Resolve(8400) -> Bone Plating(8473), Overgrowth(8453)
-                        const precisionFallback = ["8010", "9111", "9105", "8299", "8473", "8453"];
-                        
-                        // Domination (8100) -> Electrocute(8112), Sudden Impact(8143), Eyeball(8138), Relentless(8106) | Sorcery(8200) -> Absolute Focus(8233), Gathering Storm(8236)
-                        const dominationFallback = ["8112", "8143", "8138", "8106", "8233", "8236"];
-                        
-                        const pDefaults = (trees[0] === "8100" || trees.length === 0) ? dominationFallback : precisionFallback;
-                        
-                        while(finalPerks.length < 6) {
-                            const def = pDefaults[finalPerks.length];
-                            if (!finalPerks.includes(def)) finalPerks.push(def); else finalPerks.push(pDefaults[finalPerks.length]); 
-                        }
-
-                        const finalShards = shardIds.slice(0, 3);
-                        while(finalShards.length < 3) finalShards.push(["5008", "5008", "5001"][finalShards.length]);
-
-                        result.runes.active = [...finalPerks, ...finalShards];
-                        result.runes.primary = trees[0] || (pDefaults === dominationFallback ? "8100" : "8000");
-                        result.runes.secondary = trees[1] || (result.runes.primary === "8100" ? "8200" : "8400");
-
-                        // SPELLS (Only summoner spells icons)
-                        const spellImgs = Array.from(document.querySelectorAll('img')).filter(img => img.src.includes('Summoner') || img.src.includes('spells/'));
-                        const validSpells = spellImgs.map(img => {
-                            const nm = img.src.toLowerCase();
-                            if(nm.includes('flash')) return "4";
-                            if(nm.includes('smite')) return "11";
-                            if(nm.includes('ignite') || nm.includes('dot')) return "14";
-                            if(nm.includes('exhaust')) return "3";
-                            if(nm.includes('heal')) return "7";
-                            if(nm.includes('teleport')) return "12";
-                            if(nm.includes('barrier')) return "21";
-                            if(nm.includes('ghost')) return "6";
-                            if(nm.includes('cleanse')) return "1";
-                            return null;
-                        }).filter(id => id);
-                        result.spells = [...new Set(validSpells)].slice(0, 2);
-
-                        // SKILLS
-                        const skillBox = Array.from(document.querySelectorAll('.box-title')).find(el => {
-                            const tx = el.innerText.toLowerCase();
-                            return tx.includes('compétences') || tx.includes('skills') || tx.includes('sorts');
-                        });
-                        if (skillBox && skillBox.closest('.box')) {
-                            const ordered = Array.from(skillBox.closest('.box').querySelectorAll('td:not(.empty)')).map(td => td.innerText.trim()).filter(t => ["Q","W","E","R"].includes(t));
-                            if(ordered.length >= 5) result.skillOrder = ordered.slice(0, 18);
-                        }
-                        
-                        return JSON.stringify(result);
-                    } catch(err) {
-                        return JSON.stringify({ error: err.stack || err.toString() });
                     }
-                })();
-            `;
+                }
+                if (end !== -1) {
+                    let jsonStr = str.substring(start, end);
+                    ssr = JSON.parse(jsonStr);
+                }
+            }
+            
+            if (!ssr) {
+                const match = str.match(/window\.__SSR_DATA__\s*=\s*({.*?});/s);
+                if (match) ssr = JSON.parse(match[1]);
+            }
 
-            let raw = await win.webContents.executeJavaScript(jsPayload);
-            let data = null;
-            try { data = JSON.parse(raw); } catch(e) {}
+            if (!ssr) throw new Error("Could not find SSR data");
 
-            if (data && !data.error && data.runes) {
-                // Ensure 9 perks
-                if (!data.runes.active) data.runes.active = [];
-                while(data.runes.active.length < 9) data.runes.active.push("5001");
-                
+            const key = Object.keys(ssr).find(k => k.includes('overview') && k.includes('world') && k.includes('recommended'));
+            if (!key || !ssr[key]?.data) throw new Error("Missing overview key in SSR");
+            const buildObj = ssr[key].data;
+            const build = buildObj['world_emerald_plus_' + normalizedRole] || Object.values(buildObj)[0];
+            if (!build) throw new Error("Build object missing");
+
+            // POPULARITY FOCUS: Grab the rune set & summoner spells with the highest number of matches
+            const popRunes = (Array.isArray(build.rune_sets) && build.rune_sets.length > 0)
+                ? build.rune_sets.reduce((p, c) => ((c.matches || 0) > (p.matches || 0) ? c : p))
+                : build.rec_runes;
+
+            const popSpells = (Array.isArray(build.summoner_spells) && build.summoner_spells.length > 0)
+                ? build.summoner_spells.reduce((p, c) => ((c.matches || 0) > (p.matches || 0) ? c : p))
+                : build.rec_summoner_spells;
+            
+            let allSpells = [];
+            if (Array.isArray(build.summoner_spells) && build.summoner_spells.length > 0) {
+                 const sortedS = [...build.summoner_spells].sort((a,b) => (b.matches || 0) - (a.matches || 0));
+                 allSpells = sortedS.slice(0, 4).map(s => (s.ids || []).map(String));
+            } else if (build.rec_summoner_spells?.ids) {
+                 allSpells = [(build.rec_summoner_spells.ids || []).map(String)];
+            }
+            if (allSpells.length === 0) allSpells = [["4", "14"]];
+
+            // Extract properly
+            const activeRunes = (popRunes?.active_perks || build.rec_runes?.active_perks || []).map(String);
+            if (activeRunes.length === 6) {
+                const shards = (popRunes?.shards || build.rec_runes?.shards || ["5008", "5008", "5001"]).map(String);
+                activeRunes.push(...shards);
+            }
+
+            // SORT RUNES TO MATCH LCU EXPECTED LAYOUT (Keystone -> P1 -> P2 -> P3 -> S1 -> S2 -> Shards)
+            try {
+                let runeMap = this.getCachedData('rune_map_cache');
+                if (!runeMap) {
+                    const vRes = await fetchFn('https://ddragon.leagueoflegends.com/api/versions.json');
+                    const vList = await vRes.json();
+                    const latestV = vList[0] || '14.22.1';
+                    const rRes = await fetchFn(`https://ddragon.leagueoflegends.com/cdn/${latestV}/data/en_US/runesReforged.json`);
+                    const rData = await rRes.json();
+                    runeMap = {};
+                    if (Array.isArray(rData)) {
+                        rData.forEach(t => {
+                            const ti = String(t.id);
+                            t.slots.forEach((slot, ri) => {
+                                slot.runes.forEach(r => { runeMap[String(r.id)] = { tree: ti, row: ri }; });
+                            });
+                        });
+                        this.setCachedData('rune_map_cache', runeMap);
+                    }
+                }
+
+                if (runeMap) {
+                    const primaryStyle = String(popRunes?.primary_style || build.rec_runes?.primary_style || "8100");
+                    activeRunes.sort((a, b) => {
+                        const isShardA = a.startsWith('50');
+                        const isShardB = b.startsWith('50');
+                        if (isShardA && !isShardB) return 1;
+                        if (!isShardA && isShardB) return -1;
+                        if (isShardA && isShardB) return 0;
+                        
+                        const pA = runeMap[a] || { tree: '0', row: 99 };
+                        const pB = runeMap[b] || { tree: '0', row: 99 };
+                        
+                        const isPrimA = pA.tree === primaryStyle;
+                        const isPrimB = pB.tree === primaryStyle;
+                        
+                        if (isPrimA && !isPrimB) return -1;
+                        if (!isPrimA && isPrimB) return 1;
+                        return pA.row - pB.row;
+                    });
+                }
+            } catch(sortError) {
+                 console.log("[Scraper] Rune sort layout failed, falling back to original array", sortError);
+            }
+
+            const bootIdsMap = ['1001', '3006', '3047', '3111', '3158', '3020', '3117', '3009', '3119', '4401'];
+            let parsedBoots = ["3020"]; // Fallback to Sorcerer's Shoes
+            if (build.rec_boots_options && build.rec_boots_options.length > 0) {
+                parsedBoots = build.rec_boots_options.map(b => String(b.id));
+            } else {
+                // Boots are now often baked into core items on U.GG
+                const coreIds = (build.rec_core_items?.ids || []).map(String);
+                const foundBoot = coreIds.find(id => bootIdsMap.includes(id));
+                if (foundBoot) {
+                    parsedBoots = [foundBoot];
+                }
+            }
+            
+            let allRunePages = [];
+            if (Array.isArray(build.rune_sets) && build.rune_sets.length > 0) {
+                const sortedR = [...build.rune_sets].sort((a,b) => (b.matches || 0) - (a.matches || 0));
+                allRunePages = sortedR.slice(0, 5).map(rSet => {
+                    const acts = (rSet.active_perks || []).map(String);
+                    if (acts.length === 6) acts.push(...(rSet.shards || ["5008", "5008", "5001"]).map(String));
+                    // Copy layout sort from the main runes to ensure LCU accepts it if forced
+                    if (runeMap) {
+                         const pStyle = String(rSet.primary_style || "8100");
+                         acts.sort((a, b) => {
+                             const isShardA = a.startsWith('50');
+                             const isShardB = b.startsWith('50');
+                             if (isShardA && !isShardB) return 1;
+                             if (!isShardA && isShardB) return -1;
+                             if (isShardA && isShardB) return 0;
+                             
+                             const pA = runeMap[a] || { tree: '0', row: 99 };
+                             const pB = runeMap[b] || { tree: '0', row: 99 };
+                             
+                             const isPrimA = pA.tree === pStyle;
+                             const isPrimB = pB.tree === pStyle;
+                             
+                             if (isPrimA && !isPrimB) return -1;
+                             if (!isPrimA && isPrimB) return 1;
+                             return pA.row - pB.row;
+                         });
+                    }
+                    return { primary: String(rSet.primary_style || "8100"), secondary: String(rSet.sub_style || "8200"), active: acts };
+                }).filter(r => r.active.length >= 6);
+            }
+            if (allRunePages.length === 0) {
+                allRunePages = [{
+                    primary: String(popRunes?.primary_style || build.rec_runes?.primary_style || "8100"),
+                    secondary: String(popRunes?.sub_style || build.rec_runes?.sub_style || "8200"),
+                    active: activeRunes
+                }];
+            }
+
+            const data = {
+                stats: { 
+                    winRate: (build.win_rate || 50).toFixed(1) + "%", 
+                    pickRate: "Meta", 
+                    tier: build.win_rate > 51.5 ? "S" : (build.win_rate > 49.5 ? "A" : "B")
+                },
+                skillOrder: build.rec_skill_path?.slots || build.rec_skills?.slots || ["Q", "W", "E"],
+                items: {
+                    starting: (build.rec_starting_items?.ids || ["1056", "2003"]).map(String),
+                    core: (build.rec_core_items?.ids || ["3118", "4645"]).map(String).filter(id => !bootIdsMap.includes(id)),
+                    boots: parsedBoots,
+                    situational: (build.item_options_1 || []).slice(0, 4).map(i => String(i.id))
+                },
+                spells: allSpells[0],
+                allSpells: allSpells,
+                runes: allRunePages[0], // Main selected
+                allRunePages: allRunePages // For cycling
+            };
+            
+            if (data.runes.active.length >= 6) {
+                console.log("[Scraper] Successfully extracted fast build data for " + name);
                 this.setCachedData(cacheK, data);
                 return data;
             }
-
-            console.error("[Scraper] LOG extraction failed for " + name);
-            return null;
-        });
+            throw new Error("Runes active array too short");
+        } catch (e) {
+            console.error("[Scraper] Build fetch failed for " + name + ":", e.message);
+            return {
+                stats: { winRate: "50.0%", pickRate: "Meta", tier: "B" },
+                skillOrder: ["Q", "W", "E", "Q", "Q", "R", "Q", "W", "Q", "W", "R", "W", "W", "E", "E", "R", "E", "E"],
+                items: { starting: ["1055", "2003"], core: ["3078", "3053"], boots: ["3006"], situational: ["3153"] },
+                spells: ["4", "12"],
+                runes: { primary: "8100", secondary: "8200", active: ["8112", "8139", "8138", "8106", "8226", "8237", "5008", "5008", "5001"] }
+            };
+        }
     }
-
-
     async getLeagueOfGraphsItems(champ, role = 'jungle') {
         const champClean = champ.toLowerCase().replace(/['\s.&#]/g, '');
         const roleClean = role.toLowerCase();
