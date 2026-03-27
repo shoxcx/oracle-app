@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import TutorialView from './TutorialView';
 
 const CHAMP_ID_TO_NAME = {
   1: "Annie", 2: "Olaf", 3: "Galio", 4: "TwistedFate", 5: "XinZhao", 6: "Urgot", 7: "LeBlanc", 8: "Vladimir", 9: "Fiddlesticks", 10: "Kayle",
@@ -3278,7 +3279,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {activeTab === 'live' && <LiveGameLoadingView panelClass={panelClass} t={t} />}
 
                 {/* Fallback */}
-                {['tutorial', 'training'].includes(activeTab) && (
+                {['training'].includes(activeTab) && (
                   !isPremium ? (
                     <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} />
                   ) : (
@@ -3291,6 +3292,8 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                     </div>
                   )
                 )}
+
+                {activeTab === 'tutorial' && <TutorialView panelClass={panelClass} t={t} />}
 
                 {activeTab === 'settings' && <SettingsView
                   theme={theme} setTheme={setTheme}
@@ -10118,6 +10121,7 @@ function AICoachingPanel({ game, t, onWatch }) {
     const negatives = [];
 
     // DATA PREP
+    const isSupport = p.teamPosition === 'UTILITY' || p.timeline?.role === 'SUPPORT';
     const teamKills = game.participants.filter(pt => pt.teamId === p.teamId).reduce((sum, pt) => sum + (pt.stats?.kills || 0), 0);
     const kp = (stats.kills + stats.assists) / Math.max(1, teamKills);
     const durationMin = game.gameDuration / 60;
@@ -10142,8 +10146,8 @@ function AICoachingPanel({ game, t, onWatch }) {
     else if (kp > 0.65) positives.push(`${getAnalysis('pos_kp', positives.length)} (${Math.round(kp * 100)}%)`);
 
     // 2. FARMING & ECO
-    if (csm > 7.5) positives.push(getAnalysis('pos_farm', positives.length));
-    else if (csm < 5 && ['TOP', 'MIDDLE', 'BOTTOM'].includes(p.timeline?.lane)) negatives.push(getAnalysis('neg_farm', negatives.length));
+    if (csm > 7.5 && !isSupport) positives.push(getAnalysis('pos_farm', positives.length));
+    else if (csm < 5 && ['TOP', 'MIDDLE', 'BOTTOM'].includes(p.timeline?.lane) && !isSupport) negatives.push(getAnalysis('neg_farm', negatives.length));
 
     if (goldDiff < -2000) negatives.push(getAnalysis('neg_gold', negatives.length));
     else if (goldDiff > 2000) positives.push(getAnalysis('pos_gold', positives.length));
@@ -10164,7 +10168,7 @@ function AICoachingPanel({ game, t, onWatch }) {
     const teamDamage = game.participants.filter(pt => pt.teamId === p.teamId).reduce((sum, pt) => sum + (pt.stats?.totalDamageDealtToChampions || 0), 0);
     const dmgShare = stats.totalDamageDealtToChampions / Math.max(1, teamDamage);
     if (dmgShare > 0.3) positives.push(`${getAnalysis('pos_carry', positives.length)} (${Math.round(dmgShare * 100)}%)`);
-    else if (dmgShare < 0.1 && ['TOP', 'MIDDLE', 'BOTTOM'].includes(p.timeline?.lane)) negatives.push(t('neg_damage'));
+    else if (dmgShare < 0.1 && ['TOP', 'MIDDLE', 'BOTTOM'].includes(p.timeline?.lane) && !isSupport) negatives.push(t('neg_damage'));
 
     // Default fillers if empty
     if (positives.length === 0) positives.push(t('pos_default'));
@@ -10199,8 +10203,10 @@ function AICoachingPanel({ game, t, onWatch }) {
     } else {
       if (stats.deaths > 9) candidates.push('verdict_feeder', 'verdict_vuln');
       if (stats.visionScore < 0.3 * durationMin) candidates.push('verdict_blind');
-      if (csm > 8 && (stats.kills + stats.assists) < 5) candidates.push('verdict_afk_farm');
-      if (dmgShare > 0.35 || (stats.kills + stats.assists) > 15) candidates.push('verdict_unlucky_carry', 'verdict_solid_effort');
+      
+      const isSupportVerdict = p.teamPosition === 'UTILITY' || p.timeline?.role === 'SUPPORT';
+      if (csm > 8 && (stats.kills + stats.assists) < 5 && !isSupportVerdict) candidates.push('verdict_afk_farm');
+      if ((dmgShare > 0.35 || (stats.kills + stats.assists) > 15) && !isSupportVerdict) candidates.push('verdict_unlucky_carry', 'verdict_solid_effort');
       if (stats.goldEarned > 16000 && !stats.win) candidates.push('verdict_rich_loser');
 
       // Fallbacks for Loss
@@ -10229,9 +10235,13 @@ function AICoachingPanel({ game, t, onWatch }) {
     };
 
     if (stats.deaths > 6) points.push(getTip('tip_deaths'));
-    if (csm < 6.5) points.push(getTip('tip_csm'));
+    
+    // Supports shouldn't be roasted for not farming minion waves
+    const isSupport = p.teamPosition === 'UTILITY' || p.timeline?.role === 'SUPPORT';
+    if (csm < 6.5 && !isSupport) points.push(getTip('tip_csm'));
+    
     if (stats.visionScore < 0.8 * durationMin) points.push(getTip('tip_vision'));
-    if (stats.damageDealtToObjectives < 2500 && p.timeline?.role !== 'SUPPORT') points.push(getTip('tip_obj'));
+    if (stats.damageDealtToObjectives < 2500 && !isSupport) points.push(getTip('tip_obj'));
 
     // Generics if still short
     if (points.length < 2) {
