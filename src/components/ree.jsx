@@ -16,36 +16,65 @@ const DraggableWidget = ({ id, defaultPosition, children, className }) => {
         return defaultPosition;
     });
 
-    const isDragging = useRef(false);
-    const startPos = useRef({ x: 0, y: 0 });
+    const [scale, setScale] = useState(() => {
+        try {
+            const saved = localStorage.getItem(`oracle_widget_scale_${id}`);
+            if (saved) return parseFloat(saved);
+        } catch (e) { }
+        return 1;
+    });
+
+    const [dragging, setDragging] = useState(false);
+    const [resizing, setResizing] = useState(false);
+    const dragStartOffset = useRef({ x: 0, y: 0 });
+    const resizeStartParams = useRef({ scale: 1, pos: { x: 0, y: 0 } });
 
     const handlePointerDown = (e) => {
-        isDragging.current = true;
-        startPos.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+        if (e.target.closest('.resize-handle')) return;
+        setDragging(true);
+        dragStartOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
         e.currentTarget.setPointerCapture(e.pointerId);
     };
 
     const handlePointerMove = (e) => {
-        if (!isDragging.current) return;
-        setPos({ x: e.clientX - startPos.current.x, y: e.clientY - startPos.current.y });
+        if (dragging) {
+            setPos({ x: e.clientX - dragStartOffset.current.x, y: e.clientY - dragStartOffset.current.y });
+        } else if (resizing) {
+            const deltaX = e.clientX - resizeStartParams.current.pos.x;
+            const deltaY = e.clientY - resizeStartParams.current.pos.y;
+            const factor = 1 + (deltaX + deltaY) / 400;
+            const newScale = Math.max(0.4, Math.min(2.5, resizeStartParams.current.scale * factor));
+            setScale(newScale);
+        }
     };
 
     const handlePointerUp = (e) => {
-        if (!isDragging.current) return;
-        isDragging.current = false;
-        e.currentTarget.releasePointerCapture(e.pointerId);
-        localStorage.setItem(`oracle_widget_pos_${id}`, JSON.stringify(pos));
-        if (window.ipcRenderer) window.ipcRenderer.invoke('window:set-ignore-mouse-events', true, { forward: true });
+        if (dragging) {
+            setDragging(false);
+            e.currentTarget.releasePointerCapture(e.pointerId);
+            localStorage.setItem(`oracle_widget_pos_${id}`, JSON.stringify(pos));
+        } else if (resizing) {
+            setResizing(false);
+            e.currentTarget.releasePointerCapture(e.pointerId);
+            localStorage.setItem(`oracle_widget_scale_${id}`, scale.toString());
+        }
+    };
+
+    const handleResizeDown = (e) => {
+        e.stopPropagation();
+        setResizing(true);
+        resizeStartParams.current = { scale: scale, pos: { x: e.clientX, y: e.clientY } };
+        e.currentTarget.setPointerCapture(e.pointerId);
     };
 
     const handleMouseEnter = () => {
-        if (!isDragging.current && window.ipcRenderer) {
+        if (!dragging && !resizing && window.ipcRenderer) {
             window.ipcRenderer.invoke('window:set-ignore-mouse-events', false);
         }
     };
 
     const handleMouseLeave = () => {
-        if (!isDragging.current && window.ipcRenderer) {
+        if (!dragging && !resizing && window.ipcRenderer) {
             window.ipcRenderer.invoke('window:set-ignore-mouse-events', true, { forward: true });
         }
     };
@@ -53,7 +82,19 @@ const DraggableWidget = ({ id, defaultPosition, children, className }) => {
     return (
         <div
             className={className}
-            style={{ position: 'absolute', left: pos.x, top: pos.y, pointerEvents: 'auto', zIndex: 9999, cursor: isDragging.current ? 'grabbing' : 'grab' }}
+            style={{ 
+                position: 'absolute', 
+                left: pos.x, 
+                top: pos.y, 
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+                pointerEvents: 'auto', 
+                zIndex: 9999, 
+                cursor: dragging ? 'grabbing' : resizing ? 'nwse-resize' : 'grab',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                backgroundColor: 'rgba(255,255,255,0.001)' // Invisible but helps hit testing
+            }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -61,6 +102,13 @@ const DraggableWidget = ({ id, defaultPosition, children, className }) => {
             onMouseLeave={handleMouseLeave}
         >
             {children}
+            <div 
+                className="resize-handle absolute bottom-0 right-0 w-8 h-8 cursor-se-resize flex items-center justify-center group z-[10000]"
+                onPointerDown={handleResizeDown}
+                style={{ pointerEvents: 'auto' }}
+            >
+                <div className="w-3 h-3 bg-white/40 group-hover:bg-amber-400 rounded-full transition-colors shadow-lg shadow-black/50 border border-white/20" />
+            </div>
         </div>
     );
 };
@@ -457,8 +505,8 @@ export function InGameHelper({ ddragonVersion }) {
                     // --- DRAGONS ET BARONS DYNAMIQUES (Respawns inclus) ---
                     let drakeSpawnTime = 300; // 5:00 par défaut (Ligne pour modifier le timer)
                     let baronSpawnTime = 1200; // 20:00 par défaut (Ligne pour modifier le timer)
-                    let heraldSpawnTime = 840; // 14:00c par défaut (Ligne pour modifier le timer)
-                    let grubsSpawnTime = 360; // 5:00 par défaut pour les larves (Ligne pour modifier le timer)
+                    let heraldSpawnTime = 885; // 14:45 par défaut (Ligne pour modifier le timer)
+                    let grubsSpawnTime = 465; // 7:45 par défaut pour les larves (Ligne pour modifier le timer)
 
                     if (data.events && data.events.Events) {
                         const dragons = data.events.Events.filter(e => e.EventName === 'DragonKill');

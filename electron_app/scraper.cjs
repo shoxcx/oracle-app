@@ -1,4 +1,6 @@
 const { BrowserWindow } = require('electron');
+const axios = require('axios');
+const cheerio = require('cheerio');
 
 class Scraper {
     constructor() {
@@ -535,8 +537,11 @@ class Scraper {
             const parts = gameName.split('#');
             gameName = parts[0].trim();
             tagLine = parts[1].trim();
-        } else if (region) {
-            // Default to region tag if missing, most players who just type names use their region as tag since the Riot ID change
+            if (tagLine.toLowerCase() === 'undefined') tagLine = '';
+        }
+        
+        if (!tagLine && region) {
+            // Default to region tag if missing
             tagLine = region;
         }
 
@@ -552,7 +557,14 @@ class Scraper {
         try {
             this.workerWindow = new BrowserWindow({
                 show: false,
-                webPreferences: { offscreen: false, contextIsolation: true, webSecurity: false, images: true, nodeIntegration: false }
+                webPreferences: { 
+                    offscreen: false, 
+                    contextIsolation: true, 
+                    webSecurity: false, 
+                    images: true, 
+                    nodeIntegration: false,
+                    sandbox: false
+                }
             });
 
             // Block common ads and trackers
@@ -590,7 +602,8 @@ class Scraper {
                     const result = await Promise.race([
                         (async () => {
                             await win.loadURL(url, {
-                                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+                                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                                httpReferrer: 'https://www.leagueofgraphs.com/'
                             });
                             return await callback(win);
                         })(),
@@ -1483,7 +1496,7 @@ class Scraper {
             "Kindred": "Si elle ulti, restez dedans pour ne pas mourir, puis burstez-la à la fin. Chassez ses marques dans la jungle.",
             "Kled": "Quand il perd Skaarl (sa monture), foncez ! Il est lent et faible. Ne le laissez pas remonter.",
             "Kogmaw": "Il a besoin de protection. Tuez-le en premier. Son passif explose quand il meurt : courez !",
-            "Leblanc": "Elle est très mobile. Poussez la vague sous sa tour, elle a du mal à farmer. Attention à son clone.",
+            "Leblanc": "Elle est très mobile. Poussez la vague sous sa tour, elle a du mal à farmer. Attention au clone.",
             "Lee Sin": "Restez derrière les sbires pour bloquer le Q. Si il vous touche, préparez-vous à esquiver ou flasher son Ulti.",
             "Leona": "Si elle engage votre ADC, focussez L'ADC ENNEMI, pas Leona (elle est trop tanky). Purifiez son ulti si nécessaire.",
             "Lillia": "Si elle vous touche avec une boule, elle court vite. Ne dormez pas : QSS le sommeil de son R.",
@@ -2287,75 +2300,107 @@ class Scraper {
             region = parts[2] || region;
         }
         const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
-        const { slug } = this.parseName(name);
-        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug}`;
+        const { slug } = this.parseName(name, region);
+        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug.replace(/%20/g, '+')}`;
 
-        console.log(`[Scraper] Fetching RANK HISTORY for ${name} from ${url}`);
+        const cacheKey = `rank_history_${rKey}_${slug}`;
+        const cached = this.getCachedData(cacheKey, 3600000); // 1 hour cache
+        if (cached) return cached;
 
-        return this.runBrowserTask(url, async (win) => {
-            try {
-                // Wait for the script tag containing the data or the body
-                await new Promise(r => setTimeout(r, 2000)); // LOG takes a moment to inject scripts
+        console.log(`[Scraper] Fast-fetching RANK HISTORY for ${name} from ${url}`);
 
-                const history = await win.webContents.executeJavaScript(`
+        try {
+            const response = await axios.get(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Referer': 'https://www.leagueofgraphs.com/',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+                timeout: 5000
+            });
+
+            const html = response.data;
+            const $ = cheerio.load(html);
+            const scripts = $('script').get();
+            const targetScript = scripts.find(s => $(s).html().includes('graphData'));
+            
+            if (!targetScript) return [];
+
+            const code = $(targetScript).html();
+            const extract = (key) => {
+                const regex = new RegExp(key + '\\s*=\\s*(\\[.*?\\]|{.*?});', 's');
+                const match = code.match(regex);
+                if (match) {
+                    try { return JSON.parse(match[1].trim()); }
+                    catch(e) { try { return eval(match[1]); } catch(e2) { return null; } }
+                }
+                return null;
+            };
+
+            const graphData = extract('graphData');
+            const lpData = extract('lpData');
+            const rankData = extract('rankData');
+
+            if (!graphData) return [];
+
+            const history = graphData.map(point => {
+                const ts = point[0];
+                const lp = lpData ? lpData[ts] : null;
+                const rankInfo = rankData ? rankData[ts] : null;
+
+                if (lp === null || lp === undefined || (lp === 0 && (!rankInfo || rankInfo.tierRankString === "Unknown"))) {
+                    return null;
+                }
+
+                return {
+                    timestamp: ts,
+                    lp: lp,
+                    rankStr: rankInfo ? rankInfo.tierRankString : "Unknown"
+                };
+            }).filter(p => p !== null && p.timestamp > 0 && p.rankStr !== "Unknown");
+
+            this.setCachedData(cacheKey, history);
+            return history;
+        } catch (e) {
+            console.error("[Scraper] Rank history fast-fetch failed:", e.message);
+            // Fallback to browser if axios fails (e.g. Cloudflare)
+            return this.runBrowserTask(url, async (win) => {
+                await new Promise(r => setTimeout(r, 2000));
+                return win.webContents.executeJavaScript(`
                     (() => {
                         try {
                             const scripts = Array.from(document.querySelectorAll('script'));
                             const target = scripts.find(s => s.innerText.includes('graphData'));
                             if (!target) return [];
-
                             const code = target.innerText;
-                            
                             const extract = (key) => {
-                                // Match key = [...] or key = {...}
                                 const regex = new RegExp(key + '\\\\s*=\\\\s*(\\\\[.*?\\\\]|{.*?});', 's');
                                 const match = code.match(regex);
                                 if (match) {
-                                    try { 
-                                        let jsonStr = match[1].trim();
-                                        // Sometimes it's single quotes or unquoted keys, but usually LOG is standard JSON-like
-                                        return JSON.parse(jsonStr); 
-                                    } catch(e) { 
-                                        // Fallback for JS object literals that aren't strict JSON
-                                        try { return eval(match[1]); } catch(e2) { return null; }
-                                    }
+                                    try { return JSON.parse(match[1].trim()); }
+                                    catch(e) { try { return eval(match[1]); } catch(e2) { return null; } }
                                 }
                                 return null;
                             };
-
-                            const graphData = extract('graphData'); 
-                            const lpData = extract('lpData');       
-                            const rankData = extract('rankData');   
-
+                            const graphData = extract('graphData');
+                            const lpData = extract('lpData');
+                            const rankData = extract('rankData');
                             if (!graphData) return [];
-
-                            // Filter and format
                             return graphData.map(point => {
                                 const ts = point[0];
-                                const lp = lpData ? lpData[ts] : 0;
+                                const lp = lpData ? lpData[ts] : null;
                                 const rankInfo = rankData ? rankData[ts] : null;
-                                return {
-                                    timestamp: ts,
-                                    lp: lp,
-                                    rankStr: rankInfo ? rankInfo.tierRankString : "Unknown"
-                                };
-                            }).filter(p => p.timestamp > 0);
-                        } catch(e) { return { error: e.toString() }; }
+                                if (lp === null || lp === undefined || (lp === 0 && (!rankInfo || rankInfo.tierRankString === "Unknown"))) return null;
+                                return { timestamp: ts, lp, rankStr: rankInfo ? rankInfo.tierRankString : "Unknown" };
+                            }).filter(p => p !== null && p.timestamp > 0 && p.rankStr !== "Unknown");
+                        } catch(e) { return []; }
                     })()
                 `);
-
-                if (history && history.error) {
-                    console.error("[Scraper] Rank history JS error:", history.error);
-                    return [];
-                }
-
-                console.log(`[Scraper] Retrieved ${history ? history.length : 0} history points for ${name}`);
-                return history || [];
-            } catch (e) {
-                console.error("[Scraper] Rank history task failed:", e);
-                return [];
-            }
-        });
+            });
+        }
     }
 
     async getRecentLPGains(puuid_or_name, region = 'EUW') {
@@ -2367,58 +2412,108 @@ class Scraper {
             region = parts[2] || region;
         }
         const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
-        const { slug } = this.parseName(name);
+        const { slug } = this.parseName(name, region);
 
         const cacheKey = `lp_gains_${rKey}_${slug}`;
         const cached = this.getCachedData(cacheKey, 600000); // 10 mins cache
         if (cached) return cached;
 
-        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug}`;
-        console.log(`[Scraper] Fetching recent LP gains for ${name} from ${url}`);
+        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug.replace(/%20/g, '+')}`;
+        console.log(`[Scraper] Fast-fetching recent LP gains for ${name} from ${url}`);
 
-        const result = await this.runBrowserTask(url, async (win) => {
-            try {
-                // League of Graphs often shows a cookie consent banner that we might need to click or just ignore
-                await new Promise(r => setTimeout(r, 2000));
+        try {
+            const response = await axios.get(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Referer': 'https://www.leagueofgraphs.com/',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+                timeout: 5000
+            });
 
-                const lpData = await win.webContents.executeJavaScript(`
-                    (() => {
-                        const results = [];
-                        const rows = document.querySelectorAll('.recentGamesTable tbody tr');
-                        rows.forEach(row => {
-                            const killsEl = row.querySelector('.kills');
-                            const deathsEl = row.querySelector('.deaths');
-                            const assistsEl = row.querySelector('.assists');
-                            let kda = null;
-                            if (killsEl && deathsEl && assistsEl) {
-                                kda = \`\${killsEl.innerText.trim()} / \${deathsEl.innerText.trim()} / \${assistsEl.innerText.trim()}\`;
-                            }
+            const html = response.data;
+            const $ = cheerio.load(html);
+            const results = [];
+            
+            $('.recentGamesTable tbody tr').each((i, row) => {
+                const $row = $(row);
+                let lpStr = null;
+                const kills = $row.find('.kills').text().trim();
+                const deaths = $row.find('.deaths').text().trim();
+                const assists = $row.find('.assists').text().trim();
+                const mode = $row.find('.gameMode').first().text().trim();
+                
+                // Specifically look for Soloqueue/Ranked modes to avoid normal games
+                const isRanked = /solo|flex|ranked|class/i.test(mode);
+                
+                $row.find('.lpChange').each((j, el) => {
+                    const text = $(el).text().trim();
+                    const match = text.match(/([+-]?\s*\d+\s*LP)/i);
+                    if (match) {
+                        lpStr = match[1].replace(/\s+/g, ' ');
+                    }
+                });
 
-                            const lpSpan = Array.from(row.querySelectorAll('span, div')).find(el => el.innerText && el.innerText.includes('LP'));
-                            let lpStr = null;
-                            if (lpSpan) {
-                                const match = lpSpan.innerText.match(/(-?\\+?\\d+\\s+LP)/i);
-                                if (match) lpStr = match[1];
-                            }
+                if (lpStr && isRanked) {
+                    const kills = $row.find('.kills').text().trim() || "0";
+                    const deaths = $row.find('.deaths').text().trim() || "0";
+                    const assists = $row.find('.assists').text().trim() || "0";
+                    results.push({ kda: `${kills} / ${deaths} / ${assists}`, lpStr, mode });
+                }
+            });
 
-                            if (kda && lpStr) {
-                                results.push({ kda, lpStr });
-                            }
-                        });
-                        return results;
-                    })()
-                `);
-
-                return lpData || [];
-            } catch (e) {
-                console.error("[Scraper] Recent LP Task failed:", e);
-                return [];
+            console.log(`[Scraper] Found ${results.length} ranked games for ${name}`);
+            
+            // If we found too few games via Fast-fetch (Axios), it might be due to 
+            // partial HTML or lazy loading. Fallback to Browser Task for more depth.
+            if (results.length < 15) {
+                console.log(`[Scraper] Too few games (${results.length}), falling back to deep browser fetch...`);
+                throw new Error("Insufficient results for fast-fetch");
             }
-        });
 
-        this.setCachedData(cacheKey, result || []); // Always cache even if empty
-        return result || [];
-        return result || [];
+            this.setCachedData(cacheKey, results);
+            return results;
+        } catch (e) {
+            console.log(`[Scraper] LP gains deep-fetch triggered: ${e.message}`);
+            return this.runBrowserTask(url, async (win) => {
+                try {
+                    // Wait for the table to be visible/loaded
+                    await new Promise(r => setTimeout(r, 2500));
+                    return await win.webContents.executeJavaScript(`
+                        (() => {
+                            const results = [];
+                            const rows = document.querySelectorAll('.recentGamesTable tbody tr');
+                            rows.forEach(row => {
+                                const modeEl = row.querySelector('.gameMode');
+                                const mode = modeEl ? modeEl.innerText.trim() : "";
+                                if (!/solo|flex|ranked|class/i.test(mode)) return;
+
+                                const lpEl = row.querySelector('.lpChange');
+                                let lpStr = null;
+                                if (lpEl) {
+                                    const match = lpEl.innerText.match(/([+-]?\\s*\\d+\\s*LP)/i);
+                                    if (match) lpStr = match[1].replace(/\\s+/g, ' ');
+                                }
+
+                                if (lpStr) {
+                                    const k = row.querySelector('.kills')?.innerText.trim() || "0";
+                                    const d = row.querySelector('.deaths')?.innerText.trim() || "0";
+                                    const a = row.querySelector('.assists')?.innerText.trim() || "0";
+                                    results.push({ kda: \`\${k} / \${d} / \${a}\`, lpStr, mode });
+                                }
+                            });
+                            return results;
+                        })()
+                    `);
+                } catch (err) {
+                    console.error("[Scraper] LP fallback failed:", err);
+                    return [];
+                }
+            });
+        }
     }
 
     async getEsportsSchedule() {

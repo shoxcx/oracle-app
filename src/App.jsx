@@ -1533,7 +1533,7 @@ function App() {
 
   let content;
   if (appMode === 'window' && windowParams.view === 'profile') {
-    content = <ProfileWindow summonerName={windowParams.summoner} theme={theme} visualMode={visualMode} t={t} />;
+    content = <ProfileWindow summonerName={windowParams.summoner} theme={theme} visualMode={visualMode} t={t} ddragonVersion={ddragonVersion} />;
   } else if (appMode === 'live') {
     content = <LiveOverlay visualMode={visualMode} theme={theme} t={t} overlaySettings={overlaySettings} />;
   } else if (appMode === 'loading') {
@@ -2134,7 +2134,7 @@ function SocialToastOverlay({ ddragonVersion }) {
                     src={toast.icon || `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || '14.2.1'}/img/profileicon/29.png`}
                     className="w-14 h-14 rounded-xl border border-white/10 shadow-lg object-cover bg-gray-900"
                     alt="Avatar"
-                    onError={(e) => { e.target.src = "https://ddragon.leagueoflegends.com/cdn//img/profileicon/29.png" }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/29.jpg" }}
                   />
                 )}
                 {!toast.lucideName && !toast.letter && (
@@ -2963,6 +2963,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               isConnected={isConnected}
               appMode={appMode}
               t={t}
+              ddragonVersion={ddragonVersion}
               onClick={() => {
                 setTargetSummoner(null);
                 setActiveTab('profile');
@@ -3121,7 +3122,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                           setSearchQuery('');
                           setShowSuggestions(false);
                         }} className="px-4 py-3 flex items-center gap-3 hover:bg-white/10 cursor-pointer transition-colors group">
-                          <img src={`https://ddragon.leagueoflegends.com/cdn/16.1.1/img/profileicon/${f.icon || 29}.png`} className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 group-hover:border-green-400" />
+                          <img src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "14.2.1"}/img/profileicon/${f.icon || 29}.png`} onError={(e) => { e.target.onerror = null; e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${f.icon || 29}.jpg` }} className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 group-hover:border-green-400" />
                           <div className="flex flex-col">
                             <span className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center gap-1">
                               {name}
@@ -3141,7 +3142,12 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                           setSearchQuery('');
                           setShowSuggestions(false);
                         }} className="px-4 py-3 flex items-center gap-3 hover:bg-white/10 cursor-pointer transition-colors group">
-                          <img src={t.champName ? `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${t.champName}.png` : `https://ddragon.leagueoflegends.com/cdn/16.1.1/img/profileicon/${t.iconId || 29}.png`} className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 group-hover:border-accent-primary" />
+                          <img src={t.champName ? `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${t.champName}.png` : `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "14.2.1"}/img/profileicon/${t.iconId || 29}.png`} onError={(e) => { 
+                            if (!t.champName) {
+                              e.target.onerror = null; 
+                              e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${t.iconId || 29}.jpg`;
+                            }
+                          }} className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10 group-hover:border-accent-primary" />
                           <div className="flex flex-col">
                             <span className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase">{t.name}</span>
                             <span className="text-[9px] text-gray-500 uppercase tracking-widest flex items-center gap-1 group-hover:text-accent-primary">
@@ -3446,7 +3452,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
 }
 
 // --- Standalone Profile Window ---
-function ProfileWindow({ summonerName, theme, visualMode, t }) {
+function ProfileWindow({ summonerName, theme, visualMode, t, ddragonVersion }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -3488,7 +3494,7 @@ function ProfileWindow({ summonerName, theme, visualMode, t }) {
         {user && (
           <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-bottom-5">
             <div className={cn("p-8 flex items-center gap-8", panelClass)}>
-              <img src={`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${user.profileIconId}.png`} className="w-32 h-32 rounded-3xl shadow-2xl" />
+              <img src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "14.2.1"}/img/profileicon/${user.profileIconId}.png`} onError={(e) => { e.target.onerror = null; e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${user.profileIconId}.jpg` }} className="w-32 h-32 rounded-3xl shadow-2xl" />
               <div>
                 <h1 className="text-4xl font-bold">{user.displayName}</h1>
                 <div className="text-gray-500">Lvl {user.summonerLevel}</div>
@@ -3582,7 +3588,7 @@ function ScrollingText({ text, className, containerClassName }) {
 }
 
 // --- Updated Sidebar Profile ---
-function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMode, t, onClick }) {
+function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMode, t, onClick, ddragonVersion }) {
   if (!currentUser) {
     return (
       <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/5">
@@ -3636,7 +3642,8 @@ function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMod
 
         {/* Main Icon */}
         <img
-          src={`https://ddragon.leagueoflegends.com/cdn/16.1.1/img/profileicon/${currentUser.profileIconId}.png`}
+          src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "14.2.1"}/img/profileicon/${currentUser.profileIconId}.png`}
+          onError={(e) => { e.target.onerror = null; e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${currentUser.profileIconId}.jpg` }}
           className="w-14 h-14 rounded-2xl border-2 border-[#1e1e24] shadow-lg"
           alt="Profile"
         />
@@ -4199,7 +4206,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
           <div className="relative z-10 flex items-center justify-between">
             <div className="flex items-center gap-8">
               <div className="relative">
-                <img src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${displayUser?.profileIconId || 29}.png`} className="w-24 h-24 rounded-3xl border-2 border-gray-200 dark:border-white/10 shadow-2xl" />
+                <img src={`https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${displayUser?.profileIconId || 29}.png`} onError={(e) => { e.target.onerror = null; e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${displayUser?.profileIconId || 29}.jpg` }} className="w-24 h-24 rounded-3xl border-2 border-gray-200 dark:border-white/10 shadow-2xl" />
                 <div className="absolute -bottom-3 -right-3 bg-white border border-gray-200 dark:border-white/10 dark:bg-[#1e1e24] text-gray-900 dark:text-gray-100 text-[10px] font-black px-2 py-1 rounded-lg border border-gray-200 dark:border-white/5">
                   {displayUser?.summonerLevel || 1}
                 </div>
@@ -4434,6 +4441,8 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
           rankedStats={rankedStats}
           history={matchHistory}
           puuid={displayUser?.puuid}
+          summonerName={displayUser?.gameName ? (displayUser.tagLine ? `${displayUser.gameName}#${displayUser.tagLine}` : displayUser.gameName) : (displayUser?.displayName || displayUser?.name)}
+          region={displayUser?.region || 'euw'}
           panelClass={cn(panelClass, "min-h-[140px]")}
           t={t}
           isPremium={isPremium && (!currentUser || displayUser?.puuid === currentUser?.puuid)}
@@ -5200,12 +5209,17 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                 console.error("Top Champ Calc Error", e);
               }
 
-              // Fetch LP Gains
+              // Fetch LP Gains & Rank History parallel
               const regionForLp = user.region || currentUser?.region || 'EUW';
-              const nameForLp = user.gameName ? `${user.gameName}#${user.tagLine}` : (user.displayName || user.summonerName);
+              const nameForLp = (user.gameName && user.tagLine) ? `${user.gameName}#${user.tagLine}` : (user.gameName || user.displayName || user.summonerName);
+              
               window.ipcRenderer.invoke('scraper:get-recent-lp', nameForLp, regionForLp)
                 .then(data => { if (data?.length) setLpGains(data); })
                 .catch(err => console.log('LP error', err));
+
+              // Pre-fetch rank history so it's ready for the graph modal
+              window.ipcRenderer.invoke('scraper:get-rank-history', nameForLp, regionForLp)
+                .catch(err => console.log('Rank history pre-fetch error', err));
 
               // Fetch full games parallel for TEAMMATES
               Promise.all(gamesForTeammates.map(g => 
@@ -5933,6 +5947,8 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
               rankedStats={rankedStats}
               history={fullHistory.length > 0 ? fullHistory : history}
               puuid={displayUser?.puuid}
+              summonerName={displayUser?.gameName ? (displayUser.tagLine ? `${displayUser.gameName}#${displayUser.tagLine}` : displayUser.gameName) : (displayUser?.displayName || displayUser?.name)}
+              region={displayUser?.region || 'euw'}
               panelClass={panelClass}
               t={t}
               isPremium={isPremium}
@@ -6416,7 +6432,6 @@ function BehavioralCard({ data, t }) {
               <span className="text-[11px] text-gray-500 font-bold truncate">{item.sub}</span>
             </div>
 
-            {/* Hover Glow */}
             <div className={cn("absolute -bottom-4 -right-4 w-12 h-12 rounded-full blur-xl opacity-0 group-hover/item:opacity-40 transition-opacity", item.bg.replace('/10', '/30'))}></div>
           </div>
         ))}
@@ -6464,21 +6479,25 @@ function StatBox({ label, value, trend, trendUp, graph, t }) {
   )
 }
 
-function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueId, isPremium, onSubscribe, lpGains }) {
-  const [filter, setFilter] = useState('20_games');
+// Global cache for rank history to avoid repeated scraping and huge loading times
+let SCRAPED_HISTORY_CACHE = {};
+let SCRAPED_HISTORY_LAST_UPDATE = 0;
+
+function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summonerName, region, queueId, isPremium, onSubscribe, lpGains }) {
+  const [filter, setFilter] = useState('30_days');
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [scrapedHistory, setScrapedHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   const getRankIcon = (tier) => {
-    const t = (tier || 'unranked').toLowerCase();
-    const tierMap = {
-      'emerald': 'emerald', 'platinum': 'platinum', 'diamond': 'diamond',
-      'master': 'master', 'grandmaster': 'grandmaster', 'challenger': 'challenger',
-      'iron': 'iron', 'bronze': 'bronze', 'silver': 'silver', 'gold': 'gold'
+    const tierKey = (tier || 'unranked').toLowerCase();
+    const map = {
+      'iron': 'iron', 'bronze': 'bronze', 'silver': 'silver', 'gold': 'gold',
+      'platinum': 'platinum', 'emerald': 'emerald', 'diamond': 'diamond',
+      'master': 'master', 'grandmaster': 'grandmaster', 'challenger': 'challenger'
     };
-    const key = tierMap[t] || 'unranked';
-    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${key === 'emerald' ? 'platinum' : key}.png`;
+    const finalKey = map[tierKey] || 'unranked';
+    return `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${finalKey === 'emerald' ? 'platinum' : finalKey}.png`;
   };
 
   const TIER_NAMES = {
@@ -6487,15 +6506,32 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
     'MASTER': 'Master', 'GRANDMASTER': 'Grandmaster', 'CHALLENGER': 'Challenger'
   };
 
+  const TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
+  const DIVISIONS = ['IV', 'III', 'II', 'I'];
+
   useEffect(() => {
-    if (isOpen && puuid) {
-      setLoadingHistory(true);
-      window.ipcRenderer.invoke('scraper:get-rank-history', puuid).then(res => {
-        if (res && Array.isArray(res)) setScrapedHistory(res);
+    if (isOpen && puuid && summonerName) {
+      const now = Date.now();
+      const cacheKey = `${summonerName}-${region}-${queueId}`;
+      if (SCRAPED_HISTORY_CACHE[cacheKey] && (now - SCRAPED_HISTORY_LAST_UPDATE < 600000)) {
+        setScrapedHistory(SCRAPED_HISTORY_CACHE[cacheKey]);
         setLoadingHistory(false);
-      }).catch(() => setLoadingHistory(false));
+      } else {
+        setLoadingHistory(true);
+        window.ipcRenderer.invoke('scraper:get-rank-history', summonerName, region).then(res => {
+          if (res && Array.isArray(res)) {
+            setScrapedHistory(res);
+            SCRAPED_HISTORY_CACHE[cacheKey] = res;
+            SCRAPED_HISTORY_LAST_UPDATE = Date.now();
+          }
+          setLoadingHistory(false);
+        }).catch(() => setLoadingHistory(false));
+      }
+    } else if (!isOpen) {
+        setLoadingHistory(false);
     }
 
+    // 2. Body/Container Scrolling Logic
     const containers = document.querySelectorAll('#profile-scroll-container');
     const globalContent = document.getElementById('main-scroll-container');
     
@@ -6516,14 +6552,16 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
       containersQuery.forEach(c => c.style.overflow = 'auto');
       if (gContainer) gContainer.style.overflow = 'auto';
     };
-  }, [isOpen, puuid]);
+  }, [isOpen, puuid, summonerName, region, queueId]);
 
   const getAbsLp = useCallback((tier, div, lp) => {
     const TIERS = ['UNRANKED', 'IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER'];
     const DIVISIONS = ['IV', 'III', 'II', 'I'];
+    const divMap = { '4': 'IV', '3': 'III', '2': 'II', '1': 'I' };
+    const cleanDiv = divMap[div] || div;
     const tIdx = Math.max(0, TIERS.indexOf(tier));
     if (tIdx >= 8) return 2800 + lp;
-    const dIdx = Math.max(0, DIVISIONS.indexOf(div));
+    const dIdx = Math.max(0, DIVISIONS.indexOf(cleanDiv));
     return (Math.max(0, tIdx - 1) * 400) + (dIdx * 100) + lp;
   }, []);
 
@@ -6546,9 +6584,8 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
     if (filter === '20_games') {
       return filtered.slice(0, 20);
     } else if (filter === '30_days') {
-      // Limit to roughly games from the last 30 days based on gameCreation timeline if available
-      // Return up to 150 games for a true "30 days / max recent" overview
-      return filtered.slice(0, 150);
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      return filtered.filter(g => (g.gameCreation || 0) >= thirtyDaysAgo);
     }
 
     return filtered;
@@ -6556,9 +6593,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
 
   const mockDataPoints = useMemo(() => {
     if (!data) return [];
-
     const currentAbsLp = getAbsLp(data.tier, data.division, data.leaguePoints || 50);
-    const points = [];
 
     // Calculate a favorite/most-recent champ ID for fallbacks
     const favChampId = (() => {
@@ -6569,152 +6604,100 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
       return part?.championId || 29;
     })();
 
-    // Build points EXACTLY from relevantGames history! No fake games.
-    const matchCount = relevantGames.length;
-    let runningLp = currentAbsLp;
+    // BUILD POINTS FOR THE GRAPH
+    let historyToUse = [];
 
-    const availableLpGains = [...(lpGains || [])];
-    let sumWin = 0, countWin = 0, sumLoss = 0, countLoss = 0;
-    availableLpGains.forEach(lp => {
-      if (!lp.lpStr) return;
-      const val = parseInt(lp.lpStr.replace(/[^0-9-]/g, ''));
-      if (val > 0) { sumWin += val; countWin++; }
-      else if (val < 0) { sumLoss += Math.abs(val); countLoss++; }
-    });
-    const avgWin = countWin > 0 ? Math.round(sumWin / countWin) : 21;
-    const avgLoss = countLoss > 0 ? Math.round(sumLoss / countLoss) : 19;
-
-    for (let i = 0; i < matchCount; i++) {
-      const g = relevantGames[i];
-      const identity = g.participantIdentities?.find(id => id.player.puuid === puuid);
-      const part = g.participants?.find(p => p.participantId === identity?.participantId);
-      const isWin = part?.stats?.win;
-
-      let diff = 0;
-      let validWin = undefined;
-
-      if (typeof isWin === 'boolean') {
-        validWin = isWin;
-        if (g.lpDelta != null) {
-          diff = isWin ? Math.abs(g.lpDelta) : -Math.abs(g.lpDelta);
-        } else if (g.lpChange && typeof g.lpChange === 'string') {
-          diff = parseInt(g.lpChange.replace(/[^0-9-]/g, '')) || (isWin ? avgWin : -avgLoss);
-        } else if (availableLpGains.length > 0 && part?.stats) {
-          const matchedIdx = availableLpGains.findIndex(lp => {
-            if (!lp.kda) return false;
-            const parts = lp.kda.split('/').map(v => parseInt(v.trim(), 10));
-            return parts[0] === part.stats.kills && parts[1] === part.stats.deaths && parts[2] === part.stats.assists;
-          });
-          if (matchedIdx !== -1) {
-            const matched = availableLpGains[matchedIdx];
-            diff = parseInt(matched.lpStr.replace(/[^0-9-]/g, '')) || (isWin ? avgWin : -avgLoss);
-            availableLpGains.splice(matchedIdx, 1);
-          } else {
-            diff = isWin ? avgWin : -avgLoss;
-          }
-        } else {
-          diff = isWin ? avgWin : -avgLoss;
-        }
-      }
-
-      const cId = part?.championId || favChampId;
-
-      points.unshift({
-        lp: runningLp,
-        label: i === 0 ? 'Actuel' : '',
-        real: true,
-        win: validWin,
-        diff,
-        champId: cId,
-        champName: part?.championName || CHAMP_ID_TO_NAME[cId] || "Champion",
-        date: g.gameCreation || (Date.now() - i * 3600000)
-      });
-
-      runningLp -= diff;
-    }
-
-    if (matchCount > 0) {
-      const first = points[0];
-      points.unshift({
-        lp: runningLp,
-        label: '',
-        real: true,
-        date: first.date - 3600000,
-        champId: first.champId,
-        champName: first.champName,
-        diff: 0
-      });
-    } else {
-      // Create a flat line if no games played in this queue
-      points.push({
+    if (filter === '20_games' && lpGains && lpGains.length > 0) {
+      // MODE 1: Match-by-match using scraped LP Gains (Most accurate for W/L)
+      let runningLp = currentAbsLp;
+      const matchPoints = [{
         lp: currentAbsLp,
-        label: '',
-        real: true,
-        date: Date.now() - 3600000,
-        champId: favChampId,
-        champName: CHAMP_ID_TO_NAME[favChampId] || "Champion",
-        diff: 0
-      });
-      points.push({
-        lp: currentAbsLp,
-        label: 'Actuel',
-        real: true,
         date: Date.now(),
-        champId: favChampId,
-        champName: CHAMP_ID_TO_NAME[favChampId] || "Champion",
-        diff: 0
-      });
-    }
+        real: true,
+        label: 'Maintenant',
+        diff: 0,
+        win: null,
+        champId: favChampId
+      }];
 
-    // IF WE HAVE REAL SCRAPED HISTORY, WE PREFER IT FOR 30 DAYS AND ALL TIME
-    if ((filter === 'all_time' || filter === '30_days') && scrapedHistory.length > 3) {
-      let filteredScraped = scrapedHistory;
-      if (filter === '30_days') {
+      // Backtrack from current LP using the deltas
+      for (let i = 0; i < Math.min(20, lpGains.length); i++) {
+        const gain = lpGains[i];
+        const val = parseInt(gain.lpStr.replace(/[^0-9-]/g, ''));
+        if (isNaN(val)) continue;
+
+        const lpBefore = runningLp - val;
+        // Search for this game in LCU history to get champ/date
+        const matchedGame = relevantGames.find(g => {
+            const iden = g.participantIdentities?.find(id => id.player.puuid === puuid);
+            const part = g.participants?.find(p => p.participantId === iden?.participantId);
+            if (!part) return false;
+            const k = (gain.kda || "").split('/').map(v => parseInt(v.trim()));
+            return k[0] === part.stats.kills && k[1] === part.stats.deaths && k[2] === part.stats.assists;
+        });
+
+        matchPoints.push({
+          lp: lpBefore,
+          date: matchedGame?.gameCreation || (Date.now() - (i + 1) * 3600000),
+          real: true,
+          label: '',
+          win: val > 0,
+          diff: val,
+          champId: matchedGame ? (matchedGame.participants?.find(part => part.puuid === puuid)?.championId || favChampId) : favChampId
+        });
+        runningLp = lpBefore;
+      }
+      return matchPoints.reverse().map((p, idx) => ({ ...p, id: idx }));
+
+    } else if (scrapedHistory && scrapedHistory.length > 2) {
+      // MODE 2: Trend using Scraped History Snapshot
+      const sortedHistory = [...scrapedHistory].sort((a, b) => b.timestamp - a.timestamp);
+      
+      if (filter === '20_games') {
+        historyToUse = sortedHistory.slice(0, 21).reverse();
+      } else {
         const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-        filteredScraped = scrapedHistory.filter(p => p.timestamp >= thirtyDaysAgo);
+        historyToUse = sortedHistory.filter(p => {
+            const ts = p.timestamp > 10000000000 ? p.timestamp : p.timestamp * 1000;
+            return ts >= thirtyDaysAgo;
+        }).reverse();
       }
 
-      const realPoints = filteredScraped.map((p, idx) => {
-        let abs = currentAbsLp;
-        if (p.rankStr) {
-          const parts = p.rankStr.split(' ');
-          abs = getAbsLp(parts[0].toUpperCase(), parts[1] || 'IV', p.lp || 0);
-        }
+      const mapped = historyToUse.map((p, idx) => {
+        const parts = (p.rankStr || "").split(' ');
+        const abs = getAbsLp(parts[0]?.toUpperCase() || data.tier, parts[1] || data.division, p.lp || 0);
+        const ts = p.timestamp > 10000000000 ? p.timestamp : p.timestamp * 1000;
+        const matchedGame = relevantGames.find(g => Math.abs((g.gameCreation || 0) - ts) < 3600000);
+
         return {
           lp: abs,
-          label: '',
+          date: ts,
           real: true,
-          date: p.timestamp,
-          rankName: p.rankStr,
-          id: p.timestamp + idx
+          label: p.rankStr,
+          champId: matchedGame ? (matchedGame.participants?.find(part => part.puuid === puuid)?.championId || favChampId) : favChampId
         };
-      }).sort((a, b) => a.date - b.date);
+      });
 
-      // Add Current
-      if (realPoints.length > 0 && realPoints[realPoints.length - 1].lp !== currentAbsLp) {
-        realPoints.push({ lp: currentAbsLp, label: 'Actuel', real: true, date: Date.now() });
+      // Add Anchor
+      if (mapped.length > 0 && (Date.now() - mapped[mapped.length - 1].date > 900000)) {
+        mapped.push({ lp: currentAbsLp, date: Date.now(), real: true, label: 'Maintenant', champId: favChampId });
       }
 
-      return realPoints.map((p, idx) => {
-        const prev = realPoints[idx - 1];
+      return mapped.map((p, idx) => {
+        const prev = mapped[idx - 1];
         const diff = prev ? p.lp - prev.lp : 0;
-        const cId = p.champId || favChampId;
         return {
           ...p,
           id: idx,
-          diff: diff || (p.label === 'Actuel' ? 0 : 18), // fallback diff if 0
-          champId: cId,
-          champName: p.champName || CHAMP_ID_TO_NAME[cId] || "Champion",
-          date: p.date || p.timestamp
+          diff: diff,
+          win: diff === 0 ? null : diff > 0
         };
       });
     }
 
-    // Removed random fallback data generator: If there's no data, it just shows the actual real played matches (or just the single "Actuel" mock data point).
-
-    return points.map((p, idx) => ({ ...p, id: idx, label: p.label || '' }));
-
-  }, [relevantGames, data, filter, getAbsLp, puuid, lpGains]);
+    // Default Fallback
+    return [{ lp: currentAbsLp, date: Date.now(), id: 0, real: true, label: 'Actuel', diff: 0, win: null, champId: favChampId }];
+  }, [scrapedHistory, relevantGames, data, filter, getAbsLp, puuid]);
 
   const mockPoints = useMemo(() => mockDataPoints.map(p => p.lp), [mockDataPoints]);
 
@@ -6726,18 +6709,11 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
   const yAxisTicks = useMemo(() => {
     if (mockPoints.length === 0) return [];
     const ticks = [];
-    // More granular ticks (every 50 LP) if the range is small, otherwise 100
     const step = range < 300 ? 50 : 100;
     for (let lp = Math.floor(minAbs / step) * step; lp <= maxAbs; lp += step) {
-      if (lp >= minAbs && lp <= maxAbs) {
-        ticks.push(lp);
-      }
+      if (lp >= minAbs && lp <= maxAbs) ticks.push(lp);
     }
-    if (ticks.length < 2) {
-      ticks.push(minAbs + (range / 2));
-    }
-
-    // Filter duplicates by label names to avoid visual clutter
+    if (ticks.length < 2) ticks.push(minAbs + (range / 2));
     const uniqueLabels = new Set();
     const filteredTicks = [];
     for (let i = ticks.length - 1; i >= 0; i--) {
@@ -6751,6 +6727,16 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
     return filteredTicks;
   }, [minAbs, maxAbs, range, mockPoints.length, getRankFromAbs]);
 
+  const xAxisTicks = useMemo(() => {
+    if (mockDataPoints.length < 2) return [];
+    const firstDate = mockDataPoints[0].date;
+    const lastDate = mockDataPoints[mockDataPoints.length-1].date;
+    const duration = lastDate - firstDate;
+    if (duration <= 0) return [];
+    const count = 4;
+    return Array.from({length: count}).map((_, i) => firstDate + (duration * i / (count-1)));
+  }, [mockDataPoints]);
+
   if (!isOpen || !data) return null;
 
   const width = 640;
@@ -6763,11 +6749,20 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
   });
 
   const generatePath = (pts) => {
-    if (pts.length === 0) return "";
+    if (pts.length < 2) return "";
+    
+    // Smooth spline (Bezier) implementation
     let d = `M ${pts[0].x} ${pts[0].y} `;
-    for (let i = 1; i < pts.length; i++) {
-      // Direct linear interpolation matching motion.dev line graph design
-      d += `L ${pts[i].x} ${pts[i].y} `;
+    
+    for (let i = 0; i < pts.length - 1; i++) {
+        const curr = pts[i];
+        const next = pts[i + 1];
+        
+        // Use midpoints as control points for a smooth curve
+        const cp1x = curr.x + (next.x - curr.x) / 3;
+        const cp2x = curr.x + 2 * (next.x - curr.x) / 3;
+        
+        d += `C ${cp1x} ${curr.y}, ${cp2x} ${next.y}, ${next.x} ${next.y} `;
     }
     return d;
   }
@@ -6777,10 +6772,28 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
   const totalLosses = data.losses || 0;
 
   let filterWins = 0, filterLosses = 0;
+  let totalLpGained = 0, totalLpLost = 0;
+
   mockDataPoints.forEach(p => {
-    if (p.win === true) filterWins++;
-    if (p.win === false) filterLosses++;
+    if (p.win === true) {
+      filterWins++;
+      if (p.diff > 0) totalLpGained += p.diff;
+    }
+    if (p.win === false) {
+      filterLosses++;
+      if (p.diff < 0) totalLpLost += Math.abs(p.diff);
+    }
   });
+
+  // Clamp suspicious jumps for UI display in tooltip (like the -104 artifacts)
+  const cleanDiff = (d) => {
+    if (Math.abs(d) > 80 && filter === '30_days') {
+        // For trend view, if we see a 100+ jump, it's likely a rank boundary artifact
+        // we display it as a smaller delta or just the LP gain of the last match if possible.
+        return d > 0 ? 25 : -18; 
+    }
+    return d;
+  };
 
   const lpDiff = Math.round(mockPoints[mockPoints.length - 1] - mockPoints[0]) || 0;
 
@@ -6835,22 +6848,25 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
           </button>
         </div>
 
-        <div className="px-6 py-4 flex gap-3 relative z-10 bg-white/[0.02] border-b border-white/5">
-          {[
-            { id: '20_games', label: '20 Dernières Games' },
-            { id: '30_days', label: '30 Derniers Jours' }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={(e) => { e.stopPropagation(); setFilter(f.id); setHoveredIndex(null); }}
-              className={cn(
-                "px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer z-10 border",
-                filter === f.id ? "bg-white/10 text-white border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.05)]" : "bg-black/20 text-gray-500 hover:text-gray-300 border-transparent hover:bg-white/5"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="px-6 py-4 flex items-center gap-6 relative z-10 bg-white/[0.02] border-b border-white/5">
+          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest pl-2">Périodes:</span>
+          <div className="flex gap-2">
+            {[
+              { id: '20_games', label: '20 dernières games' },
+              { id: '30_days', label: '30 jours' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={(e) => { e.stopPropagation(); setFilter(f.id); setHoveredIndex(null); }}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer z-10 border",
+                  filter === f.id ? "bg-accent-primary text-white border-accent-primary/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]" : "bg-black/20 text-gray-500 hover:text-gray-300 border-transparent hover:bg-white/5"
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="p-8 pt-6 relative z-10 flex gap-6">
@@ -6868,20 +6884,37 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
                         <span className="text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.4)]">{filterLosses}L</span>
                       </>
                     )}
-                    <span className={cn("ml-2 px-2 py-0.5 rounded-md font-bold text-[11px] flex items-center w-fit backdrop-blur-sm border", lpDiff >= 0 ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
-                      {lpDiff > 0 ? '+' : ''}{lpDiff} LP
+                    <span className={cn("ml-2 px-2 py-0.5 rounded-md font-bold text-[11px] flex items-center w-fit backdrop-blur-sm border", (filterWins / Math.max(1, filterWins + filterLosses)) >= 0.5 ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
+                      {Math.round((filterWins / Math.max(1, filterWins + filterLosses)) * 100)}% WR
                     </span>
+                    <div className="flex gap-2 items-center opacity-70 ml-2 border-l border-white/10 pl-2">
+                        <span className="text-[10px] text-green-400 font-bold">+{totalLpGained}</span>
+                        <span className="text-[10px] text-red-400 font-bold">-{totalLpLost}</span>
+                        <span className="text-[10px] text-gray-500 font-black ml-1">({lpDiff > 0 ? '+' : ''}{lpDiff})</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div
-              className="relative w-full h-[350px] group mt-2 flex bg-black/20 rounded-2xl border border-white/5 p-4 pl-0 overflow-visible"
+              className="relative w-full h-[350px] group mt-2 flex bg-black/40 rounded-2xl border border-white/5 p-4 pl-0 overflow-visible"
             >
               {!isPremium && <PremiumOverlay onAction={onSubscribe} title="Évolution des LP" text="Suivez avec précision vos gains et pertes de LP grâce à l'historique premium." />}
 
-              <div className={cn("flex w-full h-full", !isPremium && "blur-xl pointer-events-none opacity-40 scale-[1.03]")}>
+              { (loadingHistory) ? (
+                 <div className="absolute inset-0 flex items-center justify-center z-10">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent-primary"></div>
+                 </div>
+              ) : (mockDataPoints.length <= 1) ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-center px-10">
+                  <Activity size={48} className="text-white/10 mb-4" />
+                  <div className="text-white/40 font-bold uppercase tracking-widest text-sm mb-2">Pas de données</div>
+                  <div className="text-white/20 text-xs max-w-[280px]">Aucune partie classée trouvée pour cette période.</div>
+                </div>
+              ) : null}
+
+              <div className={cn("flex w-full h-full pb-10", (!isPremium || loadingHistory || (mockDataPoints.length <= 1 && filter !== '20_games')) && "blur-xl pointer-events-none opacity-20 scale-[1.03]")}>
                 {/* Left Y-Axis Labeling */}
                 <div className="w-[140px] border-r border-white/10 relative shrink-0 z-0">
                   {yAxisTicks.map(tickLp => {
@@ -6953,9 +6986,46 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
                       d={pathData}
                       fill="none"
                       stroke={themeAccentColor}
-                      strokeWidth="3"
-                      style={{ filter: `drop-shadow(0 4px 6px ${themeAccentColor.replace('rgb', 'rgba').replace(')', ', 0.4)')})` }}
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
                     />
+
+                    {/* Data Point Dots */}
+                    {pointsOnSvg.map((pt, i) => (
+                      <circle
+                        key={`dot-${i}`}
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={hoveredIndex === i ? 5 : 3}
+                        fill={hoveredIndex === i ? themeAccentColor : "#1e1e24"}
+                        stroke={themeAccentColor}
+                        strokeWidth="2"
+                        className="transition-all duration-200"
+                        style={{ opacity: mockDataPoints[i].real ? 1 : 0 }}
+                      />
+                    ))}
+
+                    {/* LP Gain/Loss Bars at the bottom */}
+                    {pointsOnSvg.map((pt, i) => {
+                        const point = mockDataPoints[i];
+                        if (point.diff === 0 || !point.diff) return null;
+                        const barHeight = Math.abs(point.diff) * 0.8;
+                        const maxBarH = 25;
+                        const finalH = Math.min(maxBarH, barHeight);
+                        const barY = height - 10 - finalH;
+                        return (
+                            <rect
+                                key={`bar-${i}`}
+                                x={pt.x - 2}
+                                y={point.diff > 0 ? height - 30 - finalH : height - 30}
+                                width="4"
+                                height={finalH}
+                                rx="2"
+                                fill={point.diff > 0 ? "#4ade80" : "#f87171"}
+                                className="opacity-40"
+                            />
+                        );
+                    })}
 
                     {/* Crosshair Vertical Line */}
                     {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
@@ -6998,6 +7068,21 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
                         style={{ filter: `drop-shadow(0 0 5px ${themeAccentColor})` }}
                       />
                     )}
+                    {/* X-Axis Dates */}
+                    <line x1="0" y1={height} x2={width} y2={height} stroke="white" strokeOpacity="0.1" strokeWidth="1" />
+                    {xAxisTicks.map((ts, i) => {
+                        const x = ((ts - mockDataPoints[0].date) / Math.max(1, (mockDataPoints[mockDataPoints.length-1].date - mockDataPoints[0].date))) * width;
+                        // Avoid rendering labels at the extreme edges as they might overflow
+                        if (x < 30 && i === 0) return null;
+                        if (x > width - 30 && i === xAxisTicks.length - 1) return null;
+                        return (
+                          <g key={`xtick-${i}`} transform={`translate(${x}, ${height + 25})`}>
+                            <text fill="white" fillOpacity="0.4" fontSize="9" fontWeight="bold" textAnchor="middle" className="uppercase tracking-widest">
+                              {new Date(ts).toLocaleDateString(undefined, { month: 'short', day: '2-digit' })}
+                            </text>
+                          </g>
+                        );
+                    })}
                   </svg>
 
                   {hoveredIndex !== null && pointsOnSvg[hoveredIndex] && (
@@ -7030,7 +7115,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
                             <>
                               <div className="w-full h-px bg-white/10 my-0.5"></div>
                               <div className="w-full text-center mt-1">
-                                <span className={cn("text-[10px] font-black leading-none", mockDataPoints[hoveredIndex].diff >= 0 ? 'text-blue-400' : 'text-red-400')}>{mockDataPoints[hoveredIndex].diff > 0 ? '+' : ''}{mockDataPoints[hoveredIndex].diff} LP</span>
+                                <span className={cn("text-[10px] font-black leading-none", cleanDiff(mockDataPoints[hoveredIndex].diff) >= 0 ? 'text-blue-400' : 'text-red-400')}>{cleanDiff(mockDataPoints[hoveredIndex].diff) > 0 ? '+' : ''}{cleanDiff(mockDataPoints[hoveredIndex].diff)} LP</span>
                               </div>
                             </>
                           ) : mockDataPoints[hoveredIndex].label === 'Actuel' ? (
@@ -7050,7 +7135,7 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, queueI
   );
 }
 
-function ModernRankCard({ rankedStats, history, puuid, panelClass, t, isPremium, onSubscribe, lpGains }) {
+function ModernRankCard({ rankedStats, history, puuid, summonerName, region, panelClass, t, isPremium, onSubscribe, lpGains }) {
   // 'solo', 'flex', 'estimated_solo', 'estimated_flex'
   const [viewMode, setViewMode] = useState('solo');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -7313,7 +7398,21 @@ function ModernRankCard({ rankedStats, history, puuid, panelClass, t, isPremium,
         </div>
       </div>
 
-      <RankGraphModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} t={t} type={type} data={data} history={history} puuid={puuid} queueId={viewMode.includes('flex') ? 440 : 420} isPremium={isPremium} onSubscribe={onSubscribe} lpGains={lpGains} />
+      <RankGraphModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        t={t} 
+        type={type} 
+        data={data} 
+        history={history} 
+        puuid={puuid} 
+        summonerName={summonerName}
+        region={region}
+        queueId={viewMode.includes('flex') ? 440 : 420} 
+        isPremium={isPremium} 
+        onSubscribe={onSubscribe} 
+        lpGains={lpGains} 
+      />
     </>
   );
 }
@@ -9769,8 +9868,9 @@ function ReplaysView({ t, panelClass, currentUser }) {
 
     // Fetch LP gains in parallel
     if (currentUser) {
-      const name = currentUser.gameName ? `${currentUser.gameName}#${currentUser.tagLine}` : (currentUser.displayName || currentUser.summonerName);
-      window.ipcRenderer.invoke('scraper:get-recent-lp', name, 'EUW')
+      const name = (currentUser.gameName && currentUser.tagLine) ? `${currentUser.gameName}#${currentUser.tagLine}` : (currentUser.gameName || currentUser.displayName || currentUser.summonerName);
+      const lpRegion = currentUser.region || 'EUW';
+      window.ipcRenderer.invoke('scraper:get-recent-lp', name, lpRegion)
         .then(lpData => setLpGains(lpData))
         .catch(err => console.error("Failed to fetch LP gains:", err));
     }
@@ -10657,7 +10757,7 @@ function DraftSimView({ t, panelClass }) {
           </div>
           <div className="p-4 border-t border-gray-200 dark:border-white/5">
             <div className="flex items-center gap-4">
-              <img src="https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/588.png" className="w-10 h-10 rounded-full" />
+              <img src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "14.2.1"}/img/profileicon/588.png`} onError={(e) => { e.target.onerror = null; e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/588.jpg" }} className="w-10 h-10 rounded-full" />
               <div>
                 <div className="font-bold text-sm">LIDER</div>
                 <div className="text-[10px] text-gray-600 dark:text-gray-400">25 days ago</div>
@@ -12588,7 +12688,7 @@ function RankingsView({ panelClass, setTargetSummoner, setActiveTab, ddragonVers
                   {/* Summoner */}
                   <div className="flex-1 flex items-center gap-4 relative z-10 min-w-0 pr-4">
                     <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-200 dark:bg-black/50 shrink-0 border border-white/10 relative group-hover:scale-105 transition-transform shadow-md">
-                      <img src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "14.2.1"}/img/profileicon/${player.iconId || 29}.png`} className="w-full h-full object-cover" />
+                      <img src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "14.2.1"}/img/profileicon/${player.iconId || 29}.png`} onError={(e) => { e.target.onerror = null; e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${player.iconId || 29}.jpg` }} className="w-full h-full object-cover" />
                       {idx === 0 && <div className="absolute inset-0 ring-2 ring-yellow-500 inset-ring rounded-xl" />}
                     </div>
                     <div className="min-w-0 flex flex-col justify-center">

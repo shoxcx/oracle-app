@@ -1534,6 +1534,7 @@ function updateDiscordActivity(phase) {
     else if (phase === 'Lobby') detailsTxt = 'Dans un salon';
     else if (phase === 'EndOfGame') detailsTxt = 'Stats de fin de partie';
 
+    if (!rpc || !rpc.transport) return;
     try {
         rpc.setActivity({
             details: detailsTxt,
