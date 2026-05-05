@@ -69,10 +69,14 @@ const DraggableWidget = ({ id, defaultPosition, children, className }) => {
             setDragging(false);
             e.currentTarget.releasePointerCapture(e.pointerId);
             localStorage.setItem(`oracle_widget_pos_${id}`, JSON.stringify(pos));
+            // Restore ignore mouse events if we are not hovering anymore
+            window.ipcRenderer.invoke('window:set-ignore-mouse-events', true, { forward: true });
         } else if (resizing) {
             setResizing(false);
             e.currentTarget.releasePointerCapture(e.pointerId);
             localStorage.setItem(`oracle_widget_scale_${id}`, scale.toString());
+            // Restore ignore mouse events
+            window.ipcRenderer.invoke('window:set-ignore-mouse-events', true, { forward: true });
         }
     };
 

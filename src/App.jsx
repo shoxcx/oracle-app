@@ -105,7 +105,9 @@ import {
   Palette,
   CreditCard,
   ArrowLeftRight,
-  Download
+  Download,
+  Ban,
+  FileText
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1403,6 +1405,31 @@ function App() {
   const [language, setLanguage] = useState(localStorage.getItem('oracle_language') || 'en');
   const [ddragonVersion, setDdragonVersion] = useState("14.2.1");
 
+  // --- Global LCU State ---
+  const [isConnected, setIsConnected] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { const s = localStorage.getItem('oracle_last_user'); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  });
+  const [userRank, setUserRank] = useState(() => {
+    try { const s = localStorage.getItem('oracle_last_rank'); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+  });
+  const [currentUserHistory, setCurrentUserHistory] = useState(() => {
+    try { const s = localStorage.getItem('oracle_last_history'); return s ? JSON.parse(s) : []; } catch (e) { return []; }
+  });
+  const [friends, setFriends] = useState([]);
+  const [gamePhase, setGamePhase] = useState('None');
+  const [champSelectData, setChampSelectData] = useState(null);
+
+  // --- Premium State ---
+  const [isPremium, setIsPremium] = useState(false);
+  const [premiumData, setPremiumData] = useState(null);
+  const [serverGoldUsers, setServerGoldUsers] = useState({});
+
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+
+  const prevFriendsRef = useRef([]);
+
   useEffect(() => {
     const fetchVersion = async () => {
       try {
@@ -1418,7 +1445,152 @@ function App() {
         document.title = `Oracle (${v})`;
       }).catch(() => { });
     }
+
+    // Polling LCU State
+    const syncState = async () => {
+      if (!window.ipcRenderer) return;
+      try {
+        const connected = await window.ipcRenderer.invoke('lcu:connect');
+        setIsConnected(connected);
+
+        if (connected) {
+          const user = await window.ipcRenderer.invoke('lcu:get-current-summoner');
+          if (user && user.puuid) {
+            setCurrentUser(prev => {
+              if (prev?.puuid !== user.puuid) {
+                console.log("[Oracle] New User Detected:", user.displayName);
+                return user;
+              }
+              return prev;
+            });
+
+            const [stats, history] = await Promise.all([
+              window.ipcRenderer.invoke('lcu:get-ranked-stats', user.puuid),
+              window.ipcRenderer.invoke('lcu:get-match-history', user.puuid, 0, 150)
+            ]);
+
+            if (stats) {
+              setUserRank(prev => JSON.stringify(prev) !== JSON.stringify(stats) ? stats : prev);
+              localStorage.setItem('oracle_last_rank', JSON.stringify(stats));
+            }
+
+            if (history && (history.games || Array.isArray(history))) {
+              const gamesList = history.games?.games || history.games || (Array.isArray(history) ? history : []);
+              const newGames = gamesList.slice(0, 150);
+              setCurrentUserHistory(prev => {
+                if (JSON.stringify(prev) !== JSON.stringify(newGames)) {
+                  localStorage.setItem('oracle_last_history', JSON.stringify(newGames));
+                  return newGames;
+                }
+                return prev;
+              });
+            }
+            localStorage.setItem('oracle_last_user', JSON.stringify(user));
+          } else if (currentUserRef.current) {
+            setCurrentUser(null);
+            setUserRank(null);
+          }
+
+          const phase = await window.ipcRenderer.invoke('lcu:get-gameflow-phase');
+          if (phase) setGamePhase(phase);
+
+          const friendsList = await window.ipcRenderer.invoke('lcu:get-friends');
+          if (Array.isArray(friendsList)) {
+            setFriends(friendsList);
+            prevFriendsRef.current = friendsList;
+          }
+          
+          if (phase === 'ChampSelect') {
+            const session = await window.ipcRenderer.invoke('lcu:get-champ-select-session');
+            setChampSelectData(session);
+          }
+        } else {
+          setIsConnected(false);
+          setCurrentUser(null);
+          setUserRank(null);
+          setGamePhase('None');
+          setFriends([]);
+        }
+      } catch (e) { console.error("Sync Error", e); }
+    };
+
+    syncState();
+    const interval = setInterval(syncState, 2000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Polling Premium Status
+  useEffect(() => {
+    const fetchGold = async () => {
+      try {
+        const res = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/gold_users.json');
+        const data = await res.json();
+        if (data) setServerGoldUsers(data);
+      } catch (e) {}
+    };
+    fetchGold();
+    const interval = setInterval(fetchGold, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser) {
+      setIsPremium(false);
+      setPremiumData(null);
+      return;
+    }
+
+    const checkPremium = () => {
+      // 1. Check Hardcoded Whitelist (Legacy/Staff)
+      const isWhitelisted = premiumUsers.some(p => 
+        currentUser.gameName?.toLowerCase() === p.name.toLowerCase() && 
+        currentUser.tagLine?.toLowerCase() === p.tag.toLowerCase()
+      ) || currentUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e';
+
+      if (isWhitelisted) {
+        setIsPremium(true);
+        setPremiumData({ type: 'WHITELIST', active: true });
+        return;
+      }
+
+      // 2. Check Firebase Realtime Data
+      const formattedUser = `${currentUser.gameName}#${currentUser.tagLine}`;
+      let latestData = null;
+      
+      for (const key in serverGoldUsers) {
+          try {
+              let base64 = key.replace(/-/g, '+').replace(/_/g, '/');
+              while (base64.length % 4) base64 += '=';
+              const dec = decodeURIComponent(escape(atob(base64)));
+              
+              const cleanDec = dec.replace(/\s/g, '').toLowerCase();
+              const cleanFormatted = formattedUser.replace(/\s/g, '').toLowerCase();
+              
+              if (cleanDec === cleanFormatted) {
+                  const d = serverGoldUsers[key];
+                  if (!latestData || (d.updatedAt || 0) > (latestData.updatedAt || 0)) {
+                      latestData = d;
+                  }
+              }
+          } catch(e) {}
+      }
+      
+      if (latestData && latestData.active) {
+         if (latestData.type === 'TEMPORARY' && latestData.expiresAt && Date.now() > latestData.expiresAt) {
+           setIsPremium(false);
+           setPremiumData(null);
+         } else {
+           setIsPremium(true);
+           setPremiumData(latestData);
+         }
+      } else {
+        setIsPremium(false);
+        setPremiumData(null);
+      }
+    };
+
+    checkPremium();
+  }, [currentUser, serverGoldUsers]);
 
   // Translation Helper
   const t = (key) => {
@@ -1556,6 +1728,20 @@ function App() {
         setOverlaySettings={setOverlaySettings}
         triggerSocialToast={triggerSocialToast}
         ddragonVersion={ddragonVersion}
+        // Passed from App root
+        isConnected={isConnected}
+        currentUser={currentUser}
+        userRank={userRank}
+        currentUserHistory={currentUserHistory}
+        friends={friends}
+        gamePhase={gamePhase}
+        setGamePhase={setGamePhase}
+        champSelectData={champSelectData}
+        setChampSelectData={setChampSelectData}
+        isPremium={isPremium}
+        setIsPremium={setIsPremium}
+        premiumData={premiumData}
+        serverGoldUsers={serverGoldUsers}
       />
     );
   }
@@ -2168,7 +2354,13 @@ function SocialToastOverlay({ ddragonVersion }) {
 }
 
 // --- Main Application View ---
-function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, appMode, overlaySettings, setOverlaySettings, triggerSocialToast, ddragonVersion }) {
+function MainApp({ 
+  theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, appMode, 
+  overlaySettings, setOverlaySettings, triggerSocialToast, ddragonVersion,
+  isConnected, currentUser, userRank, currentUserHistory, friends, gamePhase, 
+  setGamePhase, champSelectData, setChampSelectData, isPremium, setIsPremium, 
+  premiumData, serverGoldUsers 
+}) {
   const [targetSummoner, setTargetSummoner] = useState(null); // Mock search state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -2284,25 +2476,87 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     return () => clearInterval(interval);
   }, []);
 
-  const [isConnected, setIsConnected] = useState(false);
   const { patchNotes, championList, prefetchedData } = useCommonData();
-  const [currentUser, setCurrentUser] = useState(() => {
-    try { const s = localStorage.getItem('oracle_last_user'); return s ? JSON.parse(s) : null; } catch (e) { return null; }
-  });
-  const [userRank, setUserRank] = useState(() => {
-    try { const s = localStorage.getItem('oracle_last_rank'); return s ? JSON.parse(s) : null; } catch (e) { return null; }
-  });
-  const [currentUserHistory, setCurrentUserHistory] = useState(() => {
-    try { const s = localStorage.getItem('oracle_last_history'); return s ? JSON.parse(s) : []; } catch (e) { return []; }
-  });
-  const [friends, setFriends] = useState([]);
   const [hasUnreadNotifs, setHasUnreadNotifs] = useState(() => localStorage.getItem('oracle_seen_notifs') !== 'true');
   const [browserUrl, setBrowserUrl] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchRegion, setSearchRegion] = useState('EUW');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [targetChamp, setTargetChamp] = useState('Olaf');
-  const [gamePhase, setGamePhase] = useState('None');
+  const [isMinimizing, setIsMinimizing] = useState(false);
+  const panelClass = visualMode === 'glass' ? 'glass-panel' : 'opaque-panel';
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashMessage, setSplashMessage] = useState(t('welcome'));
+
+  useEffect(() => {
+    const hasVisited = sessionStorage.getItem('oracle_has_visited');
+    if (hasVisited) setSplashMessage(t('welcome_back'));
+    else {
+      setSplashMessage(t('welcome'));
+      sessionStorage.setItem('oracle_has_visited', 'true');
+    }
+    const timer = setTimeout(() => setShowSplash(false), 2800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const [navHistory, setNavHistory] = useState([]);
+  const [navIndex, setNavIndex] = useState(-1);
+  const [blockHistoryPush, setBlockHistoryPush] = useState(false);
+
+  useEffect(() => {
+    if (blockHistoryPush) {
+      setBlockHistoryPush(false);
+      return;
+    }
+    const state = { tab: activeTab, sum: targetSummoner, ch: targetChamp };
+    const last = navHistory[navIndex];
+    const isSame = last && last.tab === state.tab &&
+      JSON.stringify(last.sum) === JSON.stringify(state.sum) &&
+      last.ch === state.ch;
+
+    if (!isSame) {
+      const nextHist = navHistory.slice(0, navIndex + 1);
+      nextHist.push(state);
+      setNavHistory(nextHist);
+      setNavIndex(nextHist.length - 1);
+    }
+  }, [activeTab, targetSummoner, targetChamp]);
+
+  const goBack = () => {
+    if (navIndex > 0) {
+      setBlockHistoryPush(true);
+      const prev = navHistory[navIndex - 1];
+      setActiveTab(prev.tab);
+      setTargetSummoner(prev.sum);
+      setTargetChamp(prev.ch);
+      setNavIndex(navIndex - 1);
+    }
+  };
+
+  const goForward = () => {
+    if (navIndex < navHistory.length - 1) {
+      setBlockHistoryPush(true);
+      const next = navHistory[navIndex + 1];
+      setActiveTab(next.tab);
+      setTargetSummoner(next.sum);
+      setTargetChamp(next.ch);
+      setNavIndex(navIndex + 1);
+    }
+  };
+
+  const handleMinimizeRequest = () => {
+    setIsMinimizing(true);
+    setTimeout(() => {
+      window.ipcRenderer.invoke('window:minimize');
+      setTimeout(() => setIsMinimizing(false), 500);
+    }, 300);
+  };
+
+  useEffect(() => {
+    window.addEventListener('request-minimize', handleMinimizeRequest);
+    return () => window.removeEventListener('request-minimize', handleMinimizeRequest);
+  }, []);
+  
   const [autoAccept, setAutoAccept] = useState(() => {
     return localStorage.getItem('oracle_auto_accept') === 'true';
   });
@@ -2320,64 +2574,11 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
     const val = localStorage.getItem('oracle_music_overlay');
     return val === 'true'; // Defaults to false
   });
-  const [isPremiumState, setIsPremium] = useState(false);
-  const [serverGoldUsers, setServerGoldUsers] = useState({});
 
   useEffect(() => {
-    const fetchGold = async () => {
-      try {
-        const res = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/gold_users.json');
-        const data = await res.json();
-        if (data) setServerGoldUsers(data);
-      } catch (e) {}
-    };
-    fetchGold();
-    const interval = setInterval(fetchGold, 10000); // Polling every 10s for instant feedback
-    return () => clearInterval(interval);
-  }, []);
-
-  const isPremiumProfile = currentUser && (
-    premiumUsers.some(p => currentUser.gameName?.toLowerCase() === p.name && currentUser.tagLine?.toLowerCase() === p.tag) ||
-    currentUser.puuid === 'dd7cdf6e-a21e-5393-8ce4-be7be5f59c4e'
-  );
-
-  const checkFirebasePremium = () => {
-     if (!currentUser) return false;
-     const formattedUser = `${currentUser.gameName}#${currentUser.tagLine}`;
-     let latestData = null;
-     
-     for (const key in serverGoldUsers) {
-         try {
-             let base64 = key.replace(/-/g, '+').replace(/_/g, '/');
-             while (base64.length % 4) base64 += '=';
-             const dec = decodeURIComponent(escape(atob(base64)));
-             
-             const cleanDec = dec.replace(/\s/g, '').toLowerCase();
-             const cleanFormatted = formattedUser.replace(/\s/g, '').toLowerCase();
-             
-             if (cleanDec === cleanFormatted) {
-                 const d = serverGoldUsers[key];
-                 if (!latestData || (d.updatedAt || 0) > (latestData.updatedAt || 0)) {
-                     latestData = d;
-                 }
-             }
-         } catch(e) {}
-     }
-     
-     if (latestData && latestData.active) {
-        if (latestData.type === 'TEMPORARY' && latestData.expiresAt && Date.now() > latestData.expiresAt) return false;
-        return true;
-     }
-     return false;
-  };
-
-  const isPremium = Boolean(isPremiumState || isPremiumProfile || checkFirebasePremium());
-
-  useEffect(() => {
-    if (!currentUser) return; // Wait for LCU profile to load before wiping settings
+    if (!currentUser) return; 
     if (!isPremium) {
       if (musicOverlayEnabled) setMusicOverlayEnabled(false);
-      // autoAccept is now free
       if (theme !== 'classic') setTheme('classic');
     }
   }, [isPremium, currentUser]);
@@ -2555,261 +2756,18 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
 
   const hasSuggestions = champSuggestions.length > 0 || friendSuggestions.length > 0 || recentSuggestions.length > 0 || teammateSuggestions.length > 0;
 
-  const [champSelectData, setChampSelectData] = useState(null);
-
-  // Window Minimize Animation State
-  const [isMinimizing, setIsMinimizing] = useState(false);
-
-  // Splash Screen State
-  const [showSplash, setShowSplash] = useState(true);
-  const [splashMessage, setSplashMessage] = useState(t('welcome'));
-
   useEffect(() => {
-    const hasVisited = sessionStorage.getItem('oracle_has_visited');
-    if (hasVisited) {
-      setSplashMessage(t('welcome_back'));
-    } else {
-      setSplashMessage(t('welcome'));
-      sessionStorage.setItem('oracle_has_visited', 'true');
-    }
-
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2800); // 2.8s to let the animation play out beautifully
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  // --- Navigation History ---
-  const [navHistory, setNavHistory] = useState([]);
-  const [navIndex, setNavIndex] = useState(-1);
-  const [blockHistoryPush, setBlockHistoryPush] = useState(false);
-
-  useEffect(() => {
-    if (blockHistoryPush) {
-      setBlockHistoryPush(false);
-      return;
-    }
-    const state = { tab: activeTab, sum: targetSummoner, ch: targetChamp };
-    const last = navHistory[navIndex];
-    const isSame = last && last.tab === state.tab &&
-      JSON.stringify(last.sum) === JSON.stringify(state.sum) &&
-      last.ch === state.ch;
-
-    if (!isSame) {
-      const nextHist = navHistory.slice(0, navIndex + 1);
-      nextHist.push(state);
-      setNavHistory(nextHist);
-      setNavIndex(nextHist.length - 1);
-    }
-  }, [activeTab, targetSummoner, targetChamp]);
-
-  const goBack = () => {
-    if (navIndex > 0) {
-      setBlockHistoryPush(true);
-      const prev = navHistory[navIndex - 1];
-      setActiveTab(prev.tab);
-      setTargetSummoner(prev.sum);
-      setTargetChamp(prev.ch);
-      setNavIndex(navIndex - 1);
-    }
-  };
-
-  const goForward = () => {
-    if (navIndex < navHistory.length - 1) {
-      setBlockHistoryPush(true);
-      const next = navHistory[navIndex + 1];
-      setActiveTab(next.tab);
-      setTargetSummoner(next.sum);
-      setTargetChamp(next.ch);
-      setNavIndex(navIndex + 1);
-    }
-  };
-
-  useEffect(() => {
-    // Listen for minimize request from WindowControls component if we emit event, 
-    // but easier to pass handleMinimize down. 
-    // Actually we need to intercept the minimize call.
-    window.addEventListener('request-minimize', handleMinimizeRequest);
-    return () => window.removeEventListener('request-minimize', handleMinimizeRequest);
-  }, []);
-
-  const handleMinimizeRequest = () => {
-    setIsMinimizing(true);
-    setTimeout(() => {
-      ipcRenderer.invoke('window:minimize');
-      // Reset state after a delay or when window regains focus? 
-      // Usually reset immediately after call, but electron might pause renderer.
-      setTimeout(() => setIsMinimizing(false), 500);
-    }, 300);
-  };
-
-  const panelClass = visualMode === 'glass' ? 'glass-panel' : 'opaque-panel';
-
-  const currentUserRef = useRef(currentUser);
-  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
-
-  const prevFriendsRef = useRef([]);
-  const prevUnreadCountRef = useRef(-1);
-  const syncRef = useRef(null);
-
-  useEffect(() => {
-    if (activeTab === 'notifications') {
-      setHasUnreadNotifs(false);
-      localStorage.setItem('oracle_seen_notifs', 'true');
-    }
-  }, [activeTab]);
-  useEffect(() => {
-    const syncState = async () => {
-      try {
-        const connected = await ipcRenderer.invoke('lcu:connect');
-        setIsConnected(connected);
-
-        if (connected) {
-          const user = await ipcRenderer.invoke('lcu:get-current-summoner');
-
-          if (user && user.puuid) {
-            // Use functional update to avoid dependency on currentUser
-            setCurrentUser(prev => {
-              if (prev?.puuid !== user.puuid) {
-                console.log("[Oracle] New User Detected:", user.displayName);
-                return user;
-              }
-              return prev;
-            });
-
-            // Check rank separately to avoid complex nesting
-            if (user.puuid) {
-              const [stats, history] = await Promise.all([
-                ipcRenderer.invoke('lcu:get-ranked-stats', user.puuid),
-                ipcRenderer.invoke('lcu:get-match-history', user.puuid, 0, 150)
-              ]);
-
-              if (stats) {
-                setUserRank(prev => JSON.stringify(prev) !== JSON.stringify(stats) ? stats : prev);
-                localStorage.setItem('oracle_last_rank', JSON.stringify(stats));
-              }
-
-              if (history && (history.games || Array.isArray(history))) {
-                const gamesList = history.games?.games || history.games || (Array.isArray(history) ? history : []);
-                const newGames = gamesList.slice(0, 150);
-                setCurrentUserHistory(prev => {
-                  if (JSON.stringify(prev) !== JSON.stringify(newGames)) {
-                    localStorage.setItem('oracle_last_history', JSON.stringify(newGames));
-                    return newGames;
-                  }
-                  return prev;
-                });
-              }
-
-              localStorage.setItem('oracle_last_user', JSON.stringify(user));
-            }
-          } else if (currentUserRef.current) {
-            setCurrentUser(null);
-            setUserRank(null);
-          }
-
-          const phase = await ipcRenderer.invoke('lcu:get-gameflow-phase');
-          if (phase) setGamePhase(prev => {
-            if (prev !== phase && (phase === 'GameStart' || phase === 'InProgress')) {
-              // Potential trigger for overlay window show/hide
-            }
-            return phase;
-          });
-
-          if (phase === 'ReadyCheck' && autoAccept) {
-            await ipcRenderer.invoke('lcu:accept-match');
-          }
-
-          if (phase === 'ChampSelect') {
-            const session = await ipcRenderer.invoke('lcu:get-champ-select-session');
-            setChampSelectData(session);
-          }
-
-          const friendsList = await ipcRenderer.invoke('lcu:get-friends');
-          const convList = await ipcRenderer.invoke('lcu:get-conversations');
-
-          if (Array.isArray(friendsList)) {
-            if (prevFriendsRef.current.length > 0) {
-              friendsList.forEach(curr => {
-                const prev = prevFriendsRef.current.find(p => p.puuid === curr.puuid);
-                if (prev) {
-                  const pStatus = prev.availability || 'offline';
-                  const cStatus = curr.availability || 'offline';
-                  const pMsg = prev.statusMessage || '';
-                  const cMsg = curr.statusMessage || '';
-
-                  // 1. Connection
-                  if (pStatus === 'offline' && cStatus !== 'offline') {
-                    triggerSocialToast({
-                      name: curr.name || curr.gameName || t('friend'),
-                      title: t('friend_connected'),
-                      status: t('friend_connected_msg'),
-                      type: 'connect',
-                      icon: `https://ddragon.leagueoflegends.com/cdn/14.2.1/img/profileicon/${curr.icon || 29}.png`
-                    });
-                  }
-
-                  // 2. Disconnection
-                  else if (pStatus !== 'offline' && cStatus === 'offline') {
-                    triggerSocialToast({
-                      name: curr.name || curr.gameName || t('friend'),
-                      title: t('friend_disconnected'),
-                      status: t('friend_disconnected_msg'),
-                      type: 'disconnect',
-                      icon: `https://ddragon.leagueoflegends.com/cdn/14.2.1/img/profileicon/${curr.icon || 29}.png`
-                    });
-                  }
-
-                  // 3. Launching Game
-                  else if (pMsg !== cMsg && (cMsg.toLowerCase().includes('in game') || cMsg.toLowerCase().includes('en partie'))) {
-                    triggerSocialToast({
-                      name: curr.name || curr.gameName || t('friend'),
-                      title: t('game_started'),
-                      status: cMsg || t('game_started_msg'),
-                      type: 'game',
-                      icon: `https://ddragon.leagueoflegends.com/cdn/14.2.1/img/profileicon/${curr.icon || 29}.png`
-                    });
-                  }
-                }
-              });
-            }
-            prevFriendsRef.current = friendsList;
-            setFriends(friendsList);
-          }
-
-
-
-        } else if (isConnected) {
-          setIsConnected(false);
-          setCurrentUser(null);
-          setUserRank(null);
-          setGamePhase('None');
-          setFriends([]);
-        }
-      } catch (e) {
-        console.error("Sync Error", e);
-      }
-    };
-
-    syncState();
-    const interval = setInterval(syncState, 1500); // 1.5 seconds for snappier LCU detection
-    return () => clearInterval(interval);
-  }, []); // sync effect
-
-  useEffect(() => {
-    // Show Loading/Live window automatically if enabled
-    // Show Loading/Live window automatically if enabled OR if Test Mode is on
     if ((gamePhase === 'GameStart' || gamePhase === 'InProgress') && overlaySettings.loadingScreen) {
-      ipcRenderer.invoke('app:show-live');
+      window.ipcRenderer.invoke('app:show-live');
     } else if (overlaySettings.testMode) {
-      ipcRenderer.invoke('app:show-live');
+      window.ipcRenderer.invoke('app:show-live');
     } else if (gamePhase === 'None') {
-      ipcRenderer.invoke('app:hide-live');
+      window.ipcRenderer.invoke('app:hide-live');
     }
-  }, [gamePhase, overlaySettings.loadingScreen, overlaySettings.testMode]); // Moved out of nested effect
+  }, [gamePhase, overlaySettings.loadingScreen, overlaySettings.testMode]);
 
-  // ... (keeping other handlers)
+
+
 
   return (
     <div
@@ -3265,7 +3223,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {/* Removed Notifications tab as it is now a dropdown */}
                 {activeTab === 'matchups' && <MatchupsView panelClass={panelClass} t={t} championList={championList} ddragonVersion={ddragonVersion} onOpenUrl={setBrowserUrl} />}
                 {activeTab === 'replays' && (!isPremium ? (
-                  <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} />
+                  <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} currentUser={currentUser} premiumData={premiumData} />
                 ) : <ReplaysView panelClass={panelClass} t={t} currentUser={currentUser} />)}
                 {activeTab === 'esports' && <EsportsView panelClass={panelClass} t={t} prefetchedData={prefetchedData} onShowNews={setSelectedArticle} />}
                 {activeTab === 'collections' && <CollectionsView panelClass={panelClass} t={t} ddragonVersion={ddragonVersion} currentUser={currentUser} championList={championList} />}
@@ -3288,7 +3246,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                 {/* Fallback */}
                 {['training'].includes(activeTab) && (
                   !isPremium ? (
-                    <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} />
+                    <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} currentUser={currentUser} premiumData={premiumData} />
                   ) : (
                     <TrainingView t={t} panelClass={panelClass} />
                   )
@@ -3318,6 +3276,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   setActiveTab={setActiveTab}
                   isPremium={isPremium}
                   setIsPremium={setIsPremium}
+                  currentUser={currentUser}
                 />}
 
                 {activeTab === 'subscription' && <SubscriptionView
@@ -3326,6 +3285,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   isPremium={isPremium}
                   setIsPremium={setIsPremium}
                   setActiveTab={setActiveTab}
+                  currentUser={currentUser}
                 />}
               </div>
             )}
@@ -8520,7 +8480,7 @@ function LiveMatchView({ t, autoImportRunes, flashPosition, currentUser, setTarg
   );
 }
 
-function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, musicOverlayEnabled, setMusicOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast, setActiveTab, isPremium, setIsPremium }) {
+function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, setLanguage, t, autoAccept, setAutoAccept, autoImportRunes, setAutoImportRunes, flashPosition, setFlashPosition, socialOverlayEnabled, setSocialOverlayEnabled, musicOverlayEnabled, setMusicOverlayEnabled, overlaySettings, setOverlaySettings, panelClass, triggerSocialToast, setActiveTab, isPremium, setIsPremium, currentUser }) {
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const languages = [
     { code: 'en', label: 'English (US)' },
@@ -8799,7 +8759,31 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
                   <p className="mt-1 text-sm font-medium text-gray-400 transition-colors group-hover:text-yellow-100/70">Gérer mon moyen de paiement, abonnement...</p>
                 </div>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); window.ipcRenderer.invoke('app:open-url', 'https://shoxcx.github.io/oracle-web/'); }} className="flex items-center gap-2 rounded-xl bg-yellow-500/10 px-5 py-2.5 font-bold uppercase tracking-widest text-yellow-400 transition-all duration-300 group-hover:bg-yellow-400 group-hover:text-black border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.15)] z-10 cursor-pointer">
+              <button 
+                onClick={async (e) => { 
+                  e.stopPropagation(); 
+                  try {
+                    // On récupère le pseudo (ici on suppose qu'il est accessible, sinon on le récupère du store)
+                    const userPseudo = currentUser ? `${currentUser.gameName}#${currentUser.tagLine}` : (localStorage.getItem('oracle_user_pseudo') || 'Unknown'); 
+                    
+                    const response = await fetch('https://v0-oracle-sigma.vercel.app/api/create-portal', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ pseudo: userPseudo })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.url) {
+                      window.ipcRenderer.invoke('app:open-url', data.url);
+                    } else {
+                      alert("Erreur : " + data.error);
+                    }
+                  } catch (err) {
+                    alert("Impossible de contacter le serveur de gestion : " + (err?.message || error?.message || "Erreur réseau"));
+                  }
+                }} 
+                className="flex items-center gap-2 rounded-xl bg-yellow-500/10 px-5 py-2.5 font-bold uppercase tracking-widest text-yellow-400 transition-all duration-300 group-hover:bg-yellow-400 group-hover:text-black border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.15)] z-10 cursor-pointer"
+              >
                 {isPremium ? "Gérer" : "Découvrir"} <ArrowRight size={16} />
               </button>
             </div>
@@ -8821,10 +8805,58 @@ function SettingsView({ theme, setTheme, visualMode, setVisualMode, language, se
   );
 }
 
-function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab }) {
-  // Simulate cancellation state (in a real app, this comes from backend)
-  const [isCanceled, setIsCanceled] = useState(false);
-  const expirationDate = "31/12/2026"; // mock
+function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab, currentUser, premiumData }) {
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [isCanceled, setIsCanceled] = useState(!!premiumData?.cancelAtPeriodEnd);
+  const expirationDate = premiumData?.expiresAt ? new Date(premiumData.expiresAt).toLocaleDateString() : "Indéfinie";
+
+  const handleCancel = async (mode) => {
+    setCanceling(true);
+    try {
+      const userPseudo = currentUser ? `${currentUser.gameName}#${currentUser.tagLine}` : (localStorage.getItem('oracle_user_pseudo') || 'Unknown'); 
+      const res = await fetch('https://v0-oracle-sigma.vercel.app/api/cancel-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pseudo: userPseudo, mode })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (mode === 'RENEWAL') setIsCanceled(true);
+        else {
+            setIsCanceled(true);
+            setIsPremium(false);
+        }
+        setShowCancelModal(false);
+      } else {
+        alert("Erreur: " + data.error);
+      }
+    } catch (err) {
+      alert("Erreur de connexion.");
+    }
+    setCanceling(false);
+  };
+
+  const openPortal = async () => {
+    try {
+      const userPseudo = currentUser ? `${currentUser.gameName}#${currentUser.tagLine}` : (localStorage.getItem('oracle_user_pseudo') || 'Unknown'); 
+      const response = await fetch('https://v0-oracle-sigma.vercel.app/api/create-portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pseudo: userPseudo })
+      });
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Erreur serveur (${response.status}): ${errText.substring(0, 100)}`);
+      }
+      
+      const data = await response.json();
+      if (data.url) window.ipcRenderer.invoke('app:open-url', data.url);
+    } catch (err) {
+      alert("Erreur portail.");
+    }
+  };
 
   if (!isPremium) {
     const premiumFeatures = [
@@ -8979,7 +9011,181 @@ function SubscriptionView({ t, panelClass, isPremium, setIsPremium, setActiveTab
             {!isCanceled ? (
               <button
                 className="w-full py-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 font-bold hover:bg-red-500/10 transition"
-                onClick={() => setIsCanceled(true)}
+                onClick={() => setShowCancelModal(true)}
+              >
+                Annuler l'abonnement
+              </button>
+            ) : (
+              <button
+                className="w-full py-3 rounded-xl border border-green-500/20 bg-green-500/10 text-green-400 font-bold hover:bg-green-500/20 shadow-[0_0_15px_rgba(74,222,128,0.1)] transition"
+                onClick={() => setIsCanceled(false)}
+              >
+                Réactiver Oracle Gold
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* CANCEL MODAL */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300 text-center">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowCancelModal(false)}></div>
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#13141a] p-8 shadow-2xl shadow-black/50">
+            <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-red-500/10 blur-3xl"></div>
+            
+            <div className="relative text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20">
+                <ShieldAlert size={32} />
+              </div>
+              <h3 className="mb-2 text-2xl font-black italic text-white uppercase tracking-tighter">Annuler l'abonnement</h3>
+              <p className="mb-8 text-sm text-gray-400">Comment souhaitez-vous procéder à l'annulation de votre accès Oracle Gold ?</p>
+              
+              <div className="space-y-4">
+                <button 
+                  disabled={canceling}
+                  onClick={() => handleCancel('RENEWAL')}
+                  className="group relative w-full overflow-hidden rounded-2xl border border-white/5 bg-white/5 p-4 text-left transition-all hover:bg-white/10 hover:border-white/20 active:scale-95"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-white">Annuler le renouvellement</span>
+                    <Clock size={16} className="text-gray-500" />
+                  </div>
+                  <p className="text-[10px] leading-tight text-gray-500 group-hover:text-gray-400">Vous gardez vos avantages jusqu'au {expirationDate}. Aucun prélèvement futur.</p>
+                </button>
+
+                <button 
+                  disabled={canceling}
+                  onClick={() => handleCancel('IMMEDIATE')}
+                  className="group relative w-full overflow-hidden rounded-2xl border border-red-500/10 bg-red-500/5 p-4 text-left transition-all hover:bg-red-500/10 hover:border-red-500/20 active:scale-95"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-red-400">Annuler totalement</span>
+                    <Ban size={16} className="text-red-500/50" />
+                  </div>
+                  <p className="text-[10px] leading-tight text-red-500/40 group-hover:text-red-500/60">Interruption immédiate de tous vos services et accès Oracle Gold.</p>
+                </button>
+              </div>
+
+              <button 
+                onClick={() => setShowCancelModal(false)}
+                className="mt-8 text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-white transition-colors"
+              >
+                Garder mon abonnement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 flex items-center gap-3 tracking-tighter italic">
+            <img src={oracleLogo} className="w-8 h-8 object-contain opacity-90" style={{ filter: 'sepia(1) saturate(2) hue-rotate(-20deg) brightness(1.3) drop-shadow(0 0 8px rgba(234,179,8,0.8))' }} alt="Oracle Gold" />
+            Oracle Gold
+          </h2>
+          <p className="text-gray-500 text-sm font-medium mt-1">Gestion de l'abonnement en cours.</p>
+        </div>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className="px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition font-bold text-sm flex items-center gap-2"
+        >
+          <ArrowLeft size={16} /> Retour
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+        {/* Status Card */}
+        <div className="glass-panel p-8 border-y border-yellow-500/20 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-yellow-500/20 transition-all duration-700"></div>
+
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={cn("w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor]", isCanceled ? "bg-orange-500 text-orange-500" : "bg-green-500 text-green-500")}></span>
+                <span className="text-xs font-black uppercase tracking-widest text-gray-400">Statut</span>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-6">
+                {isCanceled ? "Annulation programmée" : "Actif"}
+              </h3>
+            </div>
+            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
+              <CreditCard className="text-gray-300" size={24} />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-white/5">
+              <span className="text-gray-400 text-sm">Date de facturation</span>
+              <span className="text-white font-bold font-mono">{expirationDate}</span>
+            </div>
+            <div className="flex justify-between items-center py-3 border-b border-white/5">
+              <span className="text-gray-400 text-sm">Moyen de paiement</span>
+              <span className="text-white font-bold flex items-center gap-2">
+                •••• 4242 <CreditCard size={14} />
+              </span>
+            </div>
+
+            {isCanceled && (
+              <div className="mt-4 p-4 bg-orange-500/10 border border-orange-500/20 rounded-xl text-orange-400 text-sm font-medium">
+                Vous conserverez vos avantages Oracle Gold jusqu'au <strong className="text-orange-300">{expirationDate}</strong>. Aucun autre prélèvement ne sera effectué.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions Card */}
+        <div className="glass-panel p-8 border-t border-white/10 flex flex-col justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">Actions</h3>
+            <p className="text-gray-500 text-sm">Mettez à jour vos informations ou gérez le renouvellement de l'abonnement.</p>
+
+            <div className="space-y-3 mt-6">
+              <button 
+                onClick={async () => {
+                   const userPseudo = currentUser ? `${currentUser.gameName}#${currentUser.tagLine}` : (localStorage.getItem('oracle_user_pseudo') || 'Unknown'); 
+                   const response = await fetch('https://v0-oracle-sigma.vercel.app/api/create-portal', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ pseudo: userPseudo })
+                   });
+                   const data = await response.json();
+                   if (data.url) window.ipcRenderer.invoke('app:open-url', data.url);
+                }}
+                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition text-white font-bold text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard size={18} className="text-gray-400" /> Modifier le paiement
+                </div>
+                <ArrowRight size={16} className="text-gray-500" />
+              </button>
+              <button 
+                onClick={async () => {
+                   const userPseudo = currentUser ? `${currentUser.gameName}#${currentUser.tagLine}` : (localStorage.getItem('oracle_user_pseudo') || 'Unknown'); 
+                   const response = await fetch('https://v0-oracle-sigma.vercel.app/api/create-portal', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ pseudo: userPseudo })
+                   });
+                   const data = await response.json();
+                   if (data.url) window.ipcRenderer.invoke('app:open-url', data.url);
+                }}
+                className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition text-white font-bold text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <FileText size={18} className="text-gray-400" /> Historique de facturation
+                </div>
+                <ArrowRight size={16} className="text-gray-500" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-white/5">
+            {!isCanceled ? (
+              <button
+                className="w-full py-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 font-bold hover:bg-red-500/10 transition"
+                onClick={() => setShowCancelModal(true)}
               >
                 Annuler l'abonnement
               </button>

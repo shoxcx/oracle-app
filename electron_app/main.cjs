@@ -101,7 +101,7 @@ function createMainWindow() {
     });
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-    const url = isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, '../dist/index.html')}`;
+    const url = isDev ? 'http://localhost:5174' : `file://${path.join(__dirname, '../dist/index.html')}`;
 
     mainWindow.loadURL(url);
     mainWindow.once('ready-to-show', () => {
@@ -174,7 +174,7 @@ function createToastWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev
-        ? 'http://localhost:5173?mode=toast'
+        ? 'http://localhost:5174?mode=toast'
         : `file://${path.join(__dirname, '../dist/index.html')}?mode=toast`;
 
     toastWindow.loadURL(url);
@@ -221,7 +221,7 @@ function createLiveWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev
-        ? 'http://localhost:5173?mode=live'
+        ? 'http://localhost:5174?mode=live'
         : `file://${path.join(__dirname, '../dist/index.html')}?mode=live`;
 
     liveWindow.loadURL(url);
@@ -257,7 +257,7 @@ function createLoadingWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev
-        ? 'http://localhost:5173?mode=loading'
+        ? 'http://localhost:5174?mode=loading'
         : `file://${path.join(__dirname, '../dist/index.html')}?mode=loading`;
 
     loadingWindow.loadURL(url);
@@ -283,7 +283,7 @@ function createDraftWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev
-        ? 'http://localhost:5173?mode=draft'
+        ? 'http://localhost:5174?mode=draft'
         : `file://${path.join(__dirname, '../dist/index.html')}?mode=draft`;
 
     draftWindow.loadURL(url);
@@ -316,7 +316,7 @@ function createVoiceWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev
-        ? 'http://localhost:5173?mode=voice'
+        ? 'http://localhost:5174?mode=voice'
         : `file://${path.join(__dirname, '../dist/index.html')}?mode=voice`;
 
     voiceWindow.loadURL(url);
@@ -435,7 +435,7 @@ function createMusicWindow() {
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     const url = isDev
-        ? 'http://localhost:5173?mode=music'
+        ? 'http://localhost:5174?mode=music'
         : `file://${path.join(__dirname, '../dist/index.html')}?mode=music`;
 
     musicWindow.loadURL(url);
@@ -501,7 +501,7 @@ function createInGameWindow() {
     ingameWindow.setIgnoreMouseEvents(true, { forward: true });
 
     const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-    const url = isDev ? 'http://localhost:5173?mode=ingame' : `file://${path.join(__dirname, '../dist/index.html')}?mode=ingame`;
+    const url = isDev ? 'http://localhost:5174?mode=ingame' : `file://${path.join(__dirname, '../dist/index.html')}?mode=ingame`;
 
     ingameWindow.loadURL(url);
     ingameWindow.setAlwaysOnTop(true, 'screen-saver');
@@ -1056,13 +1056,13 @@ async function monitorGameLoop() {
             }
 
             const settings = getSettings();
-            if (['GameStart', 'InProgress'].includes(phase)) {
+            if (phase === 'GameStart') {
                 if (settings.loadingScreenEnabled !== false) {
                     if (!loadingWindow) createLoadingWindow();
                     loadingWindow.showInactive();
                     loadingWindow.setIgnoreMouseEvents(false);
                 }
-            } else if (!['GameStart', 'InProgress'].includes(phase)) {
+            } else {
                 if (loadingWindow && !loadingWindow.isDestroyed() && loadingWindow.isVisible()) {
                     fadeOutAndHide(loadingWindow);
                 }

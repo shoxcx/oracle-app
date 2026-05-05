@@ -1,16 +1,16 @@
 {
   "name": "lol-tracker",
   "private": true,
-  "version": "0.0.15",
+  "version": "0.0.16",
   "type": "module",
   "main": "electron_app/main.cjs",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5174",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "electron": ".\\node_modules\\electron\\dist\\electron.exe .",
-    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:5173 && npm run electron\"",
+    "electron:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:5174 && npm run electron\"",
     "build:win": "npm run build && electron-builder --win --x64"
   },
   "build": {
