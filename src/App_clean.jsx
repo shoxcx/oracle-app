@@ -139,6 +139,11 @@ const translations = {
     themeToggleDesc: "Toggle between Light and Dark mode",
     langSelectDesc: "Select your preferred language",
     gold_sound_label: "Gold Alert (1200g)",
+    manage_subscription: "Manage Subscription",
+    cancel_subscription: "Cancel Subscription",
+    disable_auto_renew: "Disable Auto-Renewal",
+    subscription_status: "Active",
+    subscription_desc: "Manage your Oracle Gold subscription and payments.",
     gold_sound_desc: "Plays a sound when you reach 1200 gold",
     test_mode_label: "Overlay Test Mode",
     test_mode_desc: "Show all overlays for testing",
@@ -313,6 +318,11 @@ const translations = {
     themeToggleDesc: "Basculer entre les modes Clair et Sombre",
     langSelectDesc: "SÃƒÂ©lectionnez votre langue prÃƒÂ©fÃƒÂ©rÃƒÂ©e",
     gold_sound_label: "Alerte Or (1200g)",
+    manage_subscription: "GÃƒÂ©rer mon abonnement",
+    cancel_subscription: "Annuler l'abonnement",
+    disable_auto_renew: "DÃƒÂ©sactiver le prÃƒÂ©lÃƒÂ¨vement auto",
+    subscription_status: "Actif",
+    subscription_desc: "GÃƒÂ©rez votre abonnement Oracle Gold et vos paiements.",
     gold_sound_desc: "Joue un son quand vous atteignez 1200 gold",
     test_mode_label: "Mode TEST Overlays",
     test_mode_desc: "Affiche tous les overlays pour test",
@@ -1039,6 +1049,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
   const [gamePhase, setGamePhase] = useState('None');
   const [userRank, setUserRank] = useState(null); // Added state for rank
   const [friends, setFriends] = useState([]); // Store friends list
+  const [isGold, setIsGold] = useState(false);
   const [autoAccept, setAutoAccept] = useState(() => {
     return localStorage.getItem('oracle_auto_accept') === 'true';
   });
@@ -1291,10 +1302,31 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
           const friendsList = await ipcRenderer.invoke('lcu:get-friends');
           if (Array.isArray(friendsList)) setFriends(friendsList);
 
+          // --- GOLD STATUS CHECK ---
+          if (user && (user.gameName || user.displayName)) {
+            const pseudo = user.gameName || user.displayName;
+            const b64User = btoa(unescape(encodeURIComponent(pseudo.trim())))
+              .replace(/\+/g, '-')
+              .replace(/\//g, '_')
+              .replace(/=/g, '');
+            
+            try {
+              const goldRes = await fetch(`https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/gold_users/${b64User}.json`);
+              if (goldRes.ok) {
+                const goldData = await goldRes.json();
+                const active = goldData && goldData.active && (!goldData.expiresAt || Date.now() < goldData.expiresAt);
+                setIsGold(!!active);
+              }
+            } catch (e) {
+              console.error("Gold Check Error", e);
+            }
+          }
+
         } else if (isConnected) {
           setIsConnected(false);
           setCurrentUser(null);
           setUserRank(null);
+          setIsGold(false);
           setGamePhase('None');
           setFriends([]);
         }
@@ -1400,6 +1432,12 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               <NavItem active={activeTab === 'matchups'} onClick={() => setActiveTab('matchups')} icon={<Gamepad2 size={18} />} label={t('matchups')} />
             </div>
 
+            {/* SUBSCRIPTION */}
+            <div className="space-y-1">
+              <div className="px-4 text-[10px] font-medium text-white/20 uppercase tracking-[0.2em] mb-3">Compte</div>
+              <NavItem active={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')} icon={<Crown size={18} className="text-yellow-500" />} label={t('manage_subscription')} />
+            </div>
+
           </nav>
 
           {/* Bottom Profile Widget */}
@@ -1409,6 +1447,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
               rankedStats={userRank}
               isConnected={isConnected}
               appMode={appMode}
+              isGold={isGold}
               t={t}
               onClick={() => {
                 setTargetSummoner(null);
@@ -1659,6 +1698,7 @@ function MainApp({ theme, setTheme, visualMode, setVisualMode, language, setLang
                   </div>
                 )}
 
+                {activeTab === 'subscription' && <SubscriptionView panelClass={panelClass} t={t} isGold={isGold} />}
                 {activeTab === 'settings' && <SettingsView
                   theme={theme} setTheme={setTheme}
                   visualMode={visualMode} setVisualMode={setVisualMode}
@@ -1763,7 +1803,7 @@ const handleMinimize = () => ipcRenderer.invoke('window:minimize');
 const handleClose = () => ipcRenderer.invoke('window:close');
 
 // --- Updated Sidebar Profile ---
-function SidebarProfile({ currentUser, rankedStats, isConnected, appMode, t, onClick }) {
+function SidebarProfile({ currentUser, rankedStats, isConnected, appMode, isGold, t, onClick }) {
   if (!currentUser) {
     return (
       <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-white/5 border border-white/5">
@@ -1818,9 +1858,17 @@ function SidebarProfile({ currentUser, rankedStats, isConnected, appMode, t, onC
         {/* Main Icon */}
         <img
           src={`https://ddragon.leagueoflegends.com/cdn/16.1.1/img/profileicon/${currentUser.profileIconId}.png`}
-          className="w-14 h-14 rounded-2xl border-2 border-[#1e1e24] shadow-lg"
+          className={cn(
+            "w-14 h-14 rounded-2xl border-2 shadow-lg transition-all",
+            isGold ? "border-yellow-500 shadow-yellow-500/40" : "border-[#1e1e24]"
+          )}
           alt="Profile"
         />
+        {isGold && (
+          <div className="absolute -top-3 -left-3 bg-yellow-500 text-black p-1 rounded-lg shadow-xl animate-bounce">
+            <Crown size={12} fill="currentColor" />
+          </div>
+        )}
 
         {/* Level Badge (Bottom Center) */}
         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#1e1e1e] text-white text-[9px] font-bold px-2 py-0.5 rounded-md border border-[#2d2d35] z-20 whitespace-nowrap min-w-[24px] text-center">
@@ -8012,10 +8060,105 @@ function LoadingOverlay({ t, visualMode, theme }) {
 
       <div className="mt-12 text-gray-400 font-medium text-sm animate-pulse italic">Appuyez sur [ALT+O] en jeu pour activer l'analyse prÃƒÂ©dictive</div>
     </div>
-  )
+  );
 }
 
+function SubscriptionView({ panelClass, t, isGold }) {
+  const [loading, setLoading] = useState(false);
 
+  const handleCancel = () => {
+    setLoading(true);
+    // Dans une app réelle, on ouvrirait le portail client Stripe
+    setTimeout(() => {
+      window.open('https://billing.stripe.com/p/login/test_fZe6pU7wM6gW3m09AA', '_blank');
+      setLoading(false);
+    }, 1000);
+  };
+
+  return (
+    <div className="h-full flex flex-col gap-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4">
+      <div className={cn("p-8 rounded-[32px] relative overflow-hidden", panelClass)}>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 blur-[80px] rounded-full -mr-20 -mt-20"></div>
+        
+        <div className="relative z-10 flex items-center gap-6 mb-8">
+          <div className={cn(
+            "w-20 h-20 rounded-[24px] flex items-center justify-center shadow-[0_0_30px_rgba(234,179,8,0.2)] transition-all",
+            isGold ? "bg-yellow-500/20 text-yellow-500" : "bg-gray-500/10 text-gray-400"
+          )}>
+            <Crown size={40} />
+          </div>
+          <div>
+            <h2 className="text-3xl font-black text-white tracking-tight uppercase">Oracle Gold</h2>
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border transition-all",
+                isGold ? "bg-green-500/20 text-green-400 border-green-500/20" : "bg-red-500/20 text-red-400 border-red-500/20"
+              )}>
+                {isGold ? t('subscription_status') : "Inactif"}
+              </span>
+              {isGold && <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">• 2.99€ / mois</span>}
+            </div>
+          </div>
+        </div>
+
+        <p className="text-gray-400 font-medium mb-10 max-w-xl">
+          {isGold ? t('subscription_desc') : "Débloquez toutes les fonctionnalités premium d'Oracle Gold pour dominer la Faille."}
+        </p>
+
+        {isGold ? (
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={handleCancel}
+              disabled={loading}
+              className="flex flex-col items-start gap-4 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+            >
+              <div className="p-3 bg-red-500/10 text-red-500 rounded-xl group-hover:scale-110 transition-transform">
+                <X size={20} />
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-white mb-1">{t('cancel_subscription')}</div>
+                <div className="text-[10px] text-gray-500 font-medium leading-tight">Mettre fin à votre abonnement à la fin de la période actuelle.</div>
+              </div>
+            </button>
+
+            <button
+              onClick={handleCancel}
+              disabled={loading}
+              className="flex flex-col items-start gap-4 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+            >
+              <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl group-hover:scale-110 transition-transform">
+                <RefreshCw size={20} />
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-white mb-1">{t('disable_auto_renew')}</div>
+                <div className="text-[10px] text-gray-500 font-medium leading-tight">Conserver Gold mais ne pas être prélevé automatiquement le mois prochain.</div>
+              </div>
+            </button>
+          </div>
+        ) : (
+          <button 
+            onClick={() => window.open('https://oracle-web-sigma.vercel.app/gold', '_blank')}
+            className="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-black font-black uppercase tracking-[0.2em] rounded-2xl shadow-[0_0_30px_rgba(234,179,8,0.3)] transition-all active:scale-95"
+          >
+            S'abonner maintenant
+          </button>
+        )}
+      </div>
+
+      <div className={cn("p-6 rounded-[24px] flex items-center justify-between", panelClass)}>
+        <div className="flex items-center gap-4 text-gray-400">
+          <Shield size={20} />
+          <span className="text-sm font-bold uppercase tracking-widest">Paiements sécurisés par Stripe</span>
+        </div>
+        {isGold && (
+          <button className="text-xs font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest transition-colors flex items-center gap-2">
+            Voir l'historique des factures <ExternalLink size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default App;
 
