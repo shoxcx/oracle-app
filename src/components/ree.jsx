@@ -655,7 +655,7 @@ export function InGameHelper({ ddragonVersion }) {
                             const hasObjective = newEvents.some(e => ['DragonKill', 'BaronKill', 'TurretKilled', 'InhibKilled'].includes(e.EventName));
                             if (hasObjective) {
                                 // Trigger WinProbability naturally behind other notifications
-                                triggerWinrateOverlay(false);
+                                // triggerWinrateOverlay(false);
                             }
                         }
                         refs.processedEventsCount = evtCount;

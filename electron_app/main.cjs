@@ -166,7 +166,7 @@ function createToastWindow() {
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
+        resizable: true,
         focusable: false,
         hasShadow: false,
         type: 'toolbar' // Helps desktop placement
@@ -210,7 +210,8 @@ function createLiveWindow() {
             webSecurity: false
         },
         title: 'Oracle Live Game',
-        backgroundColor: '#00FFFFFF',
+        backgroundColor: '#00000000',
+        thickFrame: false,
         show: false,
         frame: false,
         transparent: true,
@@ -240,17 +241,18 @@ function createLoadingWindow() {
             webSecurity: false
         },
         title: 'Oracle Loading Screen',
-        backgroundColor: '#00FFFFFF',
+        backgroundColor: '#00000000',
+        thickFrame: false,
         show: false,
         frame: false,
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
-        type: 'toolbar'
+        resizable: true,
+        hasShadow: false
     });
 
-    loadingWindow.setIgnoreMouseEvents(true, { forward: true });
+    // loadingWindow.setIgnoreMouseEvents(true, { forward: true });
     
     loadingWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     loadingWindow.setAlwaysOnTop(true, 'screen-saver', 1);
@@ -273,7 +275,8 @@ function createDraftWindow() {
             webSecurity: false
         },
         title: 'Oracle Draft Sim',
-        backgroundColor: '#00FFFFFF',
+        backgroundColor: '#00000000',
+        thickFrame: false,
         show: false,
         frame: false,
         transparent: true,
@@ -309,7 +312,7 @@ function createVoiceWindow() {
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
+        resizable: true,
         focusable: false,
         type: 'toolbar'
     });
@@ -390,7 +393,10 @@ ipcMain.handle('window:show', (event) => {
 
 ipcMain.handle('window:hide', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) fadeOutAndHide(win);
+    if (win) {
+        if (win === loadingWindow) win.userHidden = true;
+        fadeOutAndHide(win);
+    }
 });
 
 function createMusicWindow() {
@@ -423,7 +429,7 @@ function createMusicWindow() {
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
+        resizable: true,
         focusable: true, // Needs focus occasionally? No, keep it non-focusable if possible.
         hasShadow: false,
         type: 'toolbar'
@@ -492,7 +498,7 @@ function createInGameWindow() {
         transparent: true,
         alwaysOnTop: true,
         skipTaskbar: true,
-        resizable: false,
+        resizable: true,
         focusable: false,
         hasShadow: false,
         type: 'toolbar'
@@ -558,7 +564,7 @@ ipcMain.handle('scraper:fast-icon-fetch', async (_, name, region) => {
         };
         const regionKey = REGION_MAP[(region || 'EUW').toUpperCase()] || (region || 'euw').toLowerCase() + '1';
         
-        let searchSlug = name;
+        let searchSlug = (name || "").replace(/\s/g, '');
         if (!searchSlug.includes('#')) {
             searchSlug = `${searchSlug}#${(region || 'EUW').toUpperCase()}`;
         }
@@ -612,6 +618,7 @@ ipcMain.handle('lcu:search-summoner', async (_, name, region, skipLcu, puuid, sk
         }
     }
 
+    if (!name) return null;
     if (name.startsWith('Bot ') || name.toLowerCase().includes('bot ')) {
         console.log(`[IPC] Skipping Scraper for Bot: ${name}`);
         return { displayName: name, isBot: true, profileIconId: 29, summonerLevel: 1, region: region };
@@ -646,7 +653,8 @@ ipcMain.handle('manual-login', async (_, { name, tag, region }) => {
 
 ipcMain.handle('lcu:connect', async () => {
     if (manualUser) return true;
-    return lcu.connect();
+    const isRunning = await lcu.connect();
+    return !!isRunning;
 });
 
 ipcMain.handle('lcu:get-current-summoner', async () => {
@@ -767,8 +775,27 @@ ipcMain.handle('scraper:get-match-details', async (_, matchUrl) => scraper.getEx
 
 ipcMain.handle('app:get-auto-launch', () => app.getLoginItemSettings().openAtLogin);
 ipcMain.handle('app:set-auto-launch', (_, open) => {
-    app.setLoginItemSettings({ openAtLogin: open, path: app.getPath('exe') });
+    const isDev = !app.isPackaged;
+    if (isDev) {
+        console.log("[Main] Skipping auto-launch set in dev mode");
+        return false;
+    }
+    app.setLoginItemSettings({ 
+        openAtLogin: open, 
+        path: process.execPath,
+        args: ['--hidden']
+    });
     return app.getLoginItemSettings().openAtLogin;
+});
+
+ipcMain.handle('app:update-settings', (_, newSettings) => {
+    currentSettings = { ...currentSettings, ...newSettings };
+    try {
+        fs.writeFileSync(SETTINGS_PATH, JSON.stringify(currentSettings, null, 2));
+    } catch (err) {
+        console.error("Failed to save settings:", err);
+    }
+    return currentSettings;
 });
 
 ipcMain.handle('app:quit', () => {
@@ -1029,6 +1056,15 @@ async function monitorGameLoop() {
         if (phase !== lastPhase) {
             console.log(`[Monitor] Phase changed: ${lastPhase} -> ${phase}`);
             lastPhase = phase;
+
+            if (phase === 'ReadyCheck') {
+                const settings = getSettings();
+                if (settings.autoAccept) {
+                    console.log("[Monitor] Auto-accepting match...");
+                    await lcu.acceptMatch().catch(e => console.log("[Monitor] Auto-accept failed (normal if already accepted)"));
+                }
+            }
+
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('lcu:phase-changed', phase);
             }
@@ -1059,13 +1095,16 @@ async function monitorGameLoop() {
             if (phase === 'GameStart') {
                 if (settings.loadingScreenEnabled !== false) {
                     if (!loadingWindow) createLoadingWindow();
-                    loadingWindow.showInactive();
-                    loadingWindow.setIgnoreMouseEvents(false);
+                    if (!loadingWindow.userHidden) {
+                        loadingWindow.showInactive();
+                        loadingWindow.setIgnoreMouseEvents(false);
+                    }
                 }
             } else {
                 if (loadingWindow && !loadingWindow.isDestroyed() && loadingWindow.isVisible()) {
                     fadeOutAndHide(loadingWindow);
                 }
+                if (loadingWindow) loadingWindow.userHidden = false; // Reset for next game
             }
 
             if (!['ChampSelect', 'GameStart', 'InProgress', 'Reconnect', 'WaitingForStats'].includes(phase)) {

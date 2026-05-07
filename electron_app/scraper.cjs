@@ -1,5 +1,6 @@
 const { BrowserWindow } = require('electron');
-const axios = require('axios');
+
+
 const cheerio = require('cheerio');
 
 class Scraper {
@@ -8,6 +9,7 @@ class Scraper {
         this.processing = false;
         this.statsCache = new Map();
         this.dataCache = new Map(); // New cache for Esports, Meta, Patch Notes etc.
+        this.browserTaskPromises = new Map(); // Deduplication for parallel identical URL tasks
         this.searchPromises = new Map(); // Deduplication
 
         // Simple File Cache
@@ -102,8 +104,12 @@ class Scraper {
     }
 
     async processQueue() {
-        if (this.processing || this.taskQueue.length === 0) return;
-        this.processing = true;
+        if (this.taskQueue.length === 0) return;
+        // Limit to 3 concurrent browser tasks
+        const maxConcurrent = 3;
+        if ((this.currentConcurrent || 0) >= maxConcurrent) return;
+
+        this.currentConcurrent = (this.currentConcurrent || 0) + 1;
         const { task, resolve, reject } = this.taskQueue.shift();
         try {
             const result = await task();
@@ -111,7 +117,7 @@ class Scraper {
         } catch (e) {
             reject(e);
         } finally {
-            this.processing = false;
+            this.currentConcurrent--;
             this.processQueue();
         }
     }
@@ -360,10 +366,12 @@ class Scraper {
             'JP': 'jp', 'PH': 'ph', 'SG': 'sg', 'TH': 'th', 'TW': 'tw', 'VN': 'vn'
         };
         const regionKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
-        let { slug } = this.parseName(nameQuery);
-        if (!nameQuery.includes('#')) {
-            slug = encodeURIComponent(this.parseName(nameQuery).gameName) + `-${region.toLowerCase()}`;
+        let searchSlug = (nameQuery || "").replace(/\s/g, '');
+        if (!searchSlug.includes('#')) {
+            searchSlug = `${searchSlug}#${(region || 'EUW').toUpperCase()}`;
         }
+        let slug = searchSlug.replace('#', '-').toLowerCase();
+
         // Ensure slug is clean for URL
         const url = `https://www.leagueofgraphs.com/summoner/${regionKey}/${slug}`;
 
@@ -585,15 +593,30 @@ class Scraper {
     }
 
     async runBrowserTask(url, callback, options = {}) {
-        return this.enqueue(async () => {
+        const dedupeKey = url;
+        if (this.browserTaskPromises.has(dedupeKey)) {
+            console.log(`[Scraper] Joining existing BrowserTask for ${url}`);
+            return this.browserTaskPromises.get(dedupeKey);
+        }
+
+        const taskPromise = this.enqueue(async () => {
             let attempts = 0;
             const maxRetries = options.retries !== undefined ? options.retries : 1;
 
             while (attempts <= maxRetries) {
-                await this.initWorker();
-                const win = this.workerWindow;
+                // Create a temporary window for this task if we need more concurrency
+                let win = this.workerWindow;
+                let isTempWin = false;
+                if (this.currentConcurrent > 1) {
+                    const { BrowserWindow } = require('electron');
+                    win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } });
+                    isTempWin = true;
+                } else {
+                    await this.initWorker();
+                    win = this.workerWindow;
+                }
 
-                const finalTimeout = options.timeout || 10000; // Drastically reduced from 30s to 10s to ensure fast fallback to OP.GG
+                const finalTimeout = options.timeout || 25000; // Increased to 25s for reliability with Cloudflare/slow loads
                 const timeoutPromise = new Promise((_, reject) => {
                     setTimeout(() => reject(new Error(`Status: TIMEOUT loading ${url}`)), finalTimeout);
                 });
@@ -609,14 +632,18 @@ class Scraper {
                         })(),
                         timeoutPromise
                     ]);
+                    if (isTempWin && win) {
+                        win.destroy();
+                    }
                     return result;
                 } catch (e) {
+                    if (isTempWin && win) win.destroy();
                     // Log more info if executeJavaScript failed
                     if (e.message.includes('Script failed to execute')) {
                         console.error("[Scraper] Payload error! Likely syntax issue in jsPayload.");
                     }
                     console.error(`[Scraper] Task failed on worker (Attempt ${attempts + 1}): ${e.message}`);
-                    if (win && !win.isDestroyed()) {
+                    if (win && !win.isDestroyed() && !isTempWin) {
                         try { win.webContents.stop(); } catch (err) { }
                     }
                     attempts++;
@@ -627,7 +654,12 @@ class Scraper {
                     await new Promise(r => setTimeout(r, 1000));
                 }
             }
+        }).finally(() => {
+            this.browserTaskPromises.delete(dedupeKey);
         });
+
+        this.browserTaskPromises.set(dedupeKey, taskPromise);
+        return taskPromise;
     }
 
     async waitForSelector(win, selector, customAttempts = 100) {
@@ -689,7 +721,7 @@ class Scraper {
 
     // Interface stubs
     async getRankedStats(puuid) { return this.statsCache.get(puuid) || { queueMap: {} }; }
-    async getMatchHistory(puuid) { return { games: [] }; }
+
     async getMeta() { return []; }
     async getPatchNotes() {
         const cacheKey = 'patch_notes';
@@ -710,26 +742,12 @@ class Scraper {
                             const imgEl = el.querySelector('img');
                             let imgSrc = imgEl ? imgEl.src : null;
                             
+                            // Image extraction logic
                             if (!imgSrc) {
                                 const styleDiv = el.querySelector('[style*="background-image"]');
                                 if (styleDiv) {
                                     const match = styleDiv.getAttribute('style').match(/url\\(["']?(.*?)["']?\\)/);
                                     if (match) imgSrc = match[1];
-                                }
-                                if (!imgSrc) {
-                                    const lazyImg = el.querySelector('[data-src]');
-                                    if(lazyImg) imgSrc = lazyImg.getAttribute('data-src');
-                                }
-                                if (!imgSrc) {
-                                    const bgDiv = Array.from(el.querySelectorAll('div, span')).find(div => {
-                                        const style = window.getComputedStyle(div);
-                                        return style.backgroundImage && style.backgroundImage !== 'none' && style.backgroundImage.includes('url');
-                                    });
-                                    if (bgDiv) {
-                                        const bg = window.getComputedStyle(bgDiv).backgroundImage;
-                                        const match = bg.match(/url\\(["']?(.*?)["']?\\)/);
-                                        if (match) imgSrc = match[1];
-                                    }
                                 }
                             }
 
@@ -746,23 +764,26 @@ class Scraper {
                         }).filter(i => i.title && i.title.length > 3);
                     })()
                 `);
-                return data || [];
             } catch (e) {
                 console.error("[Scraper] Patch notes failed:", e.message);
                 return null;
             }
         });
 
-        if (result) this.setCachedData(cacheKey, result);
-        return result || [
+        const fallback = [
             {
-                title: "Notes de patch 15.1",
-                url: "https://www.leagueoflegends.com/fr-fr/news/game-updates/patch-15-1-notes/",
+                title: "Notes de patch 15.2",
+                url: "https://www.leagueoflegends.com/fr-fr/news/game-updates/patch-15-2-notes/",
                 image: "https://images.contentstack.io/v3/assets/blt731acb42bb3d1659/bltbeeb7909249e7943/65961d1872df03046f5341a0/010924_Patch_14_1_Notes_Banner.jpg",
-                date: "27/01/2026",
+                date: "12/02/2026",
                 summary: "Mise à jour de la saison 2026."
             }
         ];
+
+        // Cache the result (or fallback) to avoid infinite retries on failure
+        const finalResult = (result && result.length > 0) ? result : fallback;
+        this.setCachedData(cacheKey, finalResult);
+        return finalResult;
     }
     async getChampionMeta(role) {
         return this.scrapeMetaUGG(role);
@@ -2307,104 +2328,73 @@ class Scraper {
         const cached = this.getCachedData(cacheKey, 3600000); // 1 hour cache
         if (cached) return cached;
 
-        console.log(`[Scraper] Fast-fetching RANK HISTORY for ${name} from ${url}`);
+        console.log(`[Scraper] Fetching RANK HISTORY (BrowserTask) for ${name} from ${url}`);
 
-        try {
-            const response = await axios.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-                    'Referer': 'https://www.leagueofgraphs.com/',
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                },
-                timeout: 5000
-            });
-
-            const html = response.data;
-            const $ = cheerio.load(html);
-            const scripts = $('script').get();
-            const targetScript = scripts.find(s => $(s).html().includes('graphData'));
-            
-            if (!targetScript) return [];
-
-            const code = $(targetScript).html();
-            const extract = (key) => {
-                const regex = new RegExp(key + '\\s*=\\s*(\\[.*?\\]|{.*?});', 's');
-                const match = code.match(regex);
-                if (match) {
-                    try { return JSON.parse(match[1].trim()); }
-                    catch(e) { try { return eval(match[1]); } catch(e2) { return null; } }
+        const history = await this.runBrowserTask(url, async (win) => {
+            try {
+                const status = await this.waitForSelector(win, 'script');
+                if (status !== 'READY') {
+                    console.warn(`[Scraper] Rank history selector status: ${status} for ${url}`);
+                    return [];
                 }
-                return null;
-            };
-
-            const graphData = extract('graphData');
-            const lpData = extract('lpData');
-            const rankData = extract('rankData');
-
-            if (!graphData) return [];
-
-            const history = graphData.map(point => {
-                const ts = point[0];
-                const lp = lpData ? lpData[ts] : null;
-                const rankInfo = rankData ? rankData[ts] : null;
-
-                if (lp === null || lp === undefined || (lp === 0 && (!rankInfo || rankInfo.tierRankString === "Unknown"))) {
-                    return null;
-                }
-
-                return {
-                    timestamp: ts,
-                    lp: lp,
-                    rankStr: rankInfo ? rankInfo.tierRankString : "Unknown"
-                };
-            }).filter(p => p !== null && p.timestamp > 0 && p.rankStr !== "Unknown");
-
-            this.setCachedData(cacheKey, history);
-            return history;
-        } catch (e) {
-            console.error("[Scraper] Rank history fast-fetch failed:", e.message);
-            // Fallback to browser if axios fails (e.g. Cloudflare)
-            return this.runBrowserTask(url, async (win) => {
-                await new Promise(r => setTimeout(r, 2000));
-                return win.webContents.executeJavaScript(`
+                return await win.webContents.executeJavaScript(`
                     (() => {
-                        try {
-                            const scripts = Array.from(document.querySelectorAll('script'));
-                            const target = scripts.find(s => s.innerText.includes('graphData'));
-                            if (!target) return [];
-                            const code = target.innerText;
-                            const extract = (key) => {
-                                const regex = new RegExp(key + '\\\\s*=\\\\s*(\\\\[.*?\\\\]|{.*?});', 's');
-                                const match = code.match(regex);
-                                if (match) {
-                                    try { return JSON.parse(match[1].trim()); }
-                                    catch(e) { try { return eval(match[1]); } catch(e2) { return null; } }
-                                }
-                                return null;
-                            };
-                            const graphData = extract('graphData');
-                            const lpData = extract('lpData');
-                            const rankData = extract('rankData');
-                            if (!graphData) return [];
-                            return graphData.map(point => {
-                                const ts = point[0];
-                                const lp = lpData ? lpData[ts] : null;
-                                const rankInfo = rankData ? rankData[ts] : null;
-                                if (lp === null || lp === undefined || (lp === 0 && (!rankInfo || rankInfo.tierRankString === "Unknown"))) return null;
-                                return { timestamp: ts, lp, rankStr: rankInfo ? rankInfo.tierRankString : "Unknown" };
-                            }).filter(p => p !== null && p.timestamp > 0 && p.rankStr !== "Unknown");
-                        } catch(e) { return []; }
+                        const scripts = Array.from(document.querySelectorAll('script'));
+                        const targetScript = scripts.find(s => s.innerHTML.includes('graphData'));
+                        if (!targetScript) return [];
+
+                        const code = targetScript.innerHTML;
+                        const extract = (key) => {
+                            const regex = new RegExp(key + '\\\\s*=\\\\s*(\\\\[.*?\\\\]|{.*?});', 's');
+                            const match = code.match(regex);
+                            if (match) {
+                                try { return JSON.parse(match[1].trim()); }
+                                catch(e) { try { return eval(match[1]); } catch(e2) { return null; } }
+                            }
+                            return null;
+                        };
+
+                        const graphData = extract('graphData');
+                        const lpData = extract('lpData');
+                        const rankData = extract('rankData');
+                        if (!graphData) return [];
+
+                        return graphData.map(point => {
+                            const ts = point[0];
+                            const lp = lpData ? lpData[ts] : null;
+                            const rankInfo = rankData ? rankData[ts] : null;
+                            if (lp === null || lp === undefined || (lp === 0 && (!rankInfo || rankInfo.tierRankString === "Unknown"))) return null;
+                            return { timestamp: ts, lp, rankStr: rankInfo ? rankInfo.tierRankString : "Unknown" };
+                        }).filter(p => p !== null && p.timestamp > 0 && p.rankStr !== "Unknown");
                     })()
                 `);
-            });
+            } catch (e) {
+                console.error("[Scraper] Rank history failed:", e.message);
+                return [];
+            }
+        });
+
+        if (history && history.length > 0) {
+            this.setCachedData(cacheKey, history);
+            return history;
         }
+
+        // Fallback to U.GG match history reconstruction
+        console.log(`[Scraper] LoG Rank History failed. Trying U.GG reconstruction for ${name}`);
+        const uggGains = await this.getRecentLPGains(puuid_or_name, region);
+        if (uggGains && uggGains.length > 0) {
+            // Reconstruct a mini-history from current rank (needs current rank info)
+            // But for now, we return empty if LoG failed as U.GG doesn't have a global graph script
+            return [];
+        }
+
+        return history || [];
     }
 
     async getRecentLPGains(puuid_or_name, region = 'EUW') {
         const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br', 'TR': 'tr', 'LAS': 'las', 'LAN': 'lan', 'OCE': 'oce', 'RU': 'ru', 'JP': 'jp' };
+        const UGG_REGION_MAP = { 'EUW': 'euw1', 'NA': 'na1', 'KR': 'kr', 'EUNE': 'eun1', 'BR': 'br1', 'TR': 'tr1', 'LAS': 'la2', 'LAN': 'la1', 'OCE': 'oc1', 'RU': 'ru', 'JP': 'jp1' };
+
         let name = puuid_or_name;
         if (puuid_or_name.startsWith('ext~')) {
             const parts = puuid_or_name.split('~');
@@ -2412,285 +2402,160 @@ class Scraper {
             region = parts[2] || region;
         }
         const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
+        const uggRegion = UGG_REGION_MAP[region.toUpperCase()] || region.toLowerCase();
         const { slug } = this.parseName(name, region);
-
-        const cacheKey = `lp_gains_${rKey}_${slug}`;
+        const cacheKey = `lp_gains_ugg_${uggRegion}_${slug}`;
         const cached = this.getCachedData(cacheKey, 600000); // 10 mins cache
         if (cached) return cached;
 
-        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug.replace(/%20/g, '+')}`;
-        console.log(`[Scraper] Fast-fetching recent LP gains for ${name} from ${url}`);
+        console.log(`[Scraper] Fetching LP gains (U.GG) for ${name}`);
+        const url = `https://u.gg/lol/profile/${uggRegion}/${slug}/overview`;
 
-        try {
-            const response = await axios.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-                    'Referer': 'https://www.leagueofgraphs.com/',
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                },
-                timeout: 5000
-            });
-
-            const html = response.data;
-            const $ = cheerio.load(html);
-            const results = [];
-            
-            $('.recentGamesTable tbody tr').each((i, row) => {
-                const $row = $(row);
-                let lpStr = null;
-                const kills = $row.find('.kills').text().trim();
-                const deaths = $row.find('.deaths').text().trim();
-                const assists = $row.find('.assists').text().trim();
-                const mode = $row.find('.gameMode').first().text().trim();
-                
-                // Specifically look for Soloqueue/Ranked modes to avoid normal games
-                const isRanked = /solo|flex|ranked|class/i.test(mode);
-                
-                $row.find('.lpChange').each((j, el) => {
-                    const text = $(el).text().trim();
-                    const match = text.match(/([+-]?\s*\d+\s*LP)/i);
-                    if (match) {
-                        lpStr = match[1].replace(/\s+/g, ' ');
-                    }
-                });
-
-                if (lpStr && isRanked) {
-                    const kills = $row.find('.kills').text().trim() || "0";
-                    const deaths = $row.find('.deaths').text().trim() || "0";
-                    const assists = $row.find('.assists').text().trim() || "0";
-                    results.push({ kda: `${kills} / ${deaths} / ${assists}`, lpStr, mode });
-                }
-            });
-
-            console.log(`[Scraper] Found ${results.length} ranked games for ${name}`);
-            
-            // If we found too few games via Fast-fetch (Axios), it might be due to 
-            // partial HTML or lazy loading. Fallback to Browser Task for more depth.
-            if (results.length < 15) {
-                console.log(`[Scraper] Too few games (${results.length}), falling back to deep browser fetch...`);
-                throw new Error("Insufficient results for fast-fetch");
-            }
-
-            this.setCachedData(cacheKey, results);
-            return results;
-        } catch (e) {
-            console.log(`[Scraper] LP gains deep-fetch triggered: ${e.message}`);
-            return this.runBrowserTask(url, async (win) => {
-                try {
-                    // Wait for the table to be visible/loaded
-                    await new Promise(r => setTimeout(r, 2500));
-                    return await win.webContents.executeJavaScript(`
-                        (() => {
-                            const results = [];
-                            const rows = document.querySelectorAll('.recentGamesTable tbody tr');
-                            rows.forEach(row => {
-                                const modeEl = row.querySelector('.gameMode');
-                                const mode = modeEl ? modeEl.innerText.trim() : "";
-                                if (!/solo|flex|ranked|class/i.test(mode)) return;
-
-                                const lpEl = row.querySelector('.lpChange');
-                                let lpStr = null;
-                                if (lpEl) {
-                                    const match = lpEl.innerText.match(/([+-]?\\s*\\d+\\s*LP)/i);
-                                    if (match) lpStr = match[1].replace(/\\s+/g, ' ');
-                                }
-
-                                if (lpStr) {
-                                    const k = row.querySelector('.kills')?.innerText.trim() || "0";
-                                    const d = row.querySelector('.deaths')?.innerText.trim() || "0";
-                                    const a = row.querySelector('.assists')?.innerText.trim() || "0";
-                                    results.push({ kda: \`\${k} / \${d} / \${a}\`, lpStr, mode });
-                                }
-                            });
-                            return results;
-                        })()
-                    `);
-                } catch (err) {
-                    console.error("[Scraper] LP fallback failed:", err);
-                    return [];
-                }
-            });
-        }
-    }
-
-    async getEsportsSchedule() {
-        const cacheKey = 'esports_schedule';
-        const cached = this.getCachedData(cacheKey, 300000); // 5 minutes cache limit
-        if (cached) return cached;
-
-        const url = 'https://lolesports.com/en-GB/schedule?leagues=lec,lck,lpl,lcs';
-        const result = await this.runBrowserTask(url, async (win) => {
-
+        const results = await this.runBrowserTask(url, async (win) => {
             try {
-                await this.waitForSelector(win, 'body');
-                await new Promise(r => setTimeout(r, 5000));
+                // Wait for page content to load and scroll to ensure match history is populated
+                await this.waitForSelector(win, 'div[class*="profile"], div[class*="overview"], .summoner-name, [class*="SummonerProfile"]');
+                
+                // --- FALLBACK LOGIC IF U.GG FAILS ---
+                const isUggEmpty = await win.webContents.executeJavaScript(`document.body.innerText.includes('Player not found') || document.querySelectorAll('.match-history-row').length === 0`);
+                if (isUggEmpty) {
+                   console.log(`[Scraper] U.GG empty, trying LoG for ${name}`);
+                   const logUrl = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug}`;
+                   await win.loadURL(logUrl);
+                   await this.waitForSelector(win, 'div[class*="match"], .recent-game-row, [class*="MatchHistory"]');
+                }
+                await win.webContents.executeJavaScript(`
+                        // Aggressive scrolling to ensure DOM elements are rendered
+                        window.scrollTo(0, 1000);
+                        await new Promise(r => setTimeout(r, 500));
+                        window.scrollTo(0, 2500);
+                        await new Promise(r => setTimeout(r, 500));
 
-                const data = await win.webContents.executeJavaScript(`
-                    (async () => {
-                        try {
-                            const reveals = Array.from(document.querySelectorAll('*')).filter(el => el.innerText && el.innerText.trim().toUpperCase() === 'CLICK TO REVEAL');
-                            for (const btn of reveals) {
-                                try { btn.click(); } catch(e){}
-                            }
-                            if (reveals.length > 0) await new Promise(r => setTimeout(r, 2000));
-                        } catch (e) {}
+                        let rows = Array.from(document.querySelectorAll(
+                            '.match-history-row, div[class*="match-history-row"], .recent-game-row, ' +
+                            'li[class*="match"], div[class*="MatchHistory"] > div, ' +
+                            '[class*="match-card"], [class*="game-summary"], [class*="GameSummary"], ' +
+                            '[class*="MatchSummary"], [class*="recent-game"]'
+                        ));
+                        
+                        // Enhanced fallback: look for any group containing KDA-like text OR Ranked keywords
+                        if (rows.length < 5) {
+                           const fallback = Array.from(document.querySelectorAll('div, li')).filter(d => {
+                              const txt = d.innerText || '';
+                              const hasKDA = txt.match(/\\d+\\s*\\/\\s*\\d+\\s*\\/\\s*\\d+/);
+                              const hasRanked = txt.includes('Ranked') || txt.includes('Classé');
+                              return (hasKDA || hasRanked) && txt.length < 600 && d.children.length > 2;
+                           });
+                           if (fallback.length > rows.length) rows = fallback.slice(0, 25);
+                        }
 
-                        const clean = t => t ? t.innerText.trim() : "";
-                        const results = [];
-                        const seenMatches = new Set();
-
-                        let allEls = Array.from(document.querySelectorAll('*'));
-                        let indicators = allEls.filter(el => {
-                            const t = el.innerText ? el.innerText.trim() : "";
-                            return t === 'Bo1' || t === 'Bo3' || t === 'Bo5' || t === 'LIVE';
-                        });
-
-                        indicators.forEach(ind => {
-                            let container = ind;
-                            let limit = 8;
-                            let found = false;
-                            while(container && limit > 0) {
-                                if (container.innerText.length > 20 && container.innerText.length < 400) {
-                                    if (container.innerText.match(/\\d{1,2}:\\d{2}/) || container.innerText.includes('LIVE')) {
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                                container = container.parentElement;
-                                limit--;
-                            }
+                        rows.forEach(row => {
+                            const txt = (row.innerText || '');
+                            if (txt.length < 10 || txt.length > 2000) return;
                             
-                            if (!found) {
-                                container = ind;
-                                for(let i=0; i<4; i++) {
-                                    if(container.parentElement) container = container.parentElement;
-                                }
-                            }
-
-                            if (!container) return;
-
-                            const text = container.innerText || "";
-                            if (text.match(/\\bFINAL\\b/i) && !text.match(/\\bFINALS\\b/i)) return;
-                            if (text.toUpperCase().includes('VOD')) return;
-                            if (text.match(/(^|\\n)\\s*[0-5]\\s*-\\s*[0-5]\\s*($|\\n)/)) return;
+                            // Relax filter to capture rank promotions which might replace queue text
+                            // Support shorthand rank notation (S1, G4, P2, D3, I1, B2)
+                            const isRanked = txt.match(/solo|flex|ranked|class|rang/i);
+                            const promoMatch = txt.match(/\\b(Iron|Bronze|Silver|Gold|Plat(?:inum)?|Emerald|Diamond|Master|Grandmaster|Challenger)\\s*([1-4]?)\\b|\\b([ISGPDEBM])([1-4])\\b/i);
                             
-                            // A match is either LIVE or has a scheduled time block. 
-                            // If it lacks both, it's a finished match where time was hidden by "Click to reveal spoilers"
-                            if (!text.toUpperCase().includes('LIVE') && !text.match(/\\d{1,2}:\\d{2}/)) return;
+                            if (!isRanked && !promoMatch) return;
 
-                            const lines = text.split('\\n').map(l => l.trim()).filter(l => l.length >= 2 && l.length < 30);
-                            const textTeams = lines.filter(l => 
-                                !l.match(/LEC|LCK|LPL|LCS|Bo\\\\d|Today|Tomorrow|Match|Score|LIVE|\\\\d{1,2}:\\\\d{2}/i) &&
-                                !l.match(/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i) &&
-                                !l.includes(' - ') &&
-                                l.toUpperCase() !== 'TBD' &&
-                                !l.toUpperCase().includes('CLICK') &&
-                                !l.toUpperCase().includes('REVEAL') &&
-                                !l.toUpperCase().includes('REGIONS') &&
-                                !l.toUpperCase().includes('SPLIT') &&
-                                !l.toUpperCase().includes('PLAYOFFS') &&
-                                !l.toUpperCase().includes('FINALS') &&
-                                !l.toUpperCase().includes('ROUND') &&
-                                !l.toUpperCase().includes('SEASON') &&
-                                !l.toUpperCase().includes('INTERNATIONAL') &&
-                                l.toUpperCase() !== 'UPCOMING'
-                            );
+                            // LP / Rank text
+                            let lpStr = null;
+                            const lpMatch = txt.match(/([+-]?\\d+)\\s*LP/i);
                             
-                            const imgs = Array.from(container.querySelectorAll('img'));
-                            let t1 = "TBD";
-                            let t2 = "TBD";
-                            
-                            const getTeamFromImg = (img) => {
-                                let altContent = img.alt ? img.alt.trim().toUpperCase() : "";
-                                if (altContent === "PREVIOUS" || altContent === "NEXT" || altContent === "TBD") return "TBD";
-                                // if alt is a 8+ char completely hex string, ignore it
-                                if (altContent.match(/^[0-9A-F]{8,}$/i)) altContent = "";
-
-                                if (altContent && altContent.length > 1 && altContent.length < 30 && !altContent.toLowerCase().includes('logo') && !altContent.toLowerCase().includes('lolesports')) {
-                                    return altContent;
-                                }
-                                try {
-                                    let url = decodeURIComponent(img.src);
-                                    if (url.toLowerCase().includes('tbd')) return "TBD";
-                                    let name = url.split('/').pop().split('.')[0];
-                                    name = name.replace(/_logo|-logo|logo/i, '').replace(/_/g, ' ').toUpperCase();
-                                    name = name.replace(/^\\d+\\s*(PX-|-|\\s+)|^\\d+\\s+/i, '').trim();
-                                    name = name.replace(/^\\d+PX-/i, '');
-                                    if (name.includes("LIGHTMODE") || name.includes("DARKMODE") || name.includes("LOLESPORTS") || name.includes("TBD")) return "TBD";
-                                    if (name.match(/^[0-9A-F]{8,}$/i)) return "TBD";
-                                    return name;
-                                } catch(e) {
-                                    return "TBD";
-                                }
-                            };
-
-                            if (imgs.length >= 2) {
-                                t1 = getTeamFromImg(imgs[0]);
-                                t2 = getTeamFromImg(imgs[1]);
+                            if (lpMatch) {
+                                // DETECT WIN/LOSS CONTEXT for signing
+                                const isLoss = txt.match(/loss|defeat|défaite|échec|lose|L\\b/i);
+                                const isWin = txt.match(/win|victory|victoire|succès|W\\b/i);
                                 
-                                if (t1 === "TBD" || t2 === "TBD") {
-                                    return; // Just skip matches if we can't extract team names, better than showing hex strings
+                                let val = Math.abs(parseInt(lpMatch[1]));
+                                if (isLoss && !isWin) {
+                                    lpStr = '-' + val + ' LP';
+                                } else if (isWin && !isLoss) {
+                                    lpStr = '+' + val + ' LP';
+                                } else {
+                                    const sign = parseInt(lpMatch[1]) >= 0 ? '+' : '';
+                                    lpStr = sign + lpMatch[1] + ' LP';
                                 }
-                            } else {
-                                return;
-                            }
-
-                            const matchKey = (t1 + t2).toLowerCase();
-                            if (seenMatches.has(matchKey)) return;
-                            seenMatches.add(matchKey);
-
-                            let date = "Upcoming";
-                            let sibling = container.previousElementSibling;
-                            let dateLimit = 15;
-                            while(sibling && dateLimit > 0) {
-                                if (sibling.innerText && (sibling.innerText.match(/2[0-9]\\s+Jan|Today|Tomorrow|Saturday|Sunday/i) || sibling.tagName.startsWith('H'))) {
-                                    date = sibling.innerText.split('\\n')[0].trim();
-                                    break;
+                            } else if (promoMatch) {
+                                // If it's shorthand like S1, expand it for better display
+                                let fullRank = promoMatch[0].trim();
+                                if (fullRank.length <= 2 && /^[ISGPDEBM][1-4]$/i.test(fullRank)) {
+                                    const map = { 'I': 'Iron', 'B': 'Bronze', 'S': 'Silver', 'G': 'Gold', 'P': 'Platinum', 'E': 'Emerald', 'D': 'Diamond', 'M': 'Master' };
+                                    const char = fullRank[0].toUpperCase();
+                                    fullRank = (map[char] || char) + ' ' + fullRank[1];
                                 }
-                                sibling = sibling.previousElementSibling;
-                                dateLimit--;
+                                lpStr = fullRank;
                             }
 
-                            if (date.match(/\\b([1-9]|1[0-9]|2[0-9]|3[0-1])\\s+(Jan|Feb|jan|fev|fév)\\b/i)) {
-                                if (!date.match(/Mar/i) && new Date().getMonth() >= 2) return; 
-                            }
+                            // KDA - broad match
+                            const kdaMatch = txt.match(/(\\d+)\\s*\\/\\s*(\\d+)\\s*\\/\\s*(\\d+)/);
+                            const kda = kdaMatch ? kdaMatch[1] + ' / ' + kdaMatch[2] + ' / ' + kdaMatch[3] : '0 / 0 / 0';
 
-                            let time = "TBD";
-                            const timeMatch = text.match(/(\d{1,2}:\d{2})/);
-                            if (timeMatch) {
-                                time = timeMatch[1];
-                            } else {
-                                // Try finding a standalone time el
-                                const timeEl = container.querySelector('[class*="time"], [class*="Hour"]');
-                                if (timeEl) time = clean(timeEl);
+                            if (lpStr) {
+                                results.push({
+                                    kda,
+                                    lpStr,
+                                    mode: txt.match(/flex/i) ? 'Ranked Flex' : 'Ranked Solo'
+                                });
                             }
-
-                            results.push({
-                                team1: t1, team2: t2,
-                                time: time === "TBD" ? null : time,
-                                date: date,
-                                league: (text.match(/LEC|LCK|LPL|LCS|VCS|PCS|LLA|CBLOL|Worlds|MSI/i) || ["LOL"])[0].toUpperCase(),
-                                url: "https://lolesports.com/schedule",
-                                logo1: (container.querySelectorAll('img')[0] || {}).src || null,
-                                logo2: (container.querySelectorAll('img')[1] || {}).src || null
-                            });
                         });
-                        return results.slice(0, 10);
+                        return results;
                     })()
                 `);
-                return data;
             } catch (e) {
-                console.error("[Scraper] Esports schedule failed:", e.message);
+                console.error("[Scraper] U.GG LP gains failed:", e.message);
                 return null;
             }
-        });
+        }, { timeout: 40000 });
 
-        if (result) this.setCachedData(cacheKey, result);
-        return result || [];
+        if (results && results.length > 0) {
+            console.log(`[Scraper] Successfully extracted ${results.length} LP gains from U.GG for ${name}`);
+            this.setCachedData(cacheKey, results);
+            return results;
+        }
+
+        // Fallback to LoG if U.GG failed
+        console.log(`[Scraper] U.GG LP gains empty. Falling back to LoG for ${name}`);
+        // LoG uses + for spaces in summoner name segment
+        const { gameName, tagLine } = this.parseName(name, region);
+        const logNameSlug = encodeURIComponent(gameName).replace(/%20/g, '+');
+        const logUrl = `https://www.leagueofgraphs.com/summoner/${rKey}/${logNameSlug}-${tagLine || rKey.toUpperCase()}`;
+        return this.runBrowserTask(logUrl, async (win) => {
+            try {
+                await this.waitForSelector(win, '.recentGamesTable, table[class*="games"]');
+                await new Promise(r => setTimeout(r, 3000));
+                return await win.webContents.executeJavaScript(`
+                    (() => {
+                        const results = [];
+                        const rows = document.querySelectorAll('.recentGamesTable tbody tr, table tr');
+                        rows.forEach(row => {
+                            const modeEl = row.querySelector('.gameMode, td:first-child');
+                            const mode = modeEl ? modeEl.innerText.trim() : "";
+                            if (!/solo|flex|ranked|class|rang/i.test(mode)) return;
+                            const lpEl = row.querySelector('.lpChange, [class*="lp"]');
+                            let lpStr = null;
+                            if (lpEl) {
+                                const match = lpEl.innerText.match(/([+-]?\\s*\\d+\\s*LP)/i);
+                                if (match) lpStr = match[1].replace(/\\s+/g, ' ');
+                            }
+                            if (lpStr) {
+                                const getTxt = (sel) => row.querySelector(sel)?.innerText.trim() || "0";
+                                results.push({ kda: getTxt('.kills') + ' / ' + getTxt('.deaths') + ' / ' + getTxt('.assists'), lpStr, mode });
+                            }
+                        });
+                        return results;
+                    })()
+                `);
+            } catch (e) { return []; }
+        });
     }
+
+    // Redundant getEsportsSchedule removed.
+
+    // Old implementation of getEsportsSchedule removed completely.
+
 
     async getEsportsNews() {
         const cacheKey = 'esports_news';
@@ -3017,7 +2882,8 @@ class Scraper {
             }
         });
 
-        if (result && result.length > 0) this.setCachedData(cacheKey, result);
+        // Always cache result (even empty) to avoid spamming
+        this.setCachedData(cacheKey, result || []);
         return result || [];
     }
 
@@ -3149,13 +3015,9 @@ class Scraper {
             }
         });
 
-        if (!result) {
-            console.log("[Scraper] Failed to fetch GPR. Returning empty array.");
-            return [];
-        }
-        
-        this.setCachedData(cacheKey, result);
-        return result;
+        // Always cache result (even empty) to avoid spamming
+        this.setCachedData(cacheKey, result || []);
+        return result || [];
     }
 }
 

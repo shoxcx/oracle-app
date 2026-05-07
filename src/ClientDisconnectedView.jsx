@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Power, RefreshCw, MonitorPlay, User, Globe, ArrowRight, Loader2, Info, ChevronLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Power, RefreshCw, MonitorPlay, User, Globe, ArrowRight, Loader2, Info, ChevronLeft, Search, Zap, Shield, BarChart3, Radio } from 'lucide-react';
 import oracleLogo from './assets/oracle_logo.png';
 
 export function ClientDisconnectedView({ t }) {
@@ -7,21 +7,22 @@ export function ClientDisconnectedView({ t }) {
     const [inputs, setInputs] = useState({ name: '', tag: '', region: 'EUW' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleLogin = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setLoading(true);
         setError(null);
 
         try {
-            if (!filterInputs()) {
+            if (!inputs.name || !inputs.tag) {
+                setError("Veuillez entrer un Pseudo et un Tag.");
                 setLoading(false);
                 return;
             }
 
             const user = await window.ipcRenderer.invoke('manual-login', inputs);
             if (user) {
-                // Success! The main App loop should pick this up automatically via lcu:get-current-summoner override
                 console.log("Logged in:", user);
             } else {
                 setError("Compte introuvable ou erreur de connexion.");
@@ -32,14 +33,6 @@ export function ClientDisconnectedView({ t }) {
         } finally {
             setLoading(false);
         }
-    };
-
-    const filterInputs = () => {
-        if (!inputs.name || !inputs.tag) {
-            setError("Veuillez entrer un Pseudo et un Tag.");
-            return false;
-        }
-        return true;
     };
 
     const regions = [
@@ -63,49 +56,49 @@ export function ClientDisconnectedView({ t }) {
 
     if (isLoginMode) {
         return (
-            <div className="h-full w-full relative overflow-hidden bg-[#f5f5f7] dark:bg-[#09090b] transition-colors duration-300 flex items-center justify-center">
-                {/* Background Ambience */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[100px]"></div>
-                    <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[100px]"></div>
+            <div className="h-full w-full relative overflow-hidden bg-[#0a0a0c] flex items-center justify-center font-sans">
+                {/* Cinematic Background */}
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-gradient-to-b from-blue-500/10 via-transparent to-purple-500/10 opacity-30"></div>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.08),transparent_70%)]"></div>
                 </div>
 
-                <div className="w-full max-w-md bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-3xl p-8 shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-300">
+                <div className="w-full max-w-md glass-panel p-10 relative z-10 animate-in fade-in zoom-in-95 duration-500 border-white/10 shadow-[0_40px_80px_-15px_rgba(0,0,0,0.8)]">
                     <button
                         onClick={() => setLoginMode(false)}
-                        className="absolute top-6 left-6 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 transition-colors"
+                        className="absolute top-8 left-8 p-2 rounded-xl hover:bg-white/10 text-gray-400 transition-all hover:text-white"
                     >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={24} />
                     </button>
 
-                    <div className="text-center mb-8 mt-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <User className="text-white" size={32} />
+                    <div className="text-center mb-10 mt-2">
+                        <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-[0_15px_30px_-5px_rgba(37,99,235,0.4)] transform hover:scale-110 transition-transform">
+                            <User className="text-white" size={40} />
                         </div>
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100">Connexion Riot ID</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Accédez à votre profil sans lancer le client</p>
+                        <h2 className="text-3xl font-black text-white italic tracking-tight uppercase">Accès Manuel</h2>
+                        <p className="text-gray-400 mt-2 text-sm">Consultez votre profil sans lancer le client League.</p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <div className="flex gap-2">
-                            <div className="flex-1 space-y-1">
-                                <label className="text-[10px] font-bold uppercase text-gray-400 tracking-wider ml-1">Game Name</label>
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        <div className="flex gap-4">
+                            <div className="flex-1 space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Riot ID</label>
                                 <input
                                     type="text"
-                                    placeholder="Hide on bush"
-                                    className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-all placeholder:font-normal"
+                                    placeholder="Nom"
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-gray-600"
                                     value={inputs.name}
                                     onChange={e => setInputs({ ...inputs, name: e.target.value })}
                                 />
                             </div>
-                            <div className="w-24 space-y-1">
-                                <label className="text-[10px] font-bold uppercase text-gray-400 tracking-wider ml-1">Tag</label>
+                            <div className="w-28 space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Tag</label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">#</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">#</span>
                                     <input
                                         type="text"
                                         placeholder="EUW"
-                                        className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl pl-7 pr-3 py-3 text-sm font-bold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-all placeholder:font-normal"
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-8 pr-4 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-gray-600"
                                         value={inputs.tag}
                                         onChange={e => setInputs({ ...inputs, tag: e.target.value })}
                                     />
@@ -113,96 +106,127 @@ export function ClientDisconnectedView({ t }) {
                             </div>
                         </div>
 
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase text-gray-400 tracking-wider ml-1">Mot De Passe <span className='text-xs text-gray-600 normal-case'>(Optionnel pour statistiques)</span></label>
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-all placeholder:font-normal"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase text-gray-400 tracking-wider ml-1">Région</label>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Région</label>
                             <div className="relative">
-                                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                <Globe className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                                 <select
-                                    className="w-full bg-gray-50 dark:bg-black/20 border border-gray-200 dark:border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-accent-primary/50 transition-all appearance-none cursor-pointer"
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-5 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all appearance-none cursor-pointer hover:bg-white/10"
                                     value={inputs.region}
                                     onChange={e => setInputs({ ...inputs, region: e.target.value })}
                                 >
-                                    {regions.map(r => <option key={r.id} value={r.id}>{r.label} ({r.id})</option>)}
+                                    {regions.map(r => <option key={r.id} value={r.id} className="bg-[#1a1a1f]">{r.label}</option>)}
                                 </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none border-l-4 border-transparent border-t-4 border-t-gray-400 border-r-4"></div>
+                                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-gray-500"></div>
                             </div>
                         </div>
 
                         {error && (
-                            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold flex items-center gap-2">
-                                <Info size={14} /> {error}
+                            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex items-center gap-3 animate-in slide-in-from-top-2">
+                                <Info size={16} /> {error}
                             </div>
                         )}
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-accent-primary hover:bg-accent-primary/90 text-black font-black py-4 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:pointer-events-none"
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-5 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 shadow-[0_15px_30px_-5px_rgba(37,99,235,0.3)] disabled:opacity-50 tracking-wide uppercase italic"
                         >
-                            {loading ? <Loader2 size={18} className="animate-spin" /> : <>CONNEXION <ArrowRight size={18} /></>}
+                            {loading ? <Loader2 size={22} className="animate-spin" /> : <>Se Connecter <ArrowRight size={22} /></>}
                         </button>
                     </form>
-                </div >
-            </div >
+                </div>
+            </div>
         );
     }
 
     return (
-        <div className="h-full w-full relative overflow-hidden bg-[#f5f5f7] dark:bg-[#000000] transition-colors duration-300">
-            {/* Background Ambience */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[100px] animate-pulse"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="h-full w-full relative overflow-hidden bg-[#070709] transition-colors duration-500 flex flex-col font-sans">
+            {/* STUNNING ANIMATED BACKGROUND */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                <div className="absolute top-[-20%] left-[-10%] w-[1000px] h-[1000px] bg-blue-600/10 rounded-full blur-[120px] animate-pulse"></div>
+                <div className="absolute bottom-[-20%] right-[-10%] w-[1000px] h-[1000px] bg-purple-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+                
+                {/* Oracle Grid Overlay */}
+                <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '60px 60px' }}></div>
             </div>
 
-            {/* Main Content Scroll Wrapper */}
-            <div className="h-full w-full overflow-y-auto">
-                <div className="min-h-full flex flex-col items-center justify-center p-8 animate-in fade-in zoom-in duration-500">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 z-10">
+                {/* Logo & Brand */}
+                <div className="relative mb-12 group">
+                    <div className="absolute inset-0 bg-blue-500/30 blur-3xl rounded-full scale-125 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+                    <img
+                        src={oracleLogo}
+                        alt="Oracle"
+                        className="w-40 h-40 relative drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-700 ease-out"
+                    />
+                </div>
 
-                    {/* Logo Container with Glow */}
-                    <div className="relative mb-8 group shrink-0">
-                        <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full group-hover:bg-blue-500/30 transition-all duration-500"></div>
-                        <img
-                            src={oracleLogo}
-                            alt="Oracle Logo"
-                            className="w-32 h-32 relative drop-shadow-2xl transition-transform duration-500 hover:scale-110 object-contain"
-                        />
-                    </div>
-
-                    {/* Main Title */}
-                    <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 mb-4 tracking-tight text-center">
-                        {t('waiting_for_league') || "En attente de League of Legends"}
+                {/* Main Headline */}
+                <div className="text-center max-w-2xl animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
+                    <h1 className="text-6xl md:text-7xl font-black italic tracking-tighter text-white mb-6 uppercase">
+                        Oracle <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">LoL Tracker</span>
                     </h1>
-
-                    {/* Subtitle / Instruction */}
-                    <p className="text-lg text-gray-500 dark:text-gray-400 font-medium mb-12 max-w-md text-center">
-                        {t('launch_game_desc') || "Veuillez lancer votre client League of Legends pour accéder aux fonctionnalités."}
+                    <p className="text-xl text-gray-400 font-medium mb-10 max-w-lg mx-auto leading-relaxed uppercase tracking-wider">
+                        {t('launch_game_desc') || "Lancez votre client League of Legends pour synchroniser vos données en temps réel."}
                     </p>
+                </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col items-center gap-4">
-                        {/* Status Indicator */}
-                        <div className="flex items-center gap-3 px-6 py-3 bg-white/50 dark:bg-white/5 backdrop-blur-md rounded-full border border-gray-200 dark:border-white/10 shadow-sm shrink-0">
-                            <div className="relative flex h-3 w-3">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                            </div>
-                            <span className="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-widest">
-                                {t('disconnected') || "NON DÉTECTÉ"}
-                            </span>
+                {/* Real-time Status */}
+                <div className="flex flex-col items-center gap-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-500">
+                    <div className="flex items-center gap-4 px-8 py-4 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
+                        <div className="relative flex h-4 w-4">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600"></span>
                         </div>
-
-
+                        <span className="text-base font-black text-gray-300 uppercase tracking-[0.2em] italic">
+                            {t('disconnected') || "Client non détecté"}
+                        </span>
                     </div>
+
+                    {/* Features Showcase */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl mt-4">
+                        {[
+                            { icon: <Zap className="text-blue-400" />, title: "Live Game", desc: "Suivi en temps réel" },
+                            { icon: <Shield className="text-purple-400" />, title: "AI Coaching", desc: "Analyse post-game" },
+                            { icon: <BarChart3 className="text-emerald-400" />, title: "Rank Tracker", desc: "Gains de LP précis" }
+                        ].map((f, i) => (
+                            <div key={i} className="glass-panel p-6 flex flex-col items-center text-center gap-3 border-white/5 hover:bg-white/10 transition-colors cursor-default group">
+                                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    {f.icon}
+                                </div>
+                                <h3 className="font-black italic text-white uppercase text-xs tracking-widest">{f.title}</h3>
+                                <p className="text-[10px] text-gray-500 font-bold uppercase">{f.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col items-center gap-4 mt-8">
+                        <button
+                            onClick={() => setLoginMode(true)}
+                            className="group relative flex items-center gap-3 px-10 py-5 bg-white text-black font-black rounded-2xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_20px_40px_-10px_rgba(255,255,255,0.2)]"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                            <span className="relative italic uppercase tracking-widest">Utiliser sans le client</span>
+                            <ArrowRight size={20} className="relative group-hover:translate-x-1 transition-transform" />
+                        </button>
+                        
+                        <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                            En attente de connexion...
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Version Bar */}
+            <div className="p-6 border-t border-white/5 flex justify-between items-center bg-black/40 backdrop-blur-sm shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] italic">Oracle System v4.0</span>
+                </div>
+                <div className="flex gap-6">
+                    <button className="text-[10px] font-black text-gray-600 hover:text-white uppercase tracking-widest transition-colors">Support</button>
+                    <button className="text-[10px] font-black text-gray-600 hover:text-white uppercase tracking-widest transition-colors">Discord</button>
                 </div>
             </div>
         </div>

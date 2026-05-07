@@ -525,8 +525,8 @@ export function InGameHelper({ ddragonVersion }) {
                     // --- DRAGONS ET BARONS DYNAMIQUES (Respawns inclus) ---
                     let drakeSpawnTime = 300; // 5:00 par défaut (Ligne pour modifier le timer)
                     let baronSpawnTime = 1200; // 20:00 par défaut (Ligne pour modifier le timer)
-                    let heraldSpawnTime = 885; // 14:45 par défaut (Ligne pour modifier le timer)
-                    let grubsSpawnTime = 465; // 7:45 par défaut pour les larves (Ligne pour modifier le timer)
+                    let heraldSpawnTime = 900; // 15:00 par défaut (Ligne pour modifier le timer)
+                    let grubsSpawnTime = 480; // 8:00 par défaut pour les larves (Ligne pour modifier le timer)
 
                     if (data.events && data.events.Events) {
                         const dragons = data.events.Events.filter(e => e.EventName === 'DragonKill');
@@ -675,7 +675,7 @@ export function InGameHelper({ ddragonVersion }) {
                             const hasObjective = newEvents.some(e => ['DragonKill', 'BaronKill', 'TurretKilled', 'InhibKilled'].includes(e.EventName));
                             if (hasObjective) {
                                 // Trigger WinProbability naturally behind other notifications
-                                triggerWinrateOverlay(false);
+                                // triggerWinrateOverlay(false);
                             }
                         }
                         refs.processedEventsCount = evtCount;
