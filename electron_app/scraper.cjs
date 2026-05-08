@@ -1,4 +1,4 @@
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, app } = require('electron');
 
 
 const cheerio = require('cheerio');
@@ -15,8 +15,9 @@ class Scraper {
         // Simple File Cache
         this.fs = require('fs');
         this.path = require('path');
-        this.cacheFile = this.path.join(process.cwd(), 'scraper_cache.json');
-        this.globalDataCacheFile = this.path.join(process.cwd(), 'global_data_cache.json');
+        const baseDir = (app && app.isPackaged) ? app.getPath('userData') : process.cwd();
+        this.cacheFile = this.path.join(baseDir, 'scraper_cache.json');
+        this.globalDataCacheFile = this.path.join(baseDir, 'global_data_cache.json');
         
         // Force clear cache once to fix broken builds
         try { if(this.fs.existsSync(this.cacheFile)) this.fs.unlinkSync(this.cacheFile); } catch(e){}
@@ -128,8 +129,9 @@ class Scraper {
         try {
             const fs = require('fs');
             const path = require('path');
-            const logPath = path.join(__dirname, '../scraper_debug.log');
-            fs.appendFileSync(logPath, logMsg);
+            const baseDir = (app && app.isPackaged) ? app.getPath('userData') : process.cwd();
+            const logPath = this.path.join(baseDir, 'scraper_debug.log');
+            this.fs.appendFileSync(logPath, logMsg);
         } catch (e) { console.error("Log failed", e); }
     }
 
@@ -609,7 +611,7 @@ class Scraper {
                 let isTempWin = false;
                 if (this.currentConcurrent > 1) {
                     const { BrowserWindow } = require('electron');
-                    win = new BrowserWindow({ show: false, webPreferences: { offscreen: true } });
+                    win = new BrowserWindow({ show: false, webPreferences: { offscreen: false, contextIsolation: true, webSecurity: false } });
                     isTempWin = true;
                 } else {
                     await this.initWorker();
@@ -628,6 +630,36 @@ class Scraper {
                                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                                 httpReferrer: 'https://www.leagueofgraphs.com/'
                             });
+                            
+                            // Auto-handle consent popups (GDPR)
+                            await win.webContents.executeJavaScript(`
+                                (async () => {
+                                    await new Promise(r => setTimeout(r, 1500));
+                                    const selectors = [
+                                        'button[aria-label="Consent"]', 
+                                        'button[aria-label="Agree"]',
+                                        'button[aria-label="Accept All"]',
+                                        '.ncmp__btn-accept',
+                                        '#ncmp-consent-link',
+                                        '.qc-cmp2-footer button[mode="primary"]',
+                                        '.css-47qzth',
+                                        'button.accept-all',
+                                        '#accept-choices',
+                                        '.fc-cta-consent',
+                                        '.ncmp__btn-accept'
+                                    ];
+                                    for (const sel of selectors) {
+                                        try {
+                                            const btn = document.querySelector(sel);
+                                            if (btn && btn.click) {
+                                                btn.click();
+                                                console.log("Clicked consent: " + sel);
+                                            }
+                                        } catch(e){}
+                                    }
+                                })();
+                            `).catch(() => {});
+
                             return await callback(win);
                         })(),
                         timeoutPromise
@@ -1884,7 +1916,7 @@ class Scraper {
     }
 
     async getRankedLPHistory(nameQuery, region = 'EUW') {
-        const { slug } = this.parseName(nameQuery);
+        const { slug } = this.parseName(nameQuery, region);
         const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br' };
         const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
         const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug}`;
@@ -2414,7 +2446,8 @@ class Scraper {
         const results = await this.runBrowserTask(url, async (win) => {
             try {
                 // Wait for page content to load and scroll to ensure match history is populated
-                await this.waitForSelector(win, 'div[class*="profile"], div[class*="overview"], .summoner-name, [class*="SummonerProfile"]');
+                await this.waitForSelector(win, 'div[class*="profile"], div[class*="overview"], .summoner-name, [class*="SummonerProfile"]', 35);
+                await new Promise(r => setTimeout(r, 2000));
                 
                 // --- FALLBACK LOGIC IF U.GG FAILS ---
                 const isUggEmpty = await win.webContents.executeJavaScript(`document.body.innerText.includes('Player not found') || document.querySelectorAll('.match-history-row').length === 0`);
@@ -2455,8 +2488,9 @@ class Scraper {
                             
                             // Relax filter to capture rank promotions which might replace queue text
                             // Support shorthand rank notation (S1, G4, P2, D3, I1, B2)
+                            // Added French support for rank names (Or, Argent, Platine, etc.)
                             const isRanked = txt.match(/solo|flex|ranked|class|rang/i);
-                            const promoMatch = txt.match(/\\b(Iron|Bronze|Silver|Gold|Plat(?:inum)?|Emerald|Diamond|Master|Grandmaster|Challenger)\\s*([1-4]?)\\b|\\b([ISGPDEBM])([1-4])\\b/i);
+                            const promoMatch = txt.match(/\\b(Iron|Bronze|Silver|Gold|Plat(?:inum)?|Emerald|Diamond|Master|Grandmaster|Challenger|Fer|Argent|Or|Platine|Émeraude|Diamant|Maître|Grand\\s*Maître)\\s*([1-4]?)\\b|\\b([ISGPDEBM])([1-4])\\b/i);
                             
                             if (!isRanked && !promoMatch) return;
 
