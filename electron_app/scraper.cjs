@@ -1,6 +1,5 @@
 const { BrowserWindow, app } = require('electron');
 
-
 const cheerio = require('cheerio');
 
 class Scraper {
@@ -611,7 +610,15 @@ class Scraper {
                 let isTempWin = false;
                 if (this.currentConcurrent > 1) {
                     const { BrowserWindow } = require('electron');
-                    win = new BrowserWindow({ show: false, webPreferences: { offscreen: false, contextIsolation: true, webSecurity: false } });
+                    win = new BrowserWindow({ 
+                        show: false, 
+                        webPreferences: { 
+                            offscreen: true, 
+                            contextIsolation: false, 
+                            webSecurity: false,
+                            backgroundThrottling: false 
+                        } 
+                    });
                     isTempWin = true;
                 } else {
                     await this.initWorker();
@@ -651,9 +658,8 @@ class Scraper {
                                     for (const sel of selectors) {
                                         try {
                                             const btn = document.querySelector(sel);
-                                            if (btn && btn.click) {
+                                            if (btn && typeof btn.click === 'function') {
                                                 btn.click();
-                                                console.log("Clicked consent: " + sel);
                                             }
                                         } catch(e){}
                                     }
@@ -2346,6 +2352,8 @@ class Scraper {
 
     async getRankHistory(puuid_or_name, region = 'EUW') {
         const REGION_MAP = { 'EUW': 'euw', 'NA': 'na', 'KR': 'kr', 'EUNE': 'eune', 'BR': 'br', 'TR': 'tr', 'LAS': 'las', 'LAN': 'lan', 'OCE': 'oce', 'RU': 'ru', 'JP': 'jp' };
+        const UGG_REGION_MAP = { 'EUW': 'euw1', 'NA': 'na1', 'KR': 'kr', 'EUNE': 'eun1', 'BR': 'br1', 'TR': 'tr1', 'LAS': 'la2', 'LAN': 'la1', 'OCE': 'oc1', 'RU': 'ru', 'JP': 'jp1' };
+
         let name = puuid_or_name;
         if (puuid_or_name.startsWith('ext~')) {
             const parts = puuid_or_name.split('~');
@@ -2353,28 +2361,80 @@ class Scraper {
             region = parts[2] || region;
         }
         const rKey = REGION_MAP[region.toUpperCase()] || region.toLowerCase();
-        const { slug } = this.parseName(name, region);
-        const url = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug.replace(/%20/g, '+')}`;
-
+        const { gameName, tagLine, slug } = this.parseName(name, region);
         const cacheKey = `rank_history_${rKey}_${slug}`;
+
         const cached = this.getCachedData(cacheKey, 3600000); // 1 hour cache
         if (cached) return cached;
 
-        console.log(`[Scraper] Fetching RANK HISTORY (BrowserTask) for ${name} from ${url}`);
+        console.log(`[Scraper] Fetching RANK HISTORY (U.GG GraphQL) for ${name}`);
+        const uggRegion = UGG_REGION_MAP[region.toUpperCase()] || region.toLowerCase() + '1';
+        const url = `https://u.gg/lol/profile/${uggRegion}/${slug}/overview`;
 
         const history = await this.runBrowserTask(url, async (win) => {
             try {
+                const status = await this.waitForSelector(win, 'body');
+                if (status !== 'READY') return [];
+
+                return await win.webContents.executeJavaScript(`
+                    (async () => {
+                        try {
+                            const apollo = window.__APOLLO_STATE__ || {};
+                            // Find the player identity in Apollo state
+                            const playerKey = Object.keys(apollo).find(k => k.startsWith('PlayerInfo'));
+                            const player = apollo[playerKey];
+                            
+                            const query = \`query GetRankHistory($regionId: String!, $riotUserName: String!, $riotTagLine: String!) {
+                                rankHistory(regionId: $regionId, riotUserName: $riotUserName, riotTagLine: $riotTagLine, queueType: 420) {
+                                    lp
+                                    timestamp
+                                    tier
+                                    division
+                                }
+                            }\`;
+                            
+                            const variables = {
+                                regionId: "${uggRegion}",
+                                riotUserName: "${gameName}",
+                                riotTagLine: "${tagLine || region.toUpperCase()}"
+                            };
+
+                            const res = await fetch('https://stats2.u.gg/main/graphql', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ query, variables })
+                            });
+                            const json = await res.json();
+                            const history = json.data?.rankHistory || [];
+                            
+                            return history.map(p => ({
+                                timestamp: p.timestamp,
+                                lp: p.lp,
+                                rankStr: \`\${p.tier} \${p.division}\`
+                            }));
+                        } catch(e) { return null; }
+                    })()
+                `);
+            } catch (e) { return null; }
+        });
+
+        if (history && history.length > 0) {
+            this.setCachedData(cacheKey, history);
+            return history;
+        }
+
+        // Fallback to LeagueOfGraphs if U.GG failed
+        console.log(`[Scraper] U.GG Rank History failed, falling back to LeagueOfGraphs for ${name}`);
+        const logUrl = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug.replace(/%20/g, '+')}`;
+        return await this.runBrowserTask(logUrl, async (win) => {
+            try {
                 const status = await this.waitForSelector(win, 'script');
-                if (status !== 'READY') {
-                    console.warn(`[Scraper] Rank history selector status: ${status} for ${url}`);
-                    return [];
-                }
+                if (status !== 'READY') return [];
                 return await win.webContents.executeJavaScript(`
                     (() => {
                         const scripts = Array.from(document.querySelectorAll('script'));
                         const targetScript = scripts.find(s => s.innerHTML.includes('graphData'));
                         if (!targetScript) return [];
-
                         const code = targetScript.innerHTML;
                         const extract = (key) => {
                             const regex = new RegExp(key + '\\\\s*=\\\\s*(\\\\[.*?\\\\]|{.*?});', 's');
@@ -2385,12 +2445,10 @@ class Scraper {
                             }
                             return null;
                         };
-
                         const graphData = extract('graphData');
                         const lpData = extract('lpData');
                         const rankData = extract('rankData');
                         if (!graphData) return [];
-
                         return graphData.map(point => {
                             const ts = point[0];
                             const lp = lpData ? lpData[ts] : null;
@@ -2400,27 +2458,8 @@ class Scraper {
                         }).filter(p => p !== null && p.timestamp > 0 && p.rankStr !== "Unknown");
                     })()
                 `);
-            } catch (e) {
-                console.error("[Scraper] Rank history failed:", e.message);
-                return [];
-            }
+            } catch (e) { return []; }
         });
-
-        if (history && history.length > 0) {
-            this.setCachedData(cacheKey, history);
-            return history;
-        }
-
-        // Fallback to U.GG match history reconstruction
-        console.log(`[Scraper] LoG Rank History failed. Trying U.GG reconstruction for ${name}`);
-        const uggGains = await this.getRecentLPGains(puuid_or_name, region);
-        if (uggGains && uggGains.length > 0) {
-            // Reconstruct a mini-history from current rank (needs current rank info)
-            // But for now, we return empty if LoG failed as U.GG doesn't have a global graph script
-            return [];
-        }
-
-        return history || [];
     }
 
     async getRecentLPGains(puuid_or_name, region = 'EUW') {
@@ -2446,29 +2485,35 @@ class Scraper {
         const results = await this.runBrowserTask(url, async (win) => {
             try {
                 // Wait for page content to load and scroll to ensure match history is populated
-                await this.waitForSelector(win, 'div[class*="profile"], div[class*="overview"], .summoner-name, [class*="SummonerProfile"]', 35);
-                await new Promise(r => setTimeout(r, 2000));
+                await this.waitForSelector(win, 'div[class*="profile"], div[class*="overview"], .summoner-name, [class*="SummonerProfile"]', 120);
+                
+                // Extra wait for U.GG's slow match history loading
+                await this.waitForSelector(win, '.match-history-row, .match-history_match-card, .match-card-container, .match-history-empty, .match-history-container', 60);
+                await new Promise(r => setTimeout(r, 1500));
                 
                 // --- FALLBACK LOGIC IF U.GG FAILS ---
-                const isUggEmpty = await win.webContents.executeJavaScript(`document.body.innerText.includes('Player not found') || document.querySelectorAll('.match-history-row').length === 0`);
+                const isUggEmpty = await win.webContents.executeJavaScript(`document.body.innerText.includes('Player not found') || document.querySelectorAll('.match-history-row, .match-history_match-card, .match-card-container').length === 0`);
                 if (isUggEmpty) {
                    console.log(`[Scraper] U.GG empty, trying LoG for ${name}`);
-                   const logUrl = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug}`;
+                   const logUrl = `https://www.leagueofgraphs.com/summoner/${rKey}/${slug.replace(/%20/g, '+')}`;
                    await win.loadURL(logUrl);
                    await this.waitForSelector(win, 'div[class*="match"], .recent-game-row, [class*="MatchHistory"]');
                 }
-                await win.webContents.executeJavaScript(`
-                        // Aggressive scrolling to ensure DOM elements are rendered
-                        window.scrollTo(0, 1000);
-                        await new Promise(r => setTimeout(r, 500));
-                        window.scrollTo(0, 2500);
-                        await new Promise(r => setTimeout(r, 500));
+                const gains = await win.webContents.executeJavaScript(`
+                    (async () => {
+                        try {
+                            const results = [];
+                            // Aggressive scrolling to ensure DOM elements are rendered
+                            window.scrollTo(0, 1000);
+                            await new Promise(r => setTimeout(r, 600));
+                            window.scrollTo(0, 2000);
+                            await new Promise(r => setTimeout(r, 600));
 
                         let rows = Array.from(document.querySelectorAll(
-                            '.match-history-row, div[class*="match-history-row"], .recent-game-row, ' +
+                            '.match-history-row, .match-history_match-card, .match-card-container, div[class*="match-history-row"], .recent-game-row, ' +
                             'li[class*="match"], div[class*="MatchHistory"] > div, ' +
                             '[class*="match-card"], [class*="game-summary"], [class*="GameSummary"], ' +
-                            '[class*="MatchSummary"], [class*="recent-game"]'
+                            '[class*="MatchSummary"], [class*="recent-game"], .recentGamesTable tr'
                         ));
                         
                         // Enhanced fallback: look for any group containing KDA-like text OR Ranked keywords
@@ -2479,7 +2524,7 @@ class Scraper {
                               const hasRanked = txt.includes('Ranked') || txt.includes('Classé');
                               return (hasKDA || hasRanked) && txt.length < 600 && d.children.length > 2;
                            });
-                           if (fallback.length > rows.length) rows = fallback.slice(0, 25);
+                           if (fallback.length > rows.length) rows = fallback.slice(0, 50);
                         }
 
                         rows.forEach(row => {
@@ -2496,7 +2541,10 @@ class Scraper {
 
                             // LP / Rank text
                             let lpStr = null;
-                            const lpMatch = txt.match(/([+-]?\\d+)\\s*LP/i);
+                            // Search for LP in specific containers or general text
+                            const lpEl = row.querySelector('.match-lp, .win-lp-stat, [class*="lp-stat"], [class*="lp"]');
+                            const lpText = lpEl ? lpEl.innerText : txt;
+                            const lpMatch = lpText.match(/([+-]?\\d+)\\s*LP/i);
                             
                             if (lpMatch) {
                                 // DETECT WIN/LOSS CONTEXT for signing
@@ -2535,9 +2583,17 @@ class Scraper {
                                 });
                             }
                         });
-                        return results;
+                            return results;
+                        } catch(e) {
+                            return "ERROR: " + e.message;
+                        }
                     })()
                 `);
+                
+                if (typeof gains === 'string' && gains.startsWith('ERROR')) {
+                    throw new Error(gains);
+                }
+                return gains;
             } catch (e) {
                 console.error("[Scraper] U.GG LP gains failed:", e.message);
                 return null;

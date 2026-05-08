@@ -6,15 +6,21 @@ class LCUConnector {
     }
 
     async connect() {
-        if (this.credentials) return true;
+        if (this.credentials) {
+            // Verify connection is still alive with a lightweight request
+            try {
+                const res = await request({ method: 'GET', url: '/lol-summoner/v1/current-summoner' }, this.credentials);
+                if (res.ok) return true;
+                this.credentials = null; // Stale credentials
+            } catch (e) {
+                this.credentials = null;
+            }
+        }
         if (this.connecting) return this.connecting;
 
         this.connecting = (async () => {
             try {
-                this.credentials = await authenticate({
-                    awaitConnection: true,
-                    pollInterval: 5000
-                });
+                this.credentials = await authenticate();
                 console.log('[LCU] Connected to League Client');
                 this.connecting = null;
                 return true;

@@ -1,4 +1,8 @@
 const { app, BrowserWindow, ipcMain, globalShortcut, screen, shell, Tray, Menu, nativeImage } = require('electron');
+if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    process.exit(0);
+}
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');

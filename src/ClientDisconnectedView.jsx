@@ -152,20 +152,17 @@ export function ClientDisconnectedView({ t }) {
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center p-8 z-10">
-                {/* Logo & Brand */}
-                <div className="relative mb-12 group">
-                    <div className="absolute inset-0 bg-blue-500/30 blur-3xl rounded-full scale-125 opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-                    <img
-                        src={oracleLogo}
-                        alt="Oracle"
-                        className="w-40 h-40 relative drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-700 ease-out"
-                    />
-                </div>
+
 
                 {/* Main Headline */}
                 <div className="text-center max-w-2xl animate-in fade-in slide-in-from-bottom-6 duration-700 delay-200">
-                    <h1 className="text-6xl md:text-7xl font-black italic tracking-tighter text-white mb-6 uppercase">
-                        Oracle <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">LoL Tracker</span>
+                    <h1 className="text-6xl md:text-8xl font-black italic mb-4 flex flex-col items-center select-none uppercase overflow-visible py-4">
+                        <span className="text-white drop-shadow-[0_10px_30px_rgba(255,255,255,0.15)] leading-tight px-6 inline-block">
+                            ORACLE <span className="text-blue-500">LOL</span>
+                        </span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-400 drop-shadow-[0_10px_30px_rgba(59,130,246,0.2)] leading-tight mt-2 px-8 inline-block">
+                            TRACKER
+                        </span>
                     </h1>
                     <p className="text-xl text-gray-400 font-medium mb-10 max-w-lg mx-auto leading-relaxed uppercase tracking-wider">
                         {t('launch_game_desc') || "Lancez votre client League of Legends pour synchroniser vos données en temps réel."}
@@ -201,34 +198,13 @@ export function ClientDisconnectedView({ t }) {
                         ))}
                     </div>
 
-                    <div className="flex flex-col items-center gap-4 mt-8">
-                        <button
-                            onClick={() => setLoginMode(true)}
-                            className="group relative flex items-center gap-3 px-10 py-5 bg-white text-black font-black rounded-2xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-[0_20px_40px_-10px_rgba(255,255,255,0.2)]"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                            <span className="relative italic uppercase tracking-widest">Utiliser sans le client</span>
-                            <ArrowRight size={20} className="relative group-hover:translate-x-1 transition-transform" />
-                        </button>
-                        
-                        <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                        <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest animate-pulse mt-8">
                             En attente de connexion...
                         </p>
-                    </div>
                 </div>
             </div>
 
-            {/* Bottom Version Bar */}
-            <div className="p-6 border-t border-white/5 flex justify-between items-center bg-black/40 backdrop-blur-sm shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] italic">Oracle System v4.0</span>
-                </div>
-                <div className="flex gap-6">
-                    <button className="text-[10px] font-black text-gray-600 hover:text-white uppercase tracking-widest transition-colors">Support</button>
-                    <button className="text-[10px] font-black text-gray-600 hover:text-white uppercase tracking-widest transition-colors">Discord</button>
-                </div>
-            </div>
+
         </div>
     );
 }

@@ -1484,6 +1484,15 @@ function App() {
 
   const prevFriendsRef = useRef([]);
 
+  // Auto-refresh logic on disconnect
+  const lastConnected = useRef(isConnected);
+  useEffect(() => {
+    if (lastConnected.current && !isConnected && appMode === 'window') {
+      window.location.reload();
+    }
+    lastConnected.current = isConnected;
+  }, [isConnected, appMode]);
+
   useEffect(() => {
     const fetchVersion = async () => {
       try {
@@ -1560,8 +1569,7 @@ function App() {
           }
         } else {
           setIsConnected(false);
-          setCurrentUser(null);
-          setUserRank(null);
+          // Keep currentUser and userRank from cache/last state instead of clearing them
           setGamePhase('None');
           setFriends([]);
         }
@@ -2651,8 +2659,23 @@ function MainApp({
     }
   }, [isPremium, currentUser]);
 
-
   const regions = ['EUW', 'NA', 'KR', 'EUNE', 'BR', 'TR', 'LAS', 'LAN', 'OCE', 'RU', 'JP', 'PH', 'SG', 'TH', 'TW', 'VN'];
+
+  // Click outside notification panel logic
+  const notifRef = useRef(null);
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifPanel && notifRef.current && !notifRef.current.contains(event.target)) {
+        // Check if the click was on the toggle button itself to avoid double-toggle
+        const bellBtn = document.getElementById('bell-button');
+        if (bellBtn && bellBtn.contains(event.target)) return;
+        
+        setShowNotifPanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifPanel]);
 
   // Use dynamic list if available, otherwise fallback
   const allChamps = championList.length > 0 ? championList : [];
@@ -2834,8 +2857,13 @@ function MainApp({
       window.ipcRenderer.invoke('app:show-live');
     } else if (gamePhase === 'None') {
       window.ipcRenderer.invoke('app:hide-live');
+      
+      // Auto-revert to dashboard when game ends if user was on the live match tracker
+      if (activeTab === 'livematch') {
+        setActiveTab('dashboard');
+      }
     }
-  }, [gamePhase, overlaySettings.loadingScreen, overlaySettings.testMode]);
+  }, [gamePhase, overlaySettings.loadingScreen, overlaySettings.testMode, activeTab]);
 
 
 
@@ -3231,6 +3259,7 @@ function MainApp({
                 </svg>
               </button>
               <button
+                id="bell-button"
                 onClick={() => setShowNotifPanel(!showNotifPanel)}
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 relative",
@@ -3266,7 +3295,7 @@ function MainApp({
           </div>
 
           <div id="profile-scroll-container" className="flex-1 overflow-y-auto custom-scrollbar p-0 scroll-smooth relative flex flex-col">
-            {!showSplash && !isConnected && !['esports', 'watch', 'settings', 'profile', 'leaderboards', 'matchups'].includes(activeTab) ? (
+            {!showSplash && (!isConnected || !currentUser) && !['esports', 'watch', 'settings', 'profile', 'leaderboards', 'matchups', 'training', 'tutorial'].includes(activeTab) ? (
               <ClientDisconnectedView t={t} />
             ) : (
               <div key={activeTab} className="h-full w-full p-8 animate-page-enter">
@@ -3315,9 +3344,7 @@ function MainApp({
 
                 {/* Removed Notifications tab as it is now a dropdown */}
                 {activeTab === 'matchups' && <MatchupsView panelClass={panelClass} t={t} championList={championList} ddragonVersion={ddragonVersion} onOpenUrl={setBrowserUrl} />}
-                {activeTab === 'replays' && (!isPremium ? (
-                  <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} currentUser={currentUser} premiumData={premiumData} setErrorModal={setErrorModal} />
-                ) : <ReplaysView panelClass={panelClass} t={t} currentUser={currentUser} />)}
+                {activeTab === 'replays' && <ReplaysView panelClass={panelClass} t={t} currentUser={currentUser} />}
                 {activeTab === 'esports' && <EsportsView panelClass={panelClass} t={t} prefetchedData={prefetchedData} onShowNews={setSelectedArticle} />}
                 {activeTab === 'collections' && <CollectionsView panelClass={panelClass} t={t} ddragonVersion={ddragonVersion} currentUser={currentUser} championList={championList} />}
                 {activeTab === 'leaderboards' && <RankingsView
@@ -3337,13 +3364,7 @@ function MainApp({
                 {activeTab === 'live' && <LiveGameLoadingView panelClass={panelClass} t={t} />}
 
                 {/* Fallback */}
-                {['training'].includes(activeTab) && (
-                  !isPremium ? (
-                    <SubscriptionView t={t} panelClass={panelClass} isPremium={isPremium} setIsPremium={setIsPremium} setActiveTab={setActiveTab} currentUser={currentUser} premiumData={premiumData} setErrorModal={setErrorModal} />
-                  ) : (
-                    <TrainingView t={t} panelClass={panelClass} />
-                  )
-                )}
+                {activeTab === 'training' && <TrainingView t={t} panelClass={panelClass} />}
 
                 {activeTab === 'tutorial' && <TutorialView panelClass={panelClass} t={t} />}
 
@@ -3387,7 +3408,7 @@ function MainApp({
 
           {/* Notification Dropdown Overlay */}
           {showNotifPanel && (
-            <div className="absolute top-16 right-6 w-[450px] max-h-[calc(100vh-100px)] z-[110] animate-in fade-in zoom-in-95 duration-200 origin-top-right flex flex-col">
+            <div ref={notifRef} className="absolute top-16 right-6 w-[450px] max-h-[calc(100vh-100px)] z-[110] animate-in fade-in zoom-in-95 duration-200 origin-top-right flex flex-col">
               <div className="bg-[#131317]/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] flex flex-col overflow-hidden min-h-0">
                 <NotificationsView
                   panelClass="p-6"
@@ -3688,7 +3709,7 @@ function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMod
   };
 
   return (
-    <div onClick={onClick} className="relative group cursor-pointer hover:bg-white dark:bg-white/5 rounded-2xl p-3 transition-colors flex items-center gap-4 select-none">
+    <div onClick={!isConnected ? undefined : onClick} className={cn("relative rounded-2xl p-3 transition-colors flex items-center gap-4 select-none", !isConnected ? "cursor-default opacity-80" : "cursor-pointer group hover:bg-white dark:bg-white/5")}>
       {/* Avatar Container with Badges */}
       <div className="relative shrink-0 mt-1 mb-1">
         {/* Server Badge (Top Right) */}
@@ -3734,10 +3755,10 @@ function SidebarProfile({ currentUser, rankedStats, history, isConnected, appMod
             </span>
           </div>
           {/* Online Status (Replacing Flex) */}
-          <div className="flex items-center gap-1.5 opacity-80 mt-1">
-            <div className={cn("w-2 h-2 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.2)]", isConnected ? "bg-green-500 shadow-green-500/50" : "bg-gray-500")}></div>
-            <span className={cn("font-bold text-[10px] uppercase tracking-wide", isConnected ? "text-green-400" : "text-gray-500")}>
-              {isConnected ? "Online" : "Offline"}
+          <div className="flex items-center gap-1.5 mt-1">
+            <div className={cn("w-1.5 h-1.5 rounded-full", isConnected ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]")}></div>
+            <span className={cn("font-black text-[9px] uppercase tracking-[0.15em]", isConnected ? "text-green-500/80" : "text-red-500/60")}>
+              {isConnected ? "Online" : "Compte déconnecté"}
             </span>
           </div>
         </div>
@@ -6838,6 +6859,44 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summon
     return Array.from({ length: count }).map((_, i) => firstDate + (duration * i / (count - 1)));
   }, [mockDataPoints]);
 
+  // Calculate summary stats
+  const { filterWins, filterLosses, totalLpGained, totalLpLost } = useMemo(() => {
+    let wins = 0, losses = 0;
+    let gained = 0, lost = 0;
+
+    // 1. Calculate W/L from actual game history
+    // If we have scraped history points, they are often more comprehensive for long-term trends
+    if (filter !== '20_games' && scrapedHistory && scrapedHistory.length > 2) {
+      wins = scrapedHistory.filter((p, i) => {
+        if (i === 0) return false;
+        const prev = scrapedHistory[i-1];
+        return p.lp > prev.lp;
+      }).length;
+      losses = scrapedHistory.length - 1 - wins;
+      
+      // Calculate deltas from scraped points
+      mockDataPoints.forEach(p => {
+        if (p.diff > 0) gained += p.diff;
+        if (p.diff < 0) lost += Math.abs(p.diff);
+      });
+    } else {
+      relevantGames.forEach(g => {
+        const iden = g.participantIdentities?.find(id => id.player.puuid === puuid);
+        const part = g.participants?.find(p => p.participantId === iden?.participantId);
+        if (part) {
+          if (part.stats.win) wins++;
+          else losses++;
+        }
+      });
+      mockDataPoints.forEach(p => {
+        if (p.diff > 0) gained += p.diff;
+        if (p.diff < 0) lost += Math.abs(p.diff);
+      });
+    }
+
+    return { filterWins: wins, filterLosses: losses, totalLpGained: gained, totalLpLost: lost };
+  }, [relevantGames, mockDataPoints, puuid, filter, scrapedHistory]);
+
   if (!isOpen || !data) return null;
 
   const width = 640;
@@ -6871,20 +6930,6 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summon
 
   const totalWins = data.wins || 0;
   const totalLosses = data.losses || 0;
-
-  let filterWins = 0, filterLosses = 0;
-  let totalLpGained = 0, totalLpLost = 0;
-
-  mockDataPoints.forEach(p => {
-    if (p.win === true) {
-      filterWins++;
-      if (p.diff > 0) totalLpGained += p.diff;
-    }
-    if (p.win === false) {
-      filterLosses++;
-      if (p.diff < 0) totalLpLost += Math.abs(p.diff);
-    }
-  });
 
   // Clamp suspicious jumps for UI display in tooltip (like the -104 artifacts)
   const cleanDiff = (d) => {
