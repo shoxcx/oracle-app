@@ -135,6 +135,8 @@ function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+const CHAMP_NAME_TO_ID = Object.fromEntries(Object.entries(CHAMP_ID_TO_NAME).map(([id, name]) => [name, parseInt(id)]));
+
 function getItemIconFromName(name) {
   if (!name) return null;
   if (!isNaN(name)) return name.toString();
@@ -1585,7 +1587,7 @@ function App() {
   useEffect(() => {
     const fetchGold = async () => {
       try {
-        const res = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/gold_users.json');
+        const res = await fetch('https://tekao.fr/api/gold');
         const data = await res.json();
         if (data) setServerGoldUsers(data);
       } catch (e) { }
@@ -2470,7 +2472,7 @@ function MainApp({
     let interval;
     const fetchGlobalBroadcast = async () => {
       try {
-        const res = await fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/broadcast.json');
+        const res = await fetch('https://tekao.fr/api/broadcast');
         if (res.ok) {
           const data = await res.json();
           if (data && data.id) {
@@ -4293,6 +4295,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
     return { lastAnalyzableMatch: validMatch, p: participant };
   }, [matchHistory, displayUser]);
   const lastChampId = p.championId || 157;
+  const lastChampName = p.championName || CHAMP_ID_TO_NAME[lastChampId] || "Yasuo";
 
   return (
     <div className="grid grid-cols-12 gap-4 animate-in fade-in slide-in-from-bottom-6 duration-700 max-w-[1600px] mx-auto h-full">
@@ -4303,7 +4306,11 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
         {/* HEADER AREA + STATS INTEGRATED */}
         <div className={cn("p-6 rounded-[24px] relative overflow-hidden flex flex-col gap-4 shrink-0", panelClass)}>
           <div className="absolute inset-0 z-0">
-            <img src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Evelynn_0.jpg`} className="w-full h-full object-cover opacity-20 blur-sm brightness-50" />
+            <img 
+              src={`https://cdn.communitydragon.org/latest/champion/${lastChampId}/splash-art/centered`} 
+              className="w-full h-full object-cover opacity-20 blur-sm brightness-50" 
+              onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${normalizeChampName(lastChampName)}_0.jpg`; }}
+            />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80"></div>
           </div>
 
@@ -4458,8 +4465,9 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
           {/* Replay Module */}
           <div className={cn("col-span-4 p-5 rounded-[24px] flex flex-col items-center justify-end gap-3 group relative overflow-hidden", panelClass)}>
             <img
-              src={`https://cdn.communitydragon.org/latest/champion/${lastChampId}/splash-art`}
+              src={`https://cdn.communitydragon.org/latest/champion/${lastChampId}/splash-art/centered`}
               className="absolute inset-0 w-full h-full object-cover opacity-10 group-hover:scale-110 transition-transform duration-700"
+              onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${normalizeChampName(lastChampName)}_0.jpg`; }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
 
@@ -4570,6 +4578,7 @@ function DashboardView({ t, panelClass, currentUser, targetSummoner, ddragonVers
                 onClick={() => setSelectedGame(g)}
                 t={t}
                 ddragonVersion={ddragonVersion}
+                isMe={displayUser?.puuid === currentUser?.puuid}
               />
             ))}
           </div>
@@ -4813,6 +4822,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   const [roleStats, setRoleStats] = useState({ TOP: 0, JUNGLE: 0, MIDDLE: 0, BOTTOM: 0, SUPPORT: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [lastChampId, setLastChampId] = useState(null);
+  const [lastChampName, setLastChampName] = useState("");
   const [selectedGame, setSelectedGame] = useState(null);
 
   const [filter, setFilter] = useState('All');
@@ -4822,6 +4832,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
   const [championMap, setChampionMap] = useState({});
   const [presenceStatus, setPresenceStatus] = useState('offline');
   const [lpGains, setLpGains] = useState([]);
+  const lpGainsFetchedRef = useRef(false);
   const [behavioral, setBehavioral] = useState({ consistency: 'A', tilt: 'Resilient', objective: 'Controller', synergy: 'High', vision: 'Top 10%', aggression: 'Medium' });
 
   useEffect(() => {
@@ -5255,7 +5266,10 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
               const identity = lastGame.participantIdentities.find(i => i.player.puuid === user.puuid);
               if (identity) {
                 const part = lastGame.participants.find(p => p.participantId === identity.participantId);
-                if (part) setLastChampId(part.championId);
+                if (part) {
+                  setLastChampId(part.championId || 157);
+                  setLastChampName(part.championName || CHAMP_ID_TO_NAME[part.championId] || "Yasuo");
+                }
               }
 
               // --- CALC TOP CHAMPS FROM ALL RECENT GAMES (Summary) ---
@@ -5328,17 +5342,26 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                 console.error("Top Champ Calc Error", e);
               }
 
-              // Fetch LP Gains & Rank History parallel
+              // Fetch LP Gains & Rank History parallel - Optimized: Only if missing or search
               const regionForLp = user.region || currentUser?.region || 'EUW';
               const nameForLp = (user.gameName && user.tagLine) ? `${user.gameName}#${user.tagLine}` : (user.gameName || user.displayName || user.summonerName);
 
-              window.ipcRenderer.invoke('scraper:get-recent-lp', nameForLp, regionForLp)
-                .then(data => { if (data?.length) setLpGains(data); })
-                .catch(err => console.log('LP error', err));
+              if (!lpGainsFetchedRef.current || isInitial) {
+                window.ipcRenderer.invoke('scraper:get-recent-lp', nameForLp, regionForLp)
+                  .then(data => { 
+                    if (data?.length) {
+                      setLpGains(data);
+                      lpGainsFetchedRef.current = true;
+                    }
+                  })
+                  .catch(err => console.log('LP error', err));
+              }
 
               // Pre-fetch rank history so it's ready for the graph modal
-              window.ipcRenderer.invoke('scraper:get-rank-history', nameForLp, regionForLp)
-                .catch(err => console.log('Rank history pre-fetch error', err));
+              if (isInitial) {
+                window.ipcRenderer.invoke('scraper:get-rank-history', nameForLp, regionForLp)
+                  .catch(err => console.log('Rank history pre-fetch error', err));
+              }
 
               // Fetch full games parallel for TEAMMATES
               Promise.all(gamesForTeammates.map(g =>
@@ -5496,9 +5519,11 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
     setFullHistory([]);
     setActiveGame(null);
     setTeammates([]);
+    setLpGains([]);
+    lpGainsFetchedRef.current = false;
 
     fetchData(true); // Initial run IS initial
-    intervalId = setInterval(() => fetchData(false), 5000); // Interval runs are NOT initial
+    intervalId = setInterval(() => fetchData(false), 10000); // Interval runs are NOT initial
     return () => clearInterval(intervalId);
   }, [currentUser, targetSummoner, championMap]);
 
@@ -5508,7 +5533,8 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
     : `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-emblem/emblem-unranked.png`;
 
   // Cache-bust banner to ensure update
-  const bannerSrc = lastChampId ? `https://cdn.communitydragon.org/latest/champion/${lastChampId}/splash-art/centered?ts=${Date.now()}` : "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Darius_0.jpg";
+  const lastChampNameLocal = lastChampName || CHAMP_ID_TO_NAME[lastChampId] || "Yasuo";
+  const bannerSrc = lastChampId ? `https://cdn.communitydragon.org/latest/champion/${lastChampId}/splash-art/centered?ts=${Date.now()}` : `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${normalizeChampName(lastChampNameLocal)}_0.jpg`;
 
   // Filter Logic
   const filteredHistory = history.filter(game => {
@@ -5855,7 +5881,11 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
       <div className="relative h-[280px] w-full shrink-0 overflow-hidden">
         {/* Background Image */}
         <div className="absolute inset-0">
-          <img src={bannerSrc} className="w-full h-full object-cover object-top opacity-80" />
+          <img 
+            src={bannerSrc} 
+            className="w-full h-full object-cover object-top opacity-80" 
+            onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${normalizeChampName(lastChampNameLocal)}_0.jpg`; }}
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent dark:from-[#0a0a0c] dark:via-[#0a0a0c]/80 dark:to-transparent"></div>
           <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent dark:from-[#0a0a0c] dark:via-transparent dark:to-transparent"></div>
         </div>
@@ -6031,6 +6061,7 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                       onClick={() => setSelectedGame(game)}
                       t={t}
                       ddragonVersion={ddragonVersion}
+                      isMe={displayUser?.puuid === currentUser?.puuid}
                     />
                   ))
                 )}
@@ -6196,9 +6227,9 @@ function ProfileView({ t, panelClass, currentUser, targetSummoner, onSearch, onC
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={`https://ddragon.leagueoflegends.com/cdn/16.1.1/img/champion/${normalizeChampName(c.name)}.png`}
+                        src={`https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/${normalizeChampName(c.name)}.png`}
                         className="w-8 h-8 rounded-lg border border-gray-200 dark:border-white/10"
-                        onError={(e) => e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png"}
+                        onError={(e) => { e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${CHAMP_NAME_TO_ID[c.name] || -1}.png`; }}
                       />
                       <div className="flex flex-col">
                         <span className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate max-w-[80px]" title={c.name}>{c.name}</span>
@@ -6749,7 +6780,11 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summon
         const lpBefore = runningLp - val;
         // Search for this game in LCU history to get champ/date
         const matchedGame = relevantGames.find(g => {
-          const iden = g.participantIdentities?.find(id => id.player.puuid === puuid);
+          const iden = g.participantIdentities?.find(id => 
+            id.player.puuid === puuid || 
+            id.player.puuid === 'CURRENT_USER' ||
+            (id.player.summonerName && summonerName && id.player.summonerName.toLowerCase().includes(summonerName.split('#')[0].toLowerCase()))
+          );
           const part = g.participants?.find(p => p.participantId === iden?.participantId);
           if (!part) return false;
           const kdaStr = (gain.kda || "");
@@ -6785,7 +6820,14 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summon
         }).reverse();
       }
 
-      const mapped = historyToUse.map((p, idx) => {
+      let runningAbs = currentAbsLp;
+      const reversedHistory = [...historyToUse].reverse();
+      const mapped = reversedHistory.map((p, idx) => {
+        if (p.isFallback) {
+          const abs = runningAbs;
+          runningAbs -= (p.lpDelta || 0);
+          return { ...p, lp: abs, real: true };
+        }
         const parts = (p.rankStr || "").split(' ');
         const abs = getAbsLp(parts[0]?.toUpperCase() || data.tier, parts[1] || data.division, p.lp || 0);
         const ts = p.timestamp > 10000000000 ? p.timestamp : p.timestamp * 1000;
@@ -6796,9 +6838,9 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summon
           date: ts,
           real: true,
           label: p.rankStr,
-          champId: matchedGame ? (matchedGame.participants?.find(part => part.puuid === puuid)?.championId || favChampId) : favChampId
+          champId: matchedGame ? (matchedGame.participants?.find(part => part.puuid === puuid || part.puuid === 'CURRENT_USER' || part.summonerName === summonerName)?.championId || favChampId) : favChampId
         };
-      });
+      }).reverse();
 
       // Add Anchor
       if (mapped.length > 0 && (Date.now() - mapped[mapped.length - 1].date > 900000)) {
@@ -6868,11 +6910,12 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summon
     // If we have scraped history points, they are often more comprehensive for long-term trends
     if (filter !== '20_games' && scrapedHistory && scrapedHistory.length > 2) {
       wins = scrapedHistory.filter((p, i) => {
+        if (p.isFallback) return p.lpDelta > 0;
         if (i === 0) return false;
         const prev = scrapedHistory[i-1];
         return p.lp > prev.lp;
       }).length;
-      losses = scrapedHistory.length - 1 - wins;
+      losses = (scrapedHistory[0].isFallback ? scrapedHistory.length : scrapedHistory.length - 1) - wins;
       
       // Calculate deltas from scraped points
       mockDataPoints.forEach(p => {
@@ -6881,7 +6924,11 @@ function RankGraphModal({ isOpen, onClose, t, type, data, history, puuid, summon
       });
     } else {
       relevantGames.forEach(g => {
-        const iden = g.participantIdentities?.find(id => id.player.puuid === puuid);
+        const iden = g.participantIdentities?.find(id => 
+          id.player.puuid === puuid || 
+          id.player.puuid === 'CURRENT_USER' ||
+          (id.player.summonerName && summonerName && id.player.summonerName.toLowerCase().includes(summonerName.split('#')[0].toLowerCase()))
+        );
         const part = g.participants?.find(p => p.participantId === iden?.participantId);
         if (part) {
           if (part.stats.win) wins++;
@@ -7464,7 +7511,7 @@ function ModernRankCard({ rankedStats, history, puuid, summonerName, region, pan
 
   return (
     <>
-      <div onClick={() => !data.isEstimated && setIsModalOpen(true)} className={cn("p-6 rounded-3xl relative overflow-hidden group border border-gray-200 dark:border-white/10 bg-white dark:bg-black/20 backdrop-blur-xl hover:bg-black/5 dark:bg-black/40 transition-all duration-500 pointer-events-auto min-h-[165px] flex flex-col justify-center", data.isEstimated ? "cursor-default" : "cursor-pointer", panelClass)}>
+      <div className={cn("p-6 rounded-3xl relative overflow-hidden group border border-gray-200 dark:border-white/10 bg-white dark:bg-black/20 backdrop-blur-xl hover:bg-black/5 dark:bg-black/40 transition-all duration-500 pointer-events-auto min-h-[165px] flex flex-col justify-center cursor-default", panelClass)}>
         {/* Dynamic Glow */}
         <div className={cn(
           "absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-1000 bg-gradient-to-br",
@@ -7564,8 +7611,12 @@ function ModernRankCard({ rankedStats, history, puuid, summonerName, region, pan
 }
 
 
-function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
-  const identity = game.participantIdentities?.find(i => i.player.puuid === puuid);
+function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion, isMe }) {
+  const identity = game.participantIdentities?.find(i => 
+    i.player.puuid === puuid || 
+    (puuid?.startsWith('ext~') && i.player.puuid === "CURRENT_USER") ||
+    (game.isExternal && i.player.summonerName?.toLowerCase() === (puuid?.includes('~') ? decodeURIComponent(puuid.split('~')[1]).toLowerCase() : puuid?.toLowerCase()))
+  );
   if (!identity) return null;
   const part = game.participants?.find(p => p.participantId === identity.participantId);
   if (!part || !part.stats) return null;
@@ -7576,7 +7627,7 @@ function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
   const champName = part.championName || getChampName(champId);
   const champIcon = (champId && champId > 0)
     ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${champId}.png`
-    : `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion || "15.1.1"}/img/champion/${normalizeChampName(champName)}.png`;
+    : `https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/${normalizeChampName(champName)}.png`;
 
   const kdaRatio = ((part.stats.kills + part.stats.assists) / Math.max(1, part.stats.deaths)).toFixed(2);
 
@@ -7593,7 +7644,11 @@ function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
     )}>
       {/* Champion & Role - Matches Screenshot */}
       <div className="relative shrink-0 ml-1 mt-1">
-        <img src={champIcon} className={cn("w-10 h-10 rounded-lg border shadow-sm z-10 relative object-cover", isRemake ? "border-gray-500/50" : isWin ? "border-blue-400/50" : "border-red-400/50")} />
+        <img 
+          src={champIcon} 
+          className={cn("w-10 h-10 rounded-lg border shadow-sm z-10 relative object-cover", isRemake ? "border-gray-500/50" : isWin ? "border-blue-400/50" : "border-red-400/50")} 
+          onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/${normalizeChampName(champName)}.png`; }}
+        />
 
         {/* LP Bubble - Overlapping Corner (Matches Screen 1 request) */}
         {(() => {
@@ -7645,7 +7700,7 @@ function HistoryRowV2({ game, puuid, lpGains, onClick, t, ddragonVersion }) {
             }
           }
 
-          if (!lpToDisplay && (game.queueId === 420 || game.queueId === 440) && !game.isExternal) {
+          if (!lpToDisplay && (game.queueId === 420 || game.queueId === 440) && isMe) {
             lpToDisplay = 'None';
           }
 
@@ -10790,8 +10845,8 @@ function AICoachingPanel({ game, t, onWatch }) {
       {/* Header Banner - Reduced to save vertical space */}
       <div className="h-36 relative shrink-0">
         <img
-          src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_0.jpg`}
-          className="w-full h-full object-cover opacity-50"
+          src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${normalizeChampName(champName)}_0.jpg`}
+          className="w-full h-full object-cover object-[center_20%] opacity-50"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/40 to-transparent"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c] via-transparent to-transparent"></div>
@@ -10801,6 +10856,7 @@ function AICoachingPanel({ game, t, onWatch }) {
             <img
               src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.championId}.png`}
               className="w-16 h-16 rounded-2xl border-2 border-gray-200 dark:border-white/20"
+              onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${normalizeChampName(champName)}.png`; }}
             />
             {roleIcon && (
               <div className="absolute -top-2 -right-2 bg-slate-50 dark:bg-[#0a0a0c] p-1 rounded-lg border border-gray-200 dark:border-white/10 shadow-lg hidden">
@@ -10897,7 +10953,11 @@ function AICoachingPanel({ game, t, onWatch }) {
                     <div className="flex flex-col items-center gap-3">
                       <div className="relative group/avatar shrink-0">
                         <div className="absolute inset-0 bg-accent-primary blur-xl opacity-20 group-hover/avatar:opacity-40 transition-opacity"></div>
-                        <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.championId}.png`} className="w-16 h-16 rounded-2xl border-2 border-accent-primary shadow-2xl relative z-10 object-cover" />
+                        <img 
+                          src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.championId}.png`} 
+                          className="w-16 h-16 rounded-2xl border-2 border-accent-primary shadow-2xl relative z-10 object-cover" 
+                          onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${normalizeChampName(champName)}.png`; }}
+                        />
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-accent-primary text-black text-[8px] font-black px-2 py-0.5 rounded-full border-2 border-[#0a0a0c] z-20 whitespace-nowrap">{t('you')}</div>
                       </div>
                       <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{pStats.kills}/{pStats.deaths}/{pStats.assists}</div>
@@ -10934,7 +10994,11 @@ function AICoachingPanel({ game, t, onWatch }) {
                     <div className="flex flex-col items-center gap-3">
                       <div className="relative group/avatar shrink-0">
                         <div className="absolute inset-0 bg-red-500 blur-xl opacity-20 group-hover/avatar:opacity-40 transition-opacity"></div>
-                        <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${opponent.championId}.png`} className="w-16 h-16 rounded-2xl border-2 border-red-500/50 shadow-2xl relative z-10 object-cover" />
+                        <img 
+                          src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${opponent.championId}.png`} 
+                          className="w-16 h-16 rounded-2xl border-2 border-red-500/50 shadow-2xl relative z-10 object-cover" 
+                          onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${normalizeChampName(oppChampName)}.png`; }}
+                        />
                         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-600 text-gray-900 dark:text-gray-100 text-[8px] font-black px-2 py-0.5 rounded-full border-2 border-[#0a0a0c] z-20 whitespace-nowrap">{opponent?.identity?.player?.summonerName || opponent?.identity?.player?.gameName || opponent?.summonerName || "RIVAL"}</div>
                       </div>
                       <div className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">{oppStats.kills}/{oppStats.deaths}/{oppStats.assists}</div>
@@ -11399,14 +11463,18 @@ function LivePlayerCard({ player, side, isMe, t }) {
       isBlue ? "bg-gradient-to-r from-blue-900/20 to-black/40" : "bg-gradient-to-l from-red-900/20 to-black/40"
     )}>
       {/* Background Splash */}
-      <div className={cn("absolute inset-0 opacity-40 z-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110", isBlue ? "origin-left" : "origin-right")} style={{ backgroundImage: `url('https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${player.champ}_0.jpg')` }}></div>
+      <div className={cn("absolute inset-0 opacity-40 z-0 bg-cover bg-[center_25%] transition-transform duration-700 group-hover:scale-110", isBlue ? "origin-left" : "origin-right")} style={{ backgroundImage: `url('https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${normalizeChampName(player.champ)}_0.jpg')` }}></div>
       <div className={cn("absolute inset-0 z-0", isBlue ? "bg-gradient-to-r from-transparent via-black/60 to-black" : "bg-gradient-to-l from-transparent via-black/60 to-black")}></div>
 
       <div className={cn("relative z-10 h-full flex items-center px-4 gap-4", isBlue ? "flex-row" : "flex-row-reverse text-right")}>
         {/* Champ Icon & Spells */}
         <div className="flex flex-col items-center gap-1 shrink-0">
           <div className="relative">
-            <img src={`https://ddragon.leagueoflegends.com/cdn/16.1.1/img/champion/${normalizeChampName(player.champ)}.png`} className="w-10 h-10 rounded-lg border border-gray-200 dark:border-white/20" />
+            <img 
+              src={`https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${normalizeChampName(player.champ)}.png`} 
+              className="w-10 h-10 rounded-lg border border-gray-200 dark:border-white/20" 
+              onError={(e) => { e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${player.championId || -1}.png`; }}
+            />
             <div className="absolute -bottom-1 -right-1 bg-black text-[9px] px-1 rounded border border-gray-200 dark:border-white/10 text-gray-900 dark:text-gray-100 font-bold text-center w-5">
               {player.mastery > 100000 ? "M7" : "M5"}
             </div>
@@ -11627,7 +11695,11 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
             <button onClick={() => setSelectingStr('champ1')} className="flex items-center gap-4 pl-2 pr-6 py-2 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/10 group hover:border-accent-primary/50 shadow-xl">
               {champ1 ? (
                 <>
-                  <img src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ1)}/square`} className="w-10 h-10 rounded-xl border border-white/20 group-hover:border-accent-primary shadow-lg object-cover" />
+                  <img 
+                    src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ1)}/square`} 
+                    className="w-10 h-10 rounded-xl border border-white/20 group-hover:border-accent-primary shadow-lg object-cover" 
+                    onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/${normalizeChampName(champ1)}.png`; }}
+                  />
                   <span className="font-black text-gray-100 uppercase tracking-tighter text-lg">{champ1}</span>
                 </>
               ) : (
@@ -11644,7 +11716,11 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
               {champ2 ? (
                 <>
                   <span className="font-black text-gray-100 uppercase tracking-tighter text-lg text-right">{champ2}</span>
-                  <img src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ2)}/square`} className="w-10 h-10 rounded-xl border border-white/20 group-hover:border-red-500 shadow-lg object-cover" />
+                  <img 
+                    src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ2)}/square`} 
+                    className="w-10 h-10 rounded-xl border border-white/20 group-hover:border-red-500 shadow-lg object-cover" 
+                    onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.4.1/img/champion/${normalizeChampName(champ2)}.png`; }}
+                  />
                 </>
               ) : (
                 <div className="flex items-center gap-3 text-gray-400 group-hover:text-white">
@@ -11693,7 +11769,11 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
           {/* Left Hero Card */}
           <div className="col-span-3 flex flex-col gap-5 h-full overflow-y-auto custom-scrollbar pr-1">
             <div className="relative shrink-0 h-[380px] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl group neo-glow">
-              <img src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ1)}/splash-art/centered`} className="w-full h-full object-cover object-center opacity-70 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-110" />
+              <img 
+                src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ1)}/splash-art/centered`} 
+                className="w-full h-full object-cover object-center opacity-70 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-110" 
+                onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${normalizeChampName(champ1)}_0.jpg`; }}
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
 
               <div className="absolute bottom-8 inset-x-8">
@@ -11758,7 +11838,11 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest text-white shadow-xl">{t('high_elo_pov')}</span>
                 </div>
-                <img src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ2)}/splash-art/centered`} className="w-full h-full object-cover object-center" />
+                <img 
+                  src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ2)}/splash-art/centered`} 
+                  className="w-full h-full object-cover object-center" 
+                  onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${normalizeChampName(champ2)}_0.jpg`; }}
+                />
               </div>
             </div>
 
@@ -11843,7 +11927,11 @@ function MatchupsView({ t, championList, ddragonVersion, onOpenUrl }) {
           {/* Right Hero Card */}
           <div className="col-span-3 flex flex-col gap-5 h-full overflow-y-auto custom-scrollbar pr-1" >
             <div className="relative shrink-0 h-[380px] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl group neo-glow-red">
-              <img src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ2)}/splash-art/centered`} className="w-full h-full object-cover object-center opacity-70 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-110" />
+              <img 
+                src={`https://cdn.communitydragon.org/latest/champion/${normalizeChampName(champ2)}/splash-art/centered`} 
+                className="w-full h-full object-cover object-center opacity-70 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-110" 
+                onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${normalizeChampName(champ2)}_0.jpg`; }}
+              />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
 
               <div className="absolute bottom-8 inset-x-8 text-right">
@@ -13448,7 +13536,31 @@ function LoadingOverlay({ t, visualMode, theme }) {
           }
         }
 
-        const gameSession = await window.ipcRenderer.invoke('lcu:get-gameflow-session');
+        let gameSession = await window.ipcRenderer.invoke('lcu:get-gameflow-session');
+        
+        // Fallback to Live Client API if LCU session is empty (InProgress phase)
+        if (!gameSession || !gameSession.gameData || !gameSession.gameData.teamOne) {
+            const livePlayers = await window.ipcRenderer.invoke('live:get-player-list');
+            if (livePlayers && Array.isArray(livePlayers) && livePlayers.length > 0) {
+                console.log("[Loading] LCU session empty, using Live API fallback.");
+                const mappedSession = {
+                    gameData: {
+                        gameId: "LIVE",
+                        teamOne: livePlayers.filter(p => p.team === 'ORDER'),
+                        teamTwo: livePlayers.filter(p => p.team === 'CHAOS')
+                    }
+                };
+                gameSession = mappedSession;
+            }
+        }
+
+        // Clear enrichment cache if it's a new game (different ID)
+        if (gameSession && gameSession.gameData && gameSession.gameData.gameId) {
+            if (!session || session.gameData?.gameId !== gameSession.gameData.gameId) {
+                console.log("[Loading] New game detected, clearing player cache.");
+                enrichedSet.current.clear();
+            }
+        }
         setSession(gameSession);
 
         if (gameSession && gameSession.gameData) {
@@ -13472,74 +13584,83 @@ function LoadingOverlay({ t, visualMode, theme }) {
               let name = p.summonerName || p.name || p.displayName || "";
               let puuid = p.puuid;
               let championId = p.championId || 0;
-              let isBot = p.bot || (p.summonerId === 0 && championId > 0);
+              let isBot = p.bot || p.isBot || (p.summonerId === 0 && championId > 0);
 
-              if (!isBot && (!name || name === "INCONNU" || name.trim() === "") && puuid) {
+              // Live API uses championName instead of ID
+              if (!championId && p.championName) {
+                const found = Object.entries(_champMap).find(([id, c]) => c.name === p.championName || c.alias === p.championName);
+                if (found) championId = parseInt(found[0]);
+              }
+
+              if (!isBot && (!name || name === "INCONNU" || name.trim() === "" || name.includes("...")) && puuid) {
                 try {
                   const sum = await window.ipcRenderer.invoke('lcu:get-summoner-by-puuid', puuid);
                   if (sum) name = sum.displayName || sum.gameName || sum.name;
                 } catch (e) { }
               }
 
-              const champInfo = _champMap[championId] || { name: "?", alias: "Aatrox" };
+              // If still no PUUID (Live API), try searching by name
+              if (!puuid && !isBot && name) {
+                try {
+                   const sum = await window.ipcRenderer.invoke('lcu:get-summoner-by-name', name);
+                   if (sum) puuid = sum.puuid;
+                } catch(e){}
+              }
+
+              const champInfo = _champMap[championId] || { name: p.championName || "?", alias: p.championName || "Aatrox" };
               results.push({
                 ...p,
                 type: isBot ? 'bot' : 'player',
-                name: isBot ? `BOT ${champInfo.name}` : (name || "INCONNU"),
+                name: isBot ? `BOT ${champInfo.name}` : (name || "Chargement..."),
                 puuid,
                 champId: championId,
                 champName: champInfo.name,
                 champAlias: champInfo.alias,
                 statsPopulated: false,
+                rank: "Chargement...",
+                globalWr: 0,
                 streak: 0,
                 streakType: 'win'
               });
             }
 
             await Promise.all(results.map(async (p, i) => {
-              if (p.type !== 'player' || p.name === "INCONNU") return;
+              if (p.type !== 'player' || p.name === "Chargement..." || p.name === "INCONNU") return;
               const ident = p.puuid || p.name;
               if (enrichedSet.current.has(ident)) return;
               try {
-                let rankName = "NA"; let globalWr = 0; let globalGames = 0; let globalWins = 0, globalLosses = 0;
+                let rankName = "UNRANKED"; let globalWr = 0; let globalGames = 0; let globalWins = 0, globalLosses = 0;
                 let streak = 0; let streakType = 'win';
 
                 if (p.puuid) {
                   const ranked = await window.ipcRenderer.invoke('lcu:get-ranked-stats', p.puuid);
-                  if (ranked && ranked.queueMap && ranked.queueMap.RANKED_SOLO_5x5) {
-                    const solo = ranked.queueMap.RANKED_SOLO_5x5;
-                    globalWins = solo.wins || 0; globalLosses = solo.losses || 0;
-                    rankName = solo.tier !== 'NONE' ? `${solo.tier} ${solo.division}` : "NA";
-                    globalGames = globalWins + globalLosses;
-                    if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
+                  if (ranked && ranked.queueMap) {
+                    const solo = ranked.queueMap.RANKED_SOLO_5x5 || ranked.queueMap.RANKED_FLEX_5x5;
+                    if (solo) {
+                        globalWins = solo.wins || 0; globalLosses = solo.losses || 0;
+                        rankName = (solo.tier && solo.tier !== 'NONE') ? `${solo.tier} ${solo.division || ''}`.trim() : "UNRANKED";
+                        globalGames = globalWins + globalLosses;
+                        if (globalGames > 0) globalWr = Math.round((globalWins / globalGames) * 100);
+                    }
                   }
+                  
+                  // Streak from match history
                   const history = await window.ipcRenderer.invoke('lcu:get-match-history', p.puuid, 0, 10);
-                  if (history && history.games && history.games.games) {
-                    const games = history.games.games;
-                    if (games.length > 0) {
-                      const firstWin = games[0].stats.win;
-                      streakType = firstWin ? 'win' : 'loss';
-                      streak = 1;
-                      for (let j = 1; j < games.length; j++) {
-                        if (games[j].stats.win === firstWin) streak++;
-                        else break;
-                      }
+                  const gamesList = history?.games?.games || history?.games || (Array.isArray(history) ? history : []);
+                  if (gamesList && gamesList.length > 0) {
+                    const firstWin = gamesList[0].stats?.win;
+                    streakType = firstWin ? 'win' : 'loss';
+                    streak = 1;
+                    for (let j = 1; j < gamesList.length; j++) {
+                      if (gamesList[j].stats?.win === firstWin) streak++;
+                      else break;
                     }
                   }
                 }
 
-                // NEW: Fetch LP Gains for other players
-                let recentLp = null;
-                try {
-                  const lpData = await window.ipcRenderer.invoke('scraper:get-recent-lp', p.name, p.region || 'EUW');
-                  if (lpData && lpData.length > 0) {
-                    recentLp = lpData[0].lpStr;
-                  }
-                } catch (e) { }
-
-                results[i] = { ...p, rank: rankName, globalWr, globalGames, globalWins, globalLosses, streak, streakType, statsPopulated: true, recentLp };
+                results[i] = { ...p, rank: rankName, globalWr, globalGames, globalWins, globalLosses, streak, streakType, statsPopulated: true };
                 enrichedSet.current.add(ident);
-              } catch (e) { }
+              } catch (e) { console.error("Enrichment failed for", p.name, e); }
             }));
             setPlayers(prev => ({ ...prev, [teamKey]: results }));
           };
@@ -13568,7 +13689,7 @@ function LoadingOverlay({ t, visualMode, theme }) {
     }
     return (
       <div className={cn("relative w-full aspect-[3.5/4.8] rounded-[2rem] overflow-hidden border-2 transition-all duration-500 shadow-2xl group", isBlue ? "border-blue-500/30 bg-blue-500/10 hover:border-blue-400" : "border-red-500/30 bg-red-500/10 hover:border-red-400", "hover:scale-[1.02]")}>
-        {p.champAlias && <img src={splashUrl} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />}
+        {p.champAlias && <img src={splashUrl} className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105" />}
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/10 to-transparent h-1/2" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
@@ -13581,7 +13702,11 @@ function LoadingOverlay({ t, visualMode, theme }) {
         <div className="absolute inset-0 flex flex-col justify-end p-4 lg:p-5 z-10">
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-1.5">
-              <img src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/${(p.rank?.split(' ')[0] || 'unranked').toLowerCase()}.png`} className="w-6 h-6 object-contain" />
+              <img 
+                src={`https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-shared-components/global/default/${(p.rank?.split(' ')[0] || 'unranked').toLowerCase()}.png`} 
+                className="w-6 h-6 object-contain" 
+                onError={(e) => { e.target.src = `https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/images/ranked-mini-crests/${(p.rank?.split(' ')[0] || 'unranked').toLowerCase()}.png`; }}
+              />
               <div className="flex flex-col">
                 <span className="text-[10px] font-black uppercase text-white tracking-widest leading-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{p.rank || "UNRANKED"}</span>
                 {p.recentLp && (

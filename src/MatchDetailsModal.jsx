@@ -717,7 +717,7 @@ function ParticipantIcon({ pl, active, onClick, side }) {
                 }
                 className="w-full h-full object-cover rounded-[1rem]"
                 alt="champ"
-                onError={(e) => { e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png" }}
+                onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${normalizeChampName(pl.championName || "Yasuo")}.png`; }}
             />
             <div className={cn("absolute -bottom-1 inset-x-0 h-1 rounded-full transition-opacity mx-3", active ? (side === "blue" ? "bg-blue-400" : "bg-red-400") : "bg-transparent")} />
         </div>
@@ -936,7 +936,7 @@ function ScoreboardRow({ p, isMVP, isACE, rank, runeMap, ver, maxDmg, dur, score
                     src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.championId}.png`}
                     className="w-full h-full rounded-xl border border-white/10 shadow-lg group-hover/icon:scale-110 group-hover/icon:border-blue-500/50 transition-all"
                     alt="champ"
-                    onError={(e) => { e.target.src = "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/-1.png" }}
+                    onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${normalizeChampName(p.championName || name)}.png`; }}
                 />
                 <div className="absolute -bottom-1.5 -right-1.5 bg-black/90 text-[10px] font-black px-1.5 rounded-md text-white border border-white/20 leading-none py-1 shadow-md group-hover/icon:bg-blue-600 transition-colors">{stats.champLevel}</div>
             </div>
@@ -1097,7 +1097,11 @@ function RuneCard({ p, runeMap }) {
     return (
         <div className="bg-gray-50 dark:bg-[#121216] rounded-[1.5rem] border border-gray-200 dark:border-white/5 p-5 flex items-center gap-6 shadow-sm dark:shadow-2xl">
             <div className="flex flex-col items-center gap-3 shrink-0">
-                <img src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.championId}.png`} className="w-16 h-16 rounded-2xl border-2 border-white/10 shadow-xl" />
+                <img 
+                  src={`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/${p.championId}.png`} 
+                  className="w-16 h-16 rounded-2xl border-2 border-white/10 shadow-xl" 
+                  onError={(e) => { e.target.src = `https://ddragon.leagueoflegends.com/cdn/15.1.1/img/champion/${normalizeChampName(p.championName || "Yasuo")}.png`; }}
+                />
                 <div className="text-[11px] font-bold text-gray-500 w-24 truncate text-center uppercase tracking-widest">{p.identity?.player?.gameName || p.summonerName || "???"}</div>
             </div>
             <div className="flex-1 flex items-center justify-center gap-8 border-l border-gray-200 dark:border-white/10 ml-2 pl-8">
