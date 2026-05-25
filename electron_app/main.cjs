@@ -547,6 +547,7 @@ ipcMain.handle('window:set-ignore-mouse-events', (event, ignore, options) => {
 });
 
 
+ipcMain.handle('lcu:get-summoner-by-name', async (_, name) => lcu.getSummonerByName(name));
 ipcMain.handle('lcu:get-summoner-by-puuid', async (_, puuid) => lcu.getSummonerByPuuid(puuid));
 
 ipcMain.handle('scraper:log', (_, msg) => console.log(msg));
@@ -675,9 +676,21 @@ ipcMain.handle('scraper:get-esports-news', async () => scraper.getEsportsNews())
 ipcMain.handle('scraper:get-esports-rankings', async () => scraper.getEsportsRankings());
 ipcMain.handle('scraper:get-top-live-streams', async () => scraper.getTopLiveStreams());
 ipcMain.handle('scraper:get-matchup', async (_, champ1, champ2, role) => scraper.getMatchupAnalysis(champ1, champ2, role));
-ipcMain.handle('scraper:get-rank-history', async (_, puuid, region) => scraper.getRankHistory(puuid, region));
-ipcMain.handle('scraper:get-lp-history', async (_, name, region) => scraper.getRankedLPHistory(name, region));
-ipcMain.handle('scraper:get-recent-lp', async (_, name, region) => scraper.getRecentLPGains(name, region));
+ipcMain.handle('scraper:get-rank-history', async (_, puuid, region, queueType) => scraper.getRankHistory(puuid, region, queueType));
+ipcMain.handle('scraper:get-lp-history', async (_, name, region, queueType) => scraper.getRankedLPHistory(name, region, queueType));
+ipcMain.handle('scraper:get-recent-lp', async (_, name, region, queueType) => scraper.getRecentLPGains(name, region, queueType));
+ipcMain.handle('scraper:clear-cache', async () => {
+    try {
+        if (scraper.fs.existsSync(scraper.cacheFile)) scraper.fs.unlinkSync(scraper.cacheFile);
+        if (scraper.fs.existsSync(scraper.globalDataCacheFile)) scraper.fs.unlinkSync(scraper.globalDataCacheFile);
+        scraper.statsCache.clear();
+        scraper.dataCache.clear();
+        return true;
+    } catch (e) {
+        console.error("Failed to clear scraper cache", e);
+        return false;
+    }
+});
 
 ipcMain.handle('lcu:get-ranked-stats', async (_, puuid) => {
     if (puuid && puuid.startsWith('ext~')) return scraper.getRankedStats(puuid);
@@ -730,8 +743,8 @@ ipcMain.handle('lcu:import-runes-manual', async (_, buildRunes, champName, targe
     return false;
 });
 
-ipcMain.handle('lcu:get-match-history', async (_, puuid, beg, end) => {
-    if (puuid && puuid.startsWith('ext~')) return scraper.getMatchHistory(puuid);
+ipcMain.handle('lcu:get-match-history', async (_, puuid, beg, end, queueType) => {
+    if (puuid && puuid.startsWith('ext~')) return scraper.getMatchHistory(puuid, 'euw', queueType);
     return lcu.getMatchHistory(puuid, beg, end);
 });
 
@@ -772,7 +785,7 @@ ipcMain.handle('live:get-player-list', async () => liveApi.getPlayerList());
 ipcMain.handle('riot:get-match-history', async (_, { puuid, region, count }) => riotApi.getMatchHistory(puuid, region, count));
 ipcMain.handle('riot:get-match-details', async (_, { matchId, region }) => riotApi.getMatchDetails(matchId, region));
 ipcMain.handle('riot:get-league-entries', async (_, { summonerId, region }) => riotApi.getLeagueEntries(summonerId, region));
-ipcMain.handle('scraper:get-match-history', async (_, puuid, region) => scraper.getMatchHistory(puuid, region));
+ipcMain.handle('scraper:get-match-history', async (_, puuid, region, queueType) => scraper.getMatchHistory(puuid, region, queueType));
 ipcMain.handle('scraper:get-match-details', async (_, matchUrl) => scraper.getExternalMatchDetails(matchUrl));
 
 // lazy handler moved to the bottom of the file
@@ -994,11 +1007,13 @@ const adminServer = http.createServer((req, res) => {
                 };
 
                 // Forward to GLOBAL DB for all online and offline users
-                fetch('https://oracle-73d32-default-rtdb.europe-west1.firebasedatabase.app/broadcast.json', {
+                const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+                const targetApi = isDev ? 'http://localhost:3000/api' : 'https://tekao.fr/api';
+                fetch(`${targetApi}/broadcast`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
-                }).catch(err => console.error("[Admin] Failed to send to Firebase", err));
+                }).catch(err => console.error("[Admin] Failed to send to API", err));
 
                 // Send to Notification Center Locally (instant preview)
                 if (mainWindow) {
@@ -1063,9 +1078,13 @@ async function monitorGameLoop() {
 
             if (phase === 'ReadyCheck') {
                 const settings = getSettings();
+                console.log(`[Monitor] ReadyCheck detected. Auto-accept setting: ${settings.autoAccept}`);
                 if (settings.autoAccept) {
                     console.log("[Monitor] Auto-accepting match...");
-                    await lcu.acceptMatch().catch(e => console.log("[Monitor] Auto-accept failed (normal if already accepted)"));
+                    // Try multiple times for robustness
+                    lcu.acceptMatch().catch(() => {});
+                    setTimeout(() => lcu.acceptMatch().catch(() => {}), 500);
+                    setTimeout(() => lcu.acceptMatch().catch(() => {}), 1000);
                 }
             }
 
@@ -1246,8 +1265,8 @@ async function monitorGameLoop() {
     }
 }
 
-// Start loop
-setInterval(monitorGameLoop, 3000);
+// Start loops
+setInterval(monitorGameLoop, 1500); // Increased polling rate for auto-accept
 
 let prevFriendsMap = {};
 async function monitorSocialLoop() {
@@ -1450,6 +1469,19 @@ function startActiveWindowTracker() {
     } catch (err) {
         console.error('Failed to init active tracker', err);
     }
+
+    // --- AUTO SHOW ON LOL START ---
+    setInterval(async () => {
+        const settings = getSettings();
+        if (settings.autoShowOnLolStart === false) return;
+
+        const isLcuConnected = await lcu.connect();
+        if (isLcuConnected && mainWindow && !mainWindow.isVisible() && !isAppQuitting) {
+            console.log("[Main] LoL detected and app hidden. Showing app...");
+            mainWindow.show();
+            mainWindow.focus();
+        }
+    }, 5000);
 }
 
 setInterval(monitorSocialLoop, 3000);
