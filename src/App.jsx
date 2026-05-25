@@ -1437,6 +1437,13 @@ const premiumUsers = [
   { name: 'tartilou', tag: 'euw' }
 ];
 
+const getApiUrl = () => {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3000/api';
+  }
+  return 'https://tekao.fr/api';
+};
+
 function App() {
   const [appMode, setAppMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1587,7 +1594,7 @@ function App() {
   useEffect(() => {
     const fetchGold = async () => {
       try {
-        const res = await fetch('https://tekao.fr/api/gold');
+        const res = await fetch(`${getApiUrl()}/gold`);
         const data = await res.json();
         if (data) setServerGoldUsers(data);
       } catch (e) { }
@@ -2472,7 +2479,7 @@ function MainApp({
     let interval;
     const fetchGlobalBroadcast = async () => {
       try {
-        const res = await fetch('https://tekao.fr/api/broadcast');
+        const res = await fetch(`${getApiUrl()}/broadcast`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.id) {

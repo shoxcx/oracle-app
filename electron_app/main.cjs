@@ -1007,7 +1007,9 @@ const adminServer = http.createServer((req, res) => {
                 };
 
                 // Forward to GLOBAL DB for all online and offline users
-                fetch('https://tekao.fr/api/broadcast', {
+                const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+                const targetApi = isDev ? 'http://localhost:3000/api' : 'https://tekao.fr/api';
+                fetch(`${targetApi}/broadcast`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
